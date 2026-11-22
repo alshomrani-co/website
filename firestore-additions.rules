@@ -1,0 +1,73 @@
+// ============================================================================
+//  إضافات موقع الشمراني — تتلصق جوه قواعد البصمة الحالية (مش بدلها)
+//  المكان: جوه  match /databases/{database}/documents { ... }
+//  بعد الدوال signedIn / isOwner / empDoc / isActiveEmp الموجودة عندك
+// ============================================================================
+
+    // صلاحية قسم معيّن للموظف (المالك عنده كل الأقسام)
+    function hasMod(m) {
+      return isOwner() || (isActiveEmp() && m in empDoc().data.get('mods', []));
+    }
+
+    // محتوى الموقع: الكل يقرأ، واللي معاه «لوحة التحكم» يعدّل
+    match /site/{id} {
+      allow read: if true;
+      allow write: if hasMod('cms');
+    }
+    // صور الموقع المرفوعة من لوحة التحكم
+    match /siteMedia/{id} {
+      allow read: if true;
+      allow create, update: if hasMod('cms')
+        && request.resource.data.data is string
+        && request.resource.data.data.size() < 1000000;
+      allow delete: if hasMod('cms');
+    }
+
+    // كود الدعوة: المالك بس (قواعد التسجيل بتقراه من جوه السيرفر)
+    match /settingsPriv/{id} {
+      allow read, write: if isOwner();
+    }
+
+    // طلبات تسجيل الموظفين الجدد بكود الدعوة
+    match /requests/{uid} {
+      allow read: if isOwner() || (signedIn() && request.auth.uid == uid);
+      allow create: if signedIn() && request.auth.uid == uid
+        && !exists(/databases/$(database)/documents/employees/$(uid))
+        && request.resource.data.code is string
+        && request.resource.data.code.size() > 0
+        && request.resource.data.code == get(/databases/$(database)/documents/settingsPriv/invite).data.code
+        && request.resource.data.name is string && request.resource.data.name.size() <= 60
+        && request.resource.data.num is string && request.resource.data.num.size() <= 24;
+      allow delete: if isOwner();
+    }
+
+    // طلبات الدعم الفني من العملاء (رقم الطلب سري وعشوائي)
+    match /tickets/{code} {
+      allow get: if true;
+      allow list, update, delete: if hasMod('support');
+      allow create: if request.resource.data.code == code
+        && request.resource.data.status == 'new'
+        && request.resource.data.msgs.size() == 0
+        && request.resource.data.name is string && request.resource.data.name.size() <= 80
+        && request.resource.data.phone is string && request.resource.data.phone.size() <= 20
+        && request.resource.data.msg is string && request.resource.data.msg.size() <= 3000
+        && request.resource.data.img is string && request.resource.data.img.size() < 900000;
+    }
+
+    // تقارير الإشراف (بيانات التقرير)
+    match /reports/{id} {
+      allow read: if hasMod('reports') || (signedIn() && resource.data.by == request.auth.uid);
+      allow create: if hasMod('report') && request.resource.data.by == request.auth.uid;
+      allow update: if isOwner() || (hasMod('report') && resource.data.by == request.auth.uid
+                                     && request.resource.data.by == request.auth.uid);
+      allow delete: if isOwner();
+    }
+    // صور وتوقيعات التقارير (كل صورة في مستند منفصل)
+    match /rmedia/{id} {
+      allow read: if hasMod('reports') || (signedIn() && resource.data.by == request.auth.uid);
+      allow create: if isOwner() || (hasMod('report') && request.resource.data.by == request.auth.uid
+        && request.resource.data.src is string && request.resource.data.src.size() < 1000000);
+      allow update: if isOwner() || (hasMod('report') && resource.data.by == request.auth.uid
+        && request.resource.data.by == request.auth.uid);
+      allow delete: if isOwner() || (signedIn() && resource.data.by == request.auth.uid);
+    }

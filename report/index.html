@@ -1,0 +1,1630 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@700;800;900&display=swap" rel="stylesheet">
+<title>تقرير الاستلام الهندسي - IR Form</title>
+<style>
+/* ============================================================
+   IR FORM v19 — rebuilt from v18 after PDF audit.
+   Fixed defects (measured in real exported PDFs):
+   1. ~60% blank void after checklist (forced page-break of photos)
+   2. Photo pages force-broke every 4 photos regardless of space
+   3. Footer orphaned alone on a blank final page
+   4. Empty caption boxes printed as blank rectangles
+   5. Long <select> option text silently truncated in PDF
+   New capabilities: autosave/restore (localStorage), direct
+   camera capture, signature drawing pads, PDF filename hint.
+   ============================================================ */
+:root{--primary:#e02828;--accent:#c8102e;--light-bg:#f4f6f9;--border:#d0d7e2;--text:#1a2232;--text-muted:#5a6a7e;--green:#1a7a4a;--red:#c8102e;--gray:#6b7280;--title:#1a2232;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:#e8ecf1;color:var(--text);font-size:13px;direction:rtl;}
+#toolbar{background:var(--primary);padding:10px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.25);}
+#toolbar .title{color:#fff;font-size:15px;font-weight:700;flex:1;}
+.btn-tool{padding:7px 18px;border:none;border-radius:5px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;font-family:inherit;}
+.btn-clear{background:#4a5568;color:#fff;}
+.btn-print{background:var(--accent);color:#fff;}
+#autosave-badge{color:rgba(255,255,255,.85);font-size:11px;font-weight:600;white-space:nowrap;}
+.page-wrap{max-width:820px;margin:20px auto;padding:0 12px 40px;}
+.form-card{background:#fff;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,.10);overflow:hidden;margin-bottom:16px;}
+.form-header{background:#fff;color:var(--text);padding:16px 22px;display:grid;grid-template-columns:auto 1fr auto;gap:18px;align-items:center;border:1.5px solid #8f8f8f;border-radius:10px;margin:12px;}
+.ir-meta-badge{background:#fff;border:1.5px dashed var(--primary);border-radius:8px;padding:8px 12px;min-width:140px;text-align:center;color:var(--text);}
+.ir-meta-badge .ir-row{display:flex;flex-direction:column;gap:2px;margin-bottom:7px;padding-bottom:7px;border-bottom:1px dashed var(--border);}
+.ir-meta-badge .ir-row:last-child{margin-bottom:0;padding-bottom:0;border-bottom:none;}
+.ir-meta-badge .meta-label{font-size:9px;font-weight:700;color:var(--accent);letter-spacing:.2px;}
+.ir-meta-badge input{border:none;outline:none;font-family:inherit;text-align:center;color:var(--gray);background:transparent;font-weight:700;width:100%;}
+.ir-meta-badge #ir-number{font-size:14px;letter-spacing:.5px;}
+.ir-meta-badge .datetime-row{display:flex;gap:6px;justify-content:center;}
+.ir-meta-badge .datetime-row input{font-size:11px;font-weight:600;}
+.logo-box{width:132px;height:132px;background:transparent;border:none;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;}
+.logo-box img{width:100%;height:100%;object-fit:contain;}
+.header-center{text-align:center;}
+.header-center .company-name{font-size:17px;font-weight:800;color:var(--title);margin-bottom:2px;white-space:nowrap;}
+.header-center .company-name-en{font-family:Georgia,'Times New Roman',serif;font-size:12.5px;font-weight:600;color:var(--text);letter-spacing:.2px;margin-bottom:8px;white-space:nowrap;}
+.header-center .form-title-ar{font-size:23px;font-weight:800;color:var(--title);margin-bottom:2px;white-space:nowrap;font-family:'Cairo','Tahoma',sans-serif;}
+.header-center .form-title-en{font-family:Georgia,'Times New Roman',serif;font-size:13px;font-weight:700;color:var(--title);letter-spacing:.4px;}
+.section-header{background:#f6eded;border-bottom:2px solid var(--primary);padding:8px 20px;font-size:13px;font-weight:700;color:var(--primary);display:flex;align-items:center;gap:8px;}
+.section-header .num{background:var(--primary);color:#fff;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;}
+.sec-hdr-en{font-size:11px;font-weight:500;color:var(--text-muted);padding-right:10px;margin-right:6px;border-right:2px solid var(--primary);display:inline-block;line-height:1;}
+.section-body{padding:16px 20px;}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px 16px;}
+.grid-full{grid-column:1/-1;}
+.field-group{display:flex;flex-direction:column;gap:4px;}
+.field-group label{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;}
+.field-label-row,.sig-box-header-row{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.field-visibility-toggle{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:5px;flex-shrink:0;background:#eef1f5;border:1px solid var(--border);cursor:pointer;font-size:11px;line-height:1;padding:0;transition:background .15s,color .15s;font-family:inherit;}
+.field-visibility-toggle:hover{background:#e2e7ee;}
+.field-group.field-excluded,.sig-box.field-excluded{opacity:.42;transition:opacity .2s;}
+.field-group.field-excluded .field-visibility-toggle,.sig-box.field-excluded .field-visibility-toggle{background:var(--red);border-color:var(--red);color:#fff;}
+.field-group input,.field-group select,.field-group textarea{border:1px solid var(--border);border-radius:4px;padding:7px 10px;font-size:13px;font-family:inherit;color:var(--text);background:var(--light-bg);outline:none;direction:rtl;}
+.field-group input:focus,.field-group select:focus,.field-group textarea:focus{border-color:var(--primary);background:#fff;}
+.field-group textarea{resize:vertical;min-height:60px;line-height:1.6;}
+.site-photo-wrapper{display:grid;grid-template-columns:1fr 1.25fr;gap:16px;align-items:start;}
+.site-photo-left{display:flex;flex-direction:column;gap:10px;}
+.site-photo-drop{border:2px dashed var(--border);border-radius:8px;background:#fafbfc;min-height:200px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;}
+.site-photo-drop .drop-icon{font-size:32px;margin-bottom:8px;}
+.site-photo-drop .drop-text{font-size:13px;font-weight:600;margin-bottom:10px;}
+.upload-btn-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
+.btn-upload{background:var(--primary);color:#fff;border:none;padding:8px 14px;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px;}
+.btn-upload.btn-cam{background:#1a7a4a;}
+input[type="file"].hidden-file{display:none;}
+.site-photo-preview{position:relative;}
+.site-photo-preview img{width:100%;border-radius:6px;object-fit:contain;display:block;border:1px solid var(--border);background:#f0f0f0;}
+.btn-remove-site{position:absolute;top:6px;left:6px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:inherit;}
+.site-photo-caption{margin-top:8px;}
+.site-photo-fixed-caption{text-align:center;font-size:13px;font-weight:700;color:var(--primary);background:#f6eded;border:1px solid var(--border);border-radius:6px;padding:8px 10px;}
+.checklist-table{width:100%;border-collapse:collapse;}
+.checklist-table th{background:var(--primary);color:#fff;padding:8px 10px;font-size:11px;font-weight:700;text-align:center;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.checklist-table th:first-child{text-align:right;}
+.checklist-table tr:nth-child(even) td{background:#f7f9fc;}
+.checklist-table td{padding:7px 10px;border-bottom:1px solid #e8ecf0;font-size:12.5px;vertical-align:middle;}
+.radio-group{display:flex;justify-content:center;gap:6px;}
+.radio-btn{width:34px;height:28px;border-radius:4px;border:1.5px solid var(--border);background:#f0f2f5;cursor:pointer;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;user-select:none;}
+.radio-btn.active-ok{background:#d4edda;border-color:var(--green);color:var(--green);}
+.radio-btn.active-fail{background:#fde8e8;border-color:var(--red);color:var(--red);}
+.radio-btn.active-na{background:#e8e8ec;border-color:var(--gray);color:var(--gray);}
+.notes-input-small{border:1px solid var(--border);border-radius:3px;padding:4px 7px;font-size:12px;font-family:inherit;width:100%;background:#fafbfc;direction:rtl;outline:none;line-height:1.5;resize:none;overflow:hidden;display:block;min-height:30px;}
+.photos-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.photo-slot{border:1.5px dashed var(--border);border-radius:6px;overflow:hidden;background:#fafbfc;}
+.photo-upload-area{padding:20px;text-align:center;}
+.photo-upload-area .upload-icon{font-size:28px;color:var(--text-muted);margin-bottom:6px;}
+.photo-upload-area p{font-size:12px;color:var(--text-muted);margin-bottom:10px;}
+.photo-preview{position:relative;}
+.photo-preview img{width:100%;max-height:200px;object-fit:contain;display:block;background:#f0f0f0;}
+.photo-caption{padding:8px 10px;background:#fff;border-top:1px solid var(--border);}
+.photo-caption textarea{width:100%;border:1px solid var(--border);border-radius:3px;padding:5px 8px;font-size:12px;font-family:inherit;resize:none;min-height:40px;direction:rtl;outline:none;background:var(--light-bg);}
+.btn-add-photo{background:var(--primary);color:#fff;border:none;padding:8px 16px;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;margin-top:12px;font-family:inherit;}
+.btn-remove-photo{position:absolute;top:6px;left:6px;background:rgba(0,0,0,.55);color:#fff;border:none;border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer;font-family:inherit;}
+.decision-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px;}
+.decision-card{border:2px solid var(--border);border-radius:8px;padding:14px 10px;text-align:center;cursor:pointer;background:#fafbfc;}
+.decision-card .dec-icon{font-size:26px;margin-bottom:6px;}
+.decision-card .dec-label-ar{font-size:14px;font-weight:700;}
+.decision-card .dec-label-en{font-size:11px;color:var(--text-muted);margin-top:2px;}
+.decision-card.selected-approved{border-color:var(--green);background:#edf7f1;}
+.decision-card.selected-conditional{border-color:#b87a00;background:#fdf8ec;}
+.decision-card.selected-rejected{border-color:var(--red);background:#fdf0f0;}
+.decision-grid.has-selection .decision-card:not(.selected-approved):not(.selected-conditional):not(.selected-rejected){opacity:.28;filter:grayscale(60%);transition:opacity .2s,filter .2s;}
+input[type="radio"].hidden-radio{display:none;}
+.sig-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.sig-box{border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+.sig-box-header{background:#f6eded;padding:7px 14px;font-size:12px;font-weight:700;color:var(--primary);border-bottom:1px solid var(--border);-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.sig-box-body{padding:12px 14px;}
+.sig-field{display:flex;flex-direction:column;gap:3px;margin-bottom:8px;}
+.sig-field label{font-size:10px;color:var(--text-muted);font-weight:600;}
+.sig-field input,.sig-field select{border:none;border-bottom:1.5px dashed var(--border);padding:4px 2px;font-size:13px;font-family:inherit;background:transparent;outline:none;direction:rtl;width:100%;}
+/* Signature drawing pad */
+.sig-pad-wrap{position:relative;border:1px dashed var(--border);border-radius:4px;background:#fafbfc;}
+.sig-pad{display:block;width:100%;height:90px;touch-action:none;cursor:crosshair;}
+.sig-pad-label{position:absolute;top:4px;right:8px;font-size:10px;color:#bbb;pointer-events:none;}
+.btn-sig-clear{position:absolute;bottom:4px;left:6px;background:#eef1f5;border:1px solid var(--border);border-radius:4px;font-size:10px;padding:2px 8px;cursor:pointer;font-family:inherit;color:var(--text-muted);}
+.form-footer{background:var(--primary);color:rgba(255,255,255,.92);padding:14px 24px;display:flex;flex-direction:column;gap:6px;align-items:center;text-align:center;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.footer-company-name{font-size:14px;font-weight:800;color:#fff;letter-spacing:.2px;}
+.footer-contact{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:0;}
+.footer-contact span{padding:0 12px;font-size:12px;white-space:nowrap;}
+.footer-sep{color:rgba(255,255,255,.3)!important;font-size:16px;padding:0!important;font-weight:300;}
+.footer-link{color:inherit;text-decoration:none;}
+.footer-link:hover{text-decoration:underline;}
+.checklist-empty{padding:20px;text-align:center;color:var(--text-muted);font-size:13px;}
+.checklist-continued-row{display:none;}
+.notes-print-div,.select-print-div{display:none;}
+
+/* ===== RESPONSIVE LAYER (screen only) ===== */
+@media screen{html{-webkit-text-size-adjust:100%;text-size-adjust:100%;}}
+@media screen and (max-width:860px){
+  .page-wrap{margin:16px auto;padding:0 10px 32px;}
+  .form-header{gap:12px;padding:16px 16px;}
+  .logo-box{width:96px;height:96px;}
+  .ir-meta-badge{min-width:124px;padding:7px 10px;}
+  .header-center .company-name{font-size:15px;}
+  .header-center .form-title-ar{font-size:20px;}
+  .header-center .company-name,.header-center .company-name-en,.header-center .form-title-ar{white-space:normal;}
+}
+@media screen and (max-width:600px){
+  body{font-size:13px;}
+  #toolbar{flex-wrap:wrap;gap:8px;padding:10px 14px;}
+  #toolbar .title{flex:1 1 100%;font-size:14px;margin-bottom:2px;}
+  #autosave-badge{flex:1 1 100%;text-align:center;order:5;}
+  .btn-tool{flex:1;justify-content:center;padding:9px 12px;}
+  .page-wrap{margin:12px auto;padding:0 8px 26px;}
+  .section-body{padding:14px 14px;}
+  .form-header{grid-template-columns:1fr;justify-items:center;text-align:center;gap:12px;padding:16px 14px;}
+  .logo-box{width:104px;height:104px;}
+  .header-center .company-name{font-size:15px;}
+  .header-center .company-name-en{font-size:11px;}
+  .header-center .form-title-ar{font-size:19px;}
+  .header-center .form-title-en{font-size:11px;}
+  .ir-meta-badge{width:100%;max-width:280px;}
+  .grid-2{grid-template-columns:1fr;gap:12px;}
+  .site-photo-wrapper{grid-template-columns:1fr;gap:14px;}
+  .photos-grid{grid-template-columns:1fr;gap:12px;}
+  .decision-grid{grid-template-columns:1fr;gap:10px;}
+  .sig-grid{grid-template-columns:1fr;gap:14px;}
+  .photo-preview img{max-height:260px;}
+  .site-photo-preview img{max-height:280px;}
+  .field-group input,.field-group select,.field-group textarea,
+  .notes-input-small,.photo-caption textarea,
+  .sig-field input,.sig-field select,.ir-meta-badge input{font-size:16px;}
+  .ir-meta-badge #ir-number{font-size:17px;}
+  .checklist-table,.checklist-table tbody{display:block;width:100%;}
+  .checklist-table thead{display:none;}
+  .checklist-table tr{display:block;border:1px solid var(--border);border-radius:8px;background:#fff;padding:12px 14px;margin-bottom:10px;}
+  .checklist-table tr:nth-child(even) td{background:transparent;}
+  .checklist-table td{display:block;border:none;padding:0;}
+  .checklist-table td:first-child{font-weight:700;font-size:13.5px;margin-bottom:10px;line-height:1.5;}
+  .checklist-table td:nth-child(2),
+  .checklist-table td:nth-child(3),
+  .checklist-table td:nth-child(4){display:inline-flex;flex-direction:column;align-items:center;gap:4px;width:auto;margin-left:14px;vertical-align:top;}
+  .checklist-table td:nth-child(2)::before{content:"مطابق ✓";}
+  .checklist-table td:nth-child(3)::before{content:"غير مطابق ✗";}
+  .checklist-table td:nth-child(4)::before{content:"لا ينطبق —";}
+  .checklist-table td:nth-child(2)::before,
+  .checklist-table td:nth-child(3)::before,
+  .checklist-table td:nth-child(4)::before{font-size:9.5px;color:var(--text-muted);font-weight:600;}
+  .checklist-table .radio-btn{width:42px;height:34px;font-size:15px;}
+  .checklist-table td:last-child{margin-top:12px;}
+  .checklist-table td:last-child::before{content:"ملاحظات / Remarks";display:block;font-size:10px;color:var(--text-muted);font-weight:600;margin-bottom:4px;}
+  .notes-input-small{min-height:38px;}
+  .form-footer{padding:12px 14px;}
+  .footer-company-name{font-size:13px;}
+  .footer-contact{flex-direction:column;gap:8px;}
+  .footer-contact span{white-space:normal;padding:0;}
+  .footer-sep{display:none;}
+}
+@media screen and (max-width:380px){
+  .header-center .form-title-ar{font-size:17px;}
+  .header-center .company-name{font-size:13.5px;}
+  .checklist-table td:nth-child(2),
+  .checklist-table td:nth-child(3),
+  .checklist-table td:nth-child(4){margin-left:8px;}
+  .checklist-table .radio-btn{width:38px;}
+}
+
+/* ===== PRINT LAYER (A4) ===== */
+@media print {
+  @page{size:A4;margin:8mm 10mm;}
+  html,body{background:#fff!important;}
+  #toolbar{display:none!important;}
+  .page-wrap{max-width:100%;margin:0;padding:0;}
+  .form-card{box-shadow:none!important;border-radius:0!important;border:none;margin-bottom:0!important;}
+  .form-header{padding:12px 14px!important;gap:14px!important;margin:0 0 8px!important;}
+  .logo-box{width:108px!important;height:108px!important;}
+  .ir-meta-badge{min-width:130px!important;padding:7px 11px!important;}
+  .ir-meta-badge #ir-number{font-size:15px!important;}
+  .ir-meta-badge .datetime-row input{font-size:11px!important;}
+  .header-center .company-name{font-size:16px!important;}
+  .header-center .company-name-en{font-size:11px!important;margin-bottom:6px!important;}
+  .header-center .form-title-ar{font-size:21px!important;font-family:'Cairo','Tahoma',sans-serif!important;}
+  .header-center .form-title-en{font-size:12px!important;}
+
+  /* Hide browser UI leaks (playbook §5.3) */
+  input[type="date"]::-webkit-calendar-picker-indicator,
+  input[type="time"]::-webkit-calendar-picker-indicator{display:none!important;opacity:0!important;width:0!important;}
+  select{-webkit-appearance:none!important;appearance:none!important;background-image:none!important;}
+  input::placeholder,textarea::placeholder{color:transparent!important;opacity:0!important;}
+  .select-placeholder{color:transparent!important;}
+
+  /* Labels light, values boxed */
+  .field-group label,.sig-field label{font-size:8.5px!important;font-weight:700!important;color:#888!important;letter-spacing:.3px;margin-bottom:3px!important;display:block!important;}
+  .field-group input,.field-group select,.field-group textarea,.notes-input-small{
+    border:1px solid #b8b8b8!important;border-radius:3px!important;background:#f7f7f7!important;
+    padding:5px 8px!important;font-size:12.5px!important;font-weight:600!important;color:#111!important;
+    overflow:visible!important;display:block!important;width:100%!important;}
+  .field-group textarea{white-space:pre-wrap!important;resize:none!important;}
+  .sig-field input,.sig-field select{
+    border:1px solid #b8b8b8!important;border-radius:3px!important;background:#f7f7f7!important;
+    padding:4px 8px!important;font-size:12px!important;font-weight:600!important;color:#111!important;
+    display:block!important;width:100%!important;margin-top:2px!important;}
+
+  /* v19 FIX #5 (playbook §5.9): every <select> is swapped for a wrapping
+     text <div> at print time — long option text never truncates. */
+  .has-print-div select{display:none!important;}
+  .select-print-div{
+    display:block!important;border:1px solid #b8b8b8!important;border-radius:3px!important;
+    background:#f7f7f7!important;padding:5px 8px!important;font-size:12.5px!important;
+    font-weight:600!important;color:#111!important;white-space:normal!important;
+    word-break:break-word!important;min-height:26px!important;
+    -webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+
+  /* Checklist remarks: textarea → div (playbook §5.4) */
+  .notes-input-small{display:none!important;}
+  .notes-print-div{
+    display:block!important;border:1px solid #b8b8b8!important;border-radius:3px!important;
+    background:#f7f7f7!important;padding:4px 7px!important;font-size:12px!important;
+    font-weight:600!important;color:#111!important;white-space:pre-wrap!important;
+    word-break:break-word!important;min-height:26px!important;
+    -webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+  textarea{page-break-inside:avoid;break-inside:avoid;}
+
+  /* Site photo caption ribbon */
+  .site-photo-preview img{border-radius:5px 5px 0 0!important;border:1px solid var(--border)!important;}
+  .site-photo-caption{margin-top:0!important;}
+  .site-photo-fixed-caption{
+    border-radius:0 0 5px 5px!important;border:none!important;
+    background:var(--primary)!important;color:#fff!important;font-weight:700!important;
+    font-size:12px!important;padding:7px 12px!important;letter-spacing:.3px;
+    -webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+
+  /* Signature area: drawn signature image prints; empty pad becomes a plain line */
+  .sig-pad-wrap{border:none!important;border-top:1.5px solid #444!important;border-radius:0!important;background:transparent!important;margin-top:10px!important;}
+  .sig-pad{height:56px!important;cursor:default;}
+  .sig-pad-wrap.sig-empty .sig-pad{visibility:hidden!important;height:34px!important;}
+  .sig-pad-label{color:#aaa!important;font-size:8.5px!important;}
+  .btn-sig-clear{display:none!important;}
+
+  .btn-add-photo,.btn-remove-photo,.btn-remove-site,.btn-tool,.btn-upload,#autosave-badge{display:none!important;}
+  .section-body{padding:8px 14px!important;}
+  .grid-2{gap:4px 10px!important;}
+  .photo-caption textarea{overflow:visible!important;white-space:pre-wrap!important;}
+  .photo-slot.empty-slot{display:none!important;}
+  .site-photo-drop{display:none!important;}
+  .site-no-image .site-photo-preview,.site-no-image .site-photo-caption{display:none!important;}
+  /* v19 FIX #4: empty caption boxes disappear from the PDF */
+  .photo-caption.caption-empty{display:none!important;}
+
+  .form-header,.section-header,.checklist-table th,.form-footer,
+  .ir-meta-badge,.sig-box-header,.logo-box{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+
+  /* Sections flow continuously — no forced page breaks anywhere.
+     v19 FIX #1+#2: v18 forced photos onto fresh pages in groups of 4
+     via page-break-before:always, which left up to 60% of the previous
+     page blank (measured in exported PDFs). Photos now flow naturally;
+     each slot only avoids splitting itself across a page. */
+  .section-header{break-after:avoid!important;page-break-after:avoid!important;break-inside:avoid;page-break-inside:avoid;}
+  .field-group{break-inside:avoid;page-break-inside:avoid;}
+  .checklist-table thead{display:table-header-group;}
+  .checklist-table tr{break-inside:avoid;page-break-inside:avoid;}
+  .sig-grid{break-inside:avoid;page-break-inside:avoid;}
+  .field-visibility-toggle{display:none!important;}
+  .field-excluded{display:none!important;}
+  .sig-grid:has(.sig-box.field-excluded) .sig-box:not(.field-excluded){
+    grid-column:1/-1!important;max-width:560px!important;margin:0 auto!important;}
+
+  /* Checklist continuation banner (measured pagination — kept from v18, proven) */
+  .checklist-continued-row{
+    display:table-row!important;
+    page-break-before:always!important;break-before:page!important;
+    break-inside:avoid!important;page-break-inside:avoid!important;}
+  .checklist-continued-row td{
+    background:var(--primary)!important;color:#fff!important;
+    font-weight:700!important;font-size:13px!important;
+    padding:8px 14px!important;border-bottom:none!important;
+    -webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+  .checklist-continued-row .num{
+    background:#fff!important;color:var(--primary)!important;
+    width:22px;height:22px;border-radius:50%;
+    display:inline-flex;align-items:center;justify-content:center;
+    font-size:11px;font-weight:700;margin-left:8px;}
+  .decision-grid{break-inside:avoid;page-break-inside:avoid;}
+  .site-photo-wrapper{break-inside:avoid;page-break-inside:avoid;}
+
+  .radio-btn{display:none!important;}
+  .radio-btn.active-ok,.radio-btn.active-fail,.radio-btn.active-na{
+    display:flex!important;border:1.5px solid #333!important;
+    background:transparent!important;color:#000!important;}
+
+  .decision-card{border:1.5px solid #ddd!important;box-shadow:none!important;}
+  .decision-grid:has(.selected-approved) .decision-card:not(.selected-approved),
+  .decision-grid:has(.selected-conditional) .decision-card:not(.selected-conditional),
+  .decision-grid:has(.selected-rejected) .decision-card:not(.selected-rejected){
+    opacity:.18!important;filter:grayscale(80%)!important;}
+  .decision-card.selected-approved{border:2.5px solid #1a7a4a!important;background:#edf7f1!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+  .decision-card.selected-conditional{border:2.5px solid #b87a00!important;background:#fdf8ec!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+  .decision-card.selected-rejected{border:2.5px solid #c8102e!important;background:#fdf0f0!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+
+  /* Photos: flex 2-col (playbook §5.2 — never inline-block), natural
+     aspect ratios (§5.8), NO forced page breaks (v19 FIX #1+#2). */
+  .photos-grid{display:flex!important;flex-wrap:wrap!important;gap:14px!important;font-size:12px;}
+  .photo-slot{flex:0 0 calc(50% - 7px);display:block;margin:0 0 8px;break-inside:avoid;page-break-inside:avoid;}
+  .photo-slot.photo-last-odd{flex:0 0 70%;margin:0 auto 8px;}
+  .photo-preview{height:auto;overflow:visible;}
+  .photo-preview img{width:100%!important;height:auto!important;max-height:none!important;object-fit:unset!important;display:block!important;}
+  .photo-caption{padding:4px 8px!important;}
+
+  /* v19 FIX #3: signatures + footer form one keep-together block that
+     flows right after the decision section. The footer can never be
+     orphaned alone on a blank page (v18's flex/100vh final-page scheme
+     produced exactly that). Trade-off per playbook §5.10: "no voids"
+     wins over pixel-perfect bottom pinning. */
+  .end-block{break-inside:avoid!important;page-break-inside:avoid!important;}
+  .form-footer{
+    margin-top:16px!important;break-inside:avoid!important;break-before:avoid!important;
+    padding:14px 22px!important;gap:6px!important;
+    border-top:3px solid rgba(255,255,255,.2)!important;
+    -webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+  .footer-company-name{font-size:13px!important;font-weight:800!important;color:#fff!important;}
+  .footer-link{color:#fff!important;text-decoration:none!important;}
+  .footer-contact{gap:0!important;flex-wrap:wrap!important;justify-content:center!important;}
+  .footer-contact span{font-size:11px!important;padding:0 10px!important;line-height:1.4;white-space:nowrap!important;}
+  .footer-sep{font-size:14px!important;padding:0!important;}
+
+  .district-other-active select{display:none!important;}
+  #district-custom{margin-top:4px!important;}
+  .sec-hdr-en{font-size:10px!important;font-weight:500!important;color:#a04040!important;opacity:.8;}
+}
+</style>
+<style>
+/* ===== شركة سعد الشمراني — الشعار المتحرك + الحركات + الأرشيف السحابي ===== */
+.logo-box{overflow:visible}
+.lg{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font-family:'Cairo','Tahoma',sans-serif}
+.lg-cube{position:relative;width:76px;height:88px;perspective:400px}
+.lg-cube img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.lg-t1{font-weight:900;color:#E4252A;font-size:12.6px;line-height:1.25;white-space:nowrap;margin-top:3px}
+.lg-t2{font-weight:900;color:#E4252A;font-size:11.2px;line-height:1.2;white-space:nowrap}
+.lg-ring{position:absolute;inset:-6px;border-radius:50%;border:2px solid rgba(228,37,42,.0);pointer-events:none}
+#toolbar .btn-back{background:rgba(255,255,255,.16);color:#fff;text-decoration:none}
+#toolbar .btn-cloud{background:#16171A;color:#fff}
+#toolbar .btn-cloud.saving span::after{content:'…'}
+#toolbar .btn-cloud.done{background:#1a7a4a}
+#toolbar .cloud-user{color:#fff;font-size:12px;font-weight:700;background:rgba(0,0,0,.18);padding:4px 10px;border-radius:999px;white-space:nowrap}
+#toolbar .cloud-user:empty{display:none}
+.tb-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#fff;margin-inline-end:8px;vertical-align:middle}
+.ro-banner{background:#fff4d6;color:#7a5600;font-weight:700;text-align:center;padding:8px;border-radius:8px;margin:0 0 12px}
+#cloud-veil{position:fixed;inset:0;z-index:300;background:rgba(244,246,249,.92);display:none;place-items:center;backdrop-filter:blur(4px)}
+html.cloud-loading #cloud-veil{display:grid}
+#cloud-veil p{font-weight:700;color:#1a2232;margin-top:14px;text-align:center}
+.lg-mini{width:46px;height:46px;margin:auto;border-radius:12px;border:4px solid #e02828;border-top-color:transparent;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+@media screen and (prefers-reduced-motion:no-preference){
+  /* الشعار: يُرسم الجزء الأحمر ثم يدخل الرمادي ثم يُكتب الاسم */
+  .lg-r{clip-path:inset(100% 0 0 0);animation:lgDraw 1.1s cubic-bezier(.65,0,.35,1) .15s forwards,lgGlow 3.6s ease-in-out 2.2s infinite}
+  .lg-g{opacity:0;transform:translateY(10px) scale(.92);animation:lgIn .7s cubic-bezier(.2,.9,.3,1.3) .9s forwards}
+  .lg-cube{animation:lgFloat 5s ease-in-out 1.8s infinite}
+  .lg-ring{animation:lgRing 1.2s ease-out 1.1s 1}
+  .lg-t1,.lg-t2{clip-path:inset(0 0 0 100%);animation:lgType .9s steps(22,end) forwards}
+  .lg-t1{animation-delay:1.15s}.lg-t2{animation-delay:1.55s}
+  @keyframes lgDraw{to{clip-path:inset(0 0 0 0)}}
+  @keyframes lgIn{to{opacity:1;transform:none}}
+  @keyframes lgType{to{clip-path:inset(0 0 0 0)}}
+  @keyframes lgFloat{0%,100%{transform:translateY(0) rotateY(0)}25%{transform:translateY(-3px) rotateY(10deg)}50%{transform:translateY(0) rotateY(0)}75%{transform:translateY(-2px) rotateY(-8deg)}}
+  @keyframes lgGlow{0%,100%{filter:drop-shadow(0 0 0 rgba(228,37,42,0))}50%{filter:drop-shadow(0 3px 8px rgba(228,37,42,.45))}}
+  @keyframes lgRing{0%{border-color:rgba(228,37,42,.55);transform:scale(.6);opacity:1}100%{border-color:rgba(228,37,42,0);transform:scale(1.35);opacity:0}}
+
+  /* شريط الأدوات */
+  #toolbar{animation:tbDown .55s cubic-bezier(.2,.8,.2,1) both}
+  #toolbar .btn-tool{transition:transform .18s,box-shadow .18s,background .2s}
+  #toolbar .btn-tool:hover{transform:translateY(-2px);box-shadow:0 6px 14px -6px rgba(0,0,0,.45)}
+  #toolbar .btn-tool:active{transform:scale(.96)}
+  .tb-dot{animation:dot 1.8s ease-in-out infinite}
+  #autosave-badge.flash{animation:flash .9s ease}
+  @keyframes tbDown{from{transform:translateY(-100%)}}
+  @keyframes dot{50%{opacity:.25;transform:scale(.6)}}
+  @keyframes flash{0%{transform:scale(1)}30%{transform:scale(1.12);color:#fff}100%{transform:scale(1)}}
+
+  /* الهيدر */
+  .form-card{animation:cardIn .7s cubic-bezier(.2,.8,.2,1) both}
+  .header-center>div{opacity:0;transform:translateY(8px);animation:hIn .55s cubic-bezier(.2,.8,.2,1) forwards}
+  .header-center>div:nth-child(1){animation-delay:.25s}.header-center>div:nth-child(2){animation-delay:.35s}.header-center>div:nth-child(3){animation-delay:.45s}.header-center>div:nth-child(4){animation-delay:.55s}
+  .ir-meta-badge{animation:badgeIn .7s cubic-bezier(.2,.9,.3,1.25) .5s both}
+  @keyframes cardIn{from{opacity:0;transform:translateY(24px)}}
+  @keyframes hIn{to{opacity:1;transform:none}}
+  @keyframes badgeIn{from{opacity:0;transform:rotate(-6deg) scale(.85)}}
+
+  /* ظهور الأقسام مع التمرير */
+  html.anim .section-header,html.anim .section-body{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s cubic-bezier(.2,.8,.2,1)}
+  html.anim .section-header.in,html.anim .section-body.in{opacity:1;transform:none}
+  .section-header .num{position:relative}
+  .section-header.in .num{animation:numPop .55s cubic-bezier(.2,.9,.3,1.6) .1s both}
+  .section-header.in .num::after{content:"";position:absolute;inset:0;border-radius:50%;border:2px solid var(--primary);animation:numRing 1.2s ease-out .25s 1 both}
+  @keyframes numPop{from{transform:scale(0) rotate(-90deg)}}
+  @keyframes numRing{from{transform:scale(1);opacity:.9}to{transform:scale(2.2);opacity:0}}
+
+  /* الحقول */
+  .field-group input,.field-group select,.field-group textarea{transition:border-color .2s,background .2s,box-shadow .25s}
+  .field-group input:focus,.field-group select:focus,.field-group textarea:focus{box-shadow:0 0 0 3px rgba(224,40,40,.14)}
+  .field-group label{transition:color .2s}
+  .field-group:focus-within label{color:var(--primary)}
+
+  /* قائمة الفحص */
+  .checklist-table tbody tr.row-in{animation:rowIn .45s cubic-bezier(.2,.8,.2,1) both}
+  .checklist-table tbody tr{transition:background .2s}
+  .checklist-table tbody tr:hover td{background:#fff6f6}
+  .radio-btn{transition:transform .15s,background .2s,border-color .2s,color .2s}
+  .radio-btn:hover{transform:translateY(-1px)}
+  .radio-btn.active-ok,.radio-btn.active-fail,.radio-btn.active-na{animation:pop .35s cubic-bezier(.2,.9,.3,1.6)}
+  @keyframes rowIn{from{opacity:0;transform:translateX(-14px)}}
+  @keyframes pop{0%{transform:scale(.7)}60%{transform:scale(1.15)}100%{transform:scale(1)}}
+
+  /* الصور */
+  .photo-slot{animation:zoomIn .45s cubic-bezier(.2,.9,.3,1.2) both;transition:border-color .2s,box-shadow .2s}
+  .photo-slot:hover{border-color:var(--primary);box-shadow:0 8px 20px -12px rgba(224,40,40,.5)}
+  .photo-preview img,.site-photo-preview img{animation:imgIn .6s ease both}
+  .site-photo-drop{transition:border-color .2s,background .2s}
+  .site-photo-drop:hover{border-color:var(--primary);background:#fff8f8}
+  .site-photo-drop .drop-icon{animation:bob 2.4s ease-in-out infinite}
+  .btn-add-photo,.btn-upload{transition:transform .15s,box-shadow .2s}
+  .btn-add-photo:hover,.btn-upload:hover{transform:translateY(-2px);box-shadow:0 6px 14px -8px rgba(0,0,0,.5)}
+  @keyframes zoomIn{from{opacity:0;transform:scale(.9)}}
+  @keyframes imgIn{from{opacity:0;filter:blur(6px)}}
+  @keyframes bob{50%{transform:translateY(-5px)}}
+
+  /* القرار */
+  .decision-card{transition:transform .2s,box-shadow .2s,opacity .25s,filter .25s}
+  .decision-card:hover{transform:translateY(-3px);box-shadow:0 10px 22px -14px rgba(0,0,0,.4)}
+  .decision-card.selected-approved,.decision-card.selected-conditional,.decision-card.selected-rejected{animation:decPop .5s cubic-bezier(.2,.9,.3,1.5)}
+  .decision-card.selected-approved .dec-icon,.decision-card.selected-conditional .dec-icon,.decision-card.selected-rejected .dec-icon{animation:iconBounce .7s ease}
+  @keyframes decPop{0%{transform:scale(.94)}60%{transform:scale(1.04)}100%{transform:scale(1)}}
+  @keyframes iconBounce{0%,100%{transform:none}30%{transform:translateY(-8px) rotate(-8deg)}60%{transform:translateY(0) rotate(6deg)}}
+
+  /* التوقيع */
+  .sig-pad-wrap{transition:border-color .2s,box-shadow .2s}
+  .sig-pad-wrap:active,.sig-pad-wrap.drawing{border-color:var(--primary);box-shadow:0 0 0 3px rgba(224,40,40,.12)}
+
+  /* الفوتر */
+  .form-footer{animation:cardIn .7s ease both}
+  #toolbar .btn-cloud.done{animation:pop .45s cubic-bezier(.2,.9,.3,1.6)}
+}
+@media print{
+  *,*::before,*::after{animation:none!important;transition:none!important}
+  .lg-r,.lg-t1,.lg-t2{clip-path:none!important}
+  .lg-g,.header-center>div,.section-header,.section-body{opacity:1!important;transform:none!important}
+  .lg-cube{width:62px!important;height:72px!important}
+  .lg-t1{font-size:10.4px!important}.lg-t2{font-size:9.4px!important}
+  #cloud-veil,.ro-banner{display:none!important}
+}
+@media screen and (max-width:860px){.lg-cube{width:54px;height:62px}.lg-t1{font-size:9.2px}.lg-t2{font-size:8.2px}}
+@media screen and (max-width:600px){.lg-cube{width:58px;height:67px}.lg-t1{font-size:9.6px}.lg-t2{font-size:8.6px}#toolbar{flex-wrap:wrap}}
+
+</style>
+<link rel="icon" href="../assets/img/icon-192.png">
+<meta name="robots" content="noindex,nofollow">
+</head>
+<body>
+
+<div id="toolbar">
+  <a class="btn-tool btn-back" href="../portal.html" title="بوابة الموظفين">→ البوابة</a>
+  <span class="title"><span class="tb-dot"></span>تقرير الاستلام الهندسي (IR Form)</span>
+  <span id="cloud-user" class="cloud-user"></span>
+  <span id="autosave-badge" title="يُحفظ تلقائياً في هذا الجهاز">💾 …</span>
+  <button class="btn-tool btn-cloud" id="cloudBtn" type="button" hidden>☁️ <span>حفظ في الأرشيف</span></button>
+  <button class="btn-tool btn-clear" onclick="resetForm()">🔄 نموذج جديد</button>
+  <button class="btn-tool btn-print" onclick="prepareAndPrint()">🖨️ طباعة / حفظ كـ PDF</button>
+</div>
+
+<div class="page-wrap">
+<div class="form-card">
+
+<div class="form-header" style="-webkit-print-color-adjust:exact;print-color-adjust:exact;">
+  <div class="logo-box">
+    <div class="lg" aria-label="شعار شركة سعد مفرح الشمراني للاستشارات الهندسية"><div class="lg-cube"><span class="lg-ring"></span><img class="lg-g" alt="" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAWQAAAGaCAYAAAA4gzlJAAAY00lEQVR42u3dTXIbx5bF8QsEpLUAGmjeUw5A7qC34Q30s9Ur0HJEDjh9cw0ErEVGRPWAQLuEV6QAoqry6/ePYDgsy/pIFk6dPHnvzcW//vW/iwAAJGdpCQCAIAMACDIA5MfKEqAwuld+3FkICDKQWIiH/jtxRogsgHFZH4W2i+vFu7N8IMjAeI54N8KvQZhBkIGMRLQ7um0gZMjA7RnxrezkyyDIQFohfu33I8wIkQUQvxzYtfIiAAgyqj2wyzWvBkJkAfGEGAMcMlBNRMAtg0MGIeaWAYIMQkyYESILaOzwYgEIMqLGMjYvGRBkIPIpY+OWETJkyInb+zvLlkGQQYgJM0JkAWSRpS7e+Eq1JibJgUNGM454ceXPm/vPa5IcCDKqF+PFjf+fSXIIkQXEE7exGUnUUkUZYgwQZFSREy8iYp+J044bYwyHnwiRBWrOiUOMAQ4ZHHFkHU+UEGNwzCDIyNoV7xOXz6nhBkFG8zlxLlv4xdGlc8sIGTLkxOnZH/9s8mVwyGiinrgE0VEmBw4ZGjsyFOa51063HzhkOXHTjli+DA4ZHHFByJdBkFGUGLcgGhpLQJBBiAnz//9+RDlkyJATE2P5MggyIr8LRTfEOM7zZW3YIMguFG2q1Vn9MmEmyBBPiCiyjjE0loRDPWh3RmRVJqexhCCDEEOZHEJkQYzDoV1JwixfBkGWEzu0a/jQT75MkBFllbHVNHuCMIf7/QgySi5jI8RtVWMQZoIMZWyIPJpKCHOosoDqCeRVjaEigyATY0IMwowQWRgWD2VybsTmkDlirhjcMjjkUMYGZXIO/giyMjZCjOLL5DSWEGQ5sXji6p3IugE3l7JMbkeYCbJ4git+68XX34nsBv5bJ8bQ8UeQxROEOJ8dSO3CvJEvE2QoYyttrWvdbu8jfZkcYSbITT6ALY7F7Gy3i3hJE2WCHK3lxHsvPq5OmRxB5orlxDW6LfmydSXIXBohzmy95cuEmSATBkKc0QdXvuyFR5AJQ7R+YNf5MzURY6hfJshFjcV0YOfPGDPGGPLlMO2NELfd6twV+mdeVCzMXeJnwdwVgkyIiTHxyGDMJ2EmyEkfPkJcx9+FMNuJhAy53PzKgV19f7e1gz/PDIfswM5a58GuYrcsX+aQ1RNba39v9cvql1dcmpy4cFe8GXCuXF0d+fKutc/VijgQ4sJffHuHU7OtuRgjRBYO7MLkuyvX29SzemOMjiATYgd2eUy+2xtHmVWMIV8myA7srHdxc4LX3HKYj1GhIK8JMSEusM7WNDk7keoEOdV2WU5c13rvxRjVxhgdQZYTy4nLXG8xRp27yKLXdqWsShlb4+udqlRuV3ntcqeTsg6H7MAu5PINvRRqjTEWYozyBdmNHW3EE7m++JTJiTEIspxYIw0RkS+HSpfkgmy77MWncqC9MrmNGCM/QbZdlstzdm3f7SfGyECQbZfVExNmwizGSCzItsvqiTVAuABAjJFYkG2XxROcHbccYoxI2hiisUNjRwvCnGrta50RnHqmddKmkmWFb3A5sfVuLcaQL1eyrsvKhHghJ7beDQuIl13h67qq4EEQT1hzW24xRhVXcy0L3yo5sOOKOWYxRjUHfsuChXghJ7bettzasGP+uuUul8iCI24vJ8a462jMp3joZodsq9zWtnNDjKt7lt1WUsC6LjN3xRtCrMtOd5oYo5UyuSVhCDmxnDga605z6WqmwrzS9SUnpovNZqGdfDmvUrllRmIsJybGhFm+3HSVSw43hsiJvfyQz/1+8uVIFw8tE7vj1nJiQoxSam2taYx+RpStQ241niDEcBt2m8K8e48gLwiDemIQZcKcxpQtOTT1xCDKDU+Ty+HGktkE2YGdeAJeCKEm/LIX23LChW/1HjtCDGKMyOUKJ/OJfVhQxzPm2Yo8IouFeMKFomj6GWvx2VrnnCEvxBNZzp1QOcEVe9HXNb7g4kO9hW9ednMnVE5wxV70Za91d0uGvDiz83tuxfYR1bliB/BR1qEeISbEcGhnrQursvBN80EBMbbOkV9jiG9cyPGQVX7Z4rnPupROQw45L1fswM5zxhFXWD3BIZfzBlVPTIyJsaFIHHLiNygRJsSeMUOQOOTEb1A5seeMGDecExPkvOIJOTG3JgJrOCcOkYV4AuIJ68wh2zYSY7svYiyeIMhyYlS/+xJPzP+5JshyYnjpG3Wb2FwtereKbKba0Sy9QbkVFBdP7AnxbEI8tNZ7Djn/YfGwbfbCt8ttXpB12UFNsRdeFZ/npW8cIUbW8cTCC6+ddV76xnErULve6Asv1eFoV5MgG40Jbs0Lr8rDUdPeLmdnCbg1QuyFR5Dz2cp1AW5NPKFZiyBn85Zb0y2umCtWxkaQ83AWO06ZK3YeoRqKIOe16ETZ1lmnnXgijN98/UHvEomy6guVOnJid1NyyBm5ZY455JjiCV2zBHn4m7NJ9DA69JNjiifsPghy/OdEJod+SOHaVE9Y53CF09tvT/kyMebU6hkWv3BjiBI5+TJCTpw8nlhk8j3nkAt1y6ffk1uu85na220054h3HLJqDHiGQk5cL0sfKjEGCIScOI8/m2lvaT9gRLmsD46c2EuPQ26gdpkw5y3KG/EEISbI0UztMmF2aNdyPOHyB4KcdYxBmPNwyQvxhBdeDoKs/TdtjCFfTivKrWyd5cSFCPLXiPhJFCLEGKHBQ00xIU4syHfx0jTSRcQ3jlk1RuUuedPQ1tkQoMIEeX0U48PxaxsR34/CDG65ppfrghBzxbkL8vkp6+H4z228xBiE2aEfQhkbIZ5HkB9f+bmHo3PeHkWZKDj0gzK2UMaWruytH2PIl8OhH8QTytjS1yH3hfkHYc4ixnDwCvFE440hDv7yiTHcVMIV7wixTr2hg79OjCHGgDI2pG2dPpzVL3fcshgDytiQbpaFgz8xBkJOjLyGCzn4i6xiDG5ZThzK2Ex7Gzr4W4sxuGUoY0O68Zv9g7/vxCHpQHxuOcQT4gnzkM8P/lqvyNhzyxBPIPWA+oOKDLdgQzyBvG4MUZEhxkCIJ5DXFU46/kKMIZ4I8QRBzor+RLmfYgwxhnhCPNESqwz/TIfen607/vuHht/ki0Qf2o57qnJ0qu8phzzawd86uGVumRiHeIIg55Av/yDMyYTZoZ94AoUJ8qr35eCvrm2nQz9DgFCQIJ8uRn3qRQ1TiLODPzGGeCLEEwT5bTF+iojPEfEQER+PD8S5OGssIcxcsXgCEwryyRk/nD0IiwFxnkqYNZZoKgnNHVwxQX7h+YKH5eH4z8PEwvyj4XxZU4nmDhDkuL/iLf5xJmH+2bAwizHEE8h/NzWZIG/e8SB9jF8z5nDwV1WM0YknxBMoqw75IV4OAp8c/EWtN5WIJwjxlN+HbzXthpcjVVfcsm3aH4X5k4M/MYZ4Qk584ffhtPPd9nbD3zjkcZ3cQ+/BW+n4q2qWQenVGHLiyCImOu10V73P9OnrrvTP9DJTwZjKLev4c69fKa5YPPGfQvzj+Lk9vNJ8tkoUJWUlyHcTuuW+MIeDv6rccu7rLZ7Ig29H47Q9+9y+pgmPrQvyc0wfY3yZOMZo+eBv4dBPPJFxTrztxRO5jgxuatpbHAX580wxRqsHfw79xBM5VU50lQvxrmRBPj/0m0OYfzScL28ac8viicjqwO48Jw51yHkLxsOETSU6/tLVLs8tjGvxROSWEx8m6uIlyFFuU8nQwZ98uS63rLkjz5y4SSGuQZBTxBgt58u1uGU5sZyYIM8UY8yZL3PLZQmznDiayIn/TZDbzJe7hmuXSxJmOXEe/PlGY0foAah7i/AQ/xwW9AvKx+bveJla1/IDNbfYdRfGKOt4yYh3DTXc5BpP/N3TmkOIJppxyEPCPOXQolUYzJ56xOd64Mcc2MmJCXK0e/DXOilHfO4yiI8IsXpigpzJwd/GY9SsMDmwi/+oJ5YT31DauWpUNB5eybZi5lnQ8uWy/46+93JiDnnED9St10jde4SaO9wST8Sb84nlxAQ55u74O7ljH8x2BIwQXzafGAQ5xp6//NZb/uQE/rBsTQgaIQ45MUFOK8znjrn/dTj+d/lh/TEGIY7BuRMxshAfBr4IMl4tlTs9JE/EuAnXyRXPU0/c/7WGjA9BxmBFxsfj1wMxrqKphCuOpPXE57/WU+8l2C9LPRDkyOJOPWgq4YrTCvEU84nPf62neDm3eTgT5IdCRHl0M7HK/E49tOWW1wlanonwr/HE9wnqic9jjqd4KRl9a+3/iJfDQw4ZaMQtE+Pp64nPHXG/Y/Z3z4IrnIBGclxiPG098eGsTPRSIR7afR8IMlCnKMuKY9J77M6F+CleDsStecyTIQNTinLHFUcJcyeGcuIHy80hA8R4/nriocoJjCDI98reQEhDPfF1rrh/YLcf6c+9be1gbzXSm3GtYQLIToi/Hg3TlB12h4j4MGE2r8oCqMwlLxqtJ972RHOqxo7PE63vvjfoS5UFADnxBTmxnXFG24FVy5OZgMgrnti+UvEwlhD34wlwyABinvnE/V9LPbE6ZABxWT3xVAd2cRTiPyJNNHHHIb/vmwdg3kHx3cgHdm/NnUiVEz8TZA4biEIGAE0xn/i9cycgQwZCTlxGGRtmbAzZ+SYCUUpOHAM3dtz7DDvUAzAsxI8DF4rGhGVsxDhEFgCGGzu2E1RPnLtiZWwEGUAM58RTXyhqGluILADMP59YTswhA8hk7kS84x673LgPggwgyp9PfIiIL+qJY+pLeUNkAUSxOfFUA4D6Qvwc6dqdQZCBKCGi2M5wjx0hJsgAfsPjiGI8JMQO7AgygJjvfri3hJgYE+RfhpEAGGYX05Ww+ewR5EEHILcChvlrJDHW6hzK3sxDBtIJct8Zm8RGkAEkoi/Gn+xCCXI4GAQidaRIjGXIYgsgA3csL+aQAWQgxq1XMC3eUSr4lzv1AEzBB0sQ723A4ZABxJhR4sZShMgCQKSMK07/dJBHkAFkwLMlIMiI5sdD/hz4Os3vBaBTDzH98Juf8TIAZzXwte3dcAEg8q1DVmlRPl/PrhF6jZMwq4uNyVun7ywbh4y2R0NG7WVFifivkCGDIONCdwygksaQp1Ce0xK20gCHjMinpXdtKQCCjHwaFwAQZETaCEJVzfXcWwLMJcgyxSj6avoV1zs5ZlJgNkFWnkMoAIgsAIAgAwAIMgAQZAChAQcEGdPw35YgzEMGQUaUOvQGAEEGimVnCUCQ8Tv+bQmAvAXZvNswOB1AmQ5Znz4AiCyAKKlF3dwQEGQgMXtCDIIMAAQZAGKMC3hXBBkAQJABgCADAAgyAIAgh049ALUI8iHcyxamvQFILcirXtE7gOs+N4DIAgAIMsL4TQAEGeFQL0QVIMgAIiLiKf45CAe8tS+kO/v3hSUBwCHPz7ejIPe/fvZ+HABmFeRtw2K8PW4p+1+r4493x5+z9tgAmEuQW8y4/qcnxkPrcfraRsT3ozADmIeDyKI9Qb7mwdiKMYBw1kWQY4qo4tq7zg5nMQaAaPq+RIKcwTbqJMw/uWVAZEGQ4+YSt+2N3/DTwZ9DPyCaiyz2uQlyyQL0OIFb/lFQjPGXzzo45Doc8skZ7jwvxcYYxm8iMnefT+844xFZFMofE22JzmMM+TIAgnzBG3jRE9Cp3LJ8GcDVgtyiYCwi4mNvazSlMH+PiD89dgAuEeRdXJ/XPFayFg8R8WliYV4dBVmZHACRRfw+wng4uuYphPmgTC7GmMAHEORXuKs0xphDmPtlcoQZIMhxSxtg3+1F5cJ8mCFf1oYNEOS4tXvm73DwN0bhu6FFAEG+SZQPEfGhERGZ4+BPmRxAkCPi+q67xVGMo6HDl718GUAuDvnDUYAWjZ+Iz3nwN1W+fOcjMBv3lgDXCvIlh1fdBRd/dg0K89OEB38rYz4BDvnWyUstCfNDTHfwd5hoPsazjwCQtyA/vxFTxFlmrLB/3oO/ofkY3Q1jU+8avUMRKNYhr3pi8CFu67bqdPxlJcwrHwEgb0G+H8hIuxvFuPV8uZ/NrzKZKGeOdWR7O8bpe6q6ppzP+WSC3Hd1lx7ivVeY1w1OlJur469rZChUzaIMDvkXl7yaSIz7Lq21fPnzTB1/b0UZ8uO67pFb93aeHWddrktevvGLLyYW49bz5U8zzWA+CfNJnP+MiK8hP44C7pD7esHP/XbcFfUF+Ye5KNmL8ubat/Di+KbdzTxmcTP2Ta6ZC3MXL7NAVhNc6Nh3zOfVLtxxFD+S9LXnZtWbi/JgqbIU5f17qixSCGNrMcYpX55qolzfMfe/UMbBXjcQT5x2O/2sedX7Orzx/6PwnGqRqJa4G/sEswBh/nzcpm65WJ/N3ufgqffj58/G6oJJjJ8b2XVGS516i4RbM/kyouE8edv7iitKKE8/76tlrLN1es6DPsI8XWMJyosvDr9xxW+5bEOkKp+HvHC/WtQwuAjliPJ7X8q13+pDkLnlSDm4SMszEHWOOV2O5OIIcx2NJUDp/NW6IOcSY6zly0AMxRVPDVUrBUHOwy3vGs2XCXMZPM4sxH0x1hzSqCCLMfKYKAeumBgT5EGx2BDm2YT5g4O/5udf9COKBxkyQY6BzFO+PK9bdvDXlhD3d0ZPvR1TDdxdaTAeCbJ8OXT8IaEQn1zxp8pccdfabOhVIhe3TnRjRWvzMU7C/O3oNFZmZFSVE/evVls4CA0ZcsExRquNJQ7+6siJD8fv58eKDcZda+chy0ifeRJmjSW4Pif+WPmh3bcWr7JaRj6HUeZjaCxBeznxa5/HbYu7uVWGVQJdYlFeNFaRMeWNJYhfZix074gmTo74vpFncx0vV1KFOmRuudX65Y8R8UW+PCmbdzZ2LCorY7tEjFetPovLzIVCjDEfX0K+nGNjx6KhOwKbFuPcBTmXoUXyZcxdOfHQ2DCg8zsCm33mVoXd5Cpfnj9ffoxfrw46xEsNuelht4twDHTYRaM3Zx9G0qSis/ZlgUKhDTvtRLlnYvzu3cfh7PaPlionzj9HQ654dWOjzCHSzc5pyiHn5Jh3jbnlc8ccBPndfDg6wji+2O4bW8t1DN+qPpYOPZd+u/aqAqHQht1Gnl9TRUuL6/ltAiE+z98fHOrlsRUUYwB5xxPbgbK+Mec+fw6HemKMaDfGAH4nxI8TC3F1g5WWUee20G0lQCQvY9sOzOEYe57HQh1yOcLsthJgXiH+OSDEK/M8ornIIt7Il1PWL29KP/kF3hlPhLnPHLLbSoD564nFEwRZvgxklhOPXT3RVNPMquF6UG3YQB7tzkNCfN/iZ2QZbRfpG1wEpGl3buXWbIJszCcQY7Y7T5ETNx9PhMgi28YSMQaikXZn8QSHXFT9sjZsRAbxxM+Juuz6k9m+tBxPEOQoYj7GjjAjo5w4Rhbi/uyJL5Y8RBbmYwAx11jMQ6OXtRJk+TIQOebE/S47zzFBJszAG/XEY7c7hzK2kCE3dPAH5JYTK2PjkKPVwUXcMiLDnFgZG0EWY3j4ccFz8n0iRxxy4hBZ6PhTv4ws2p1XLU1jI8jy5TDmEyOMxZwqnljIiUNkEfJlMQZCGRtBhnwZbY7FPETEszK2EFnIl5XJIflYzI/iCYIsXzZ7GZF0LKacOEQWIV926SpCTswho+IYQzVG+fHE1GMxlbERZMIsxsAV8cSUYzHFEyGyIMwvH7xdAmHmhNqNJ0K7M0FGZJUvK5GLZsvY5MQhsoAYA/HbeGKOMjZCzCEj88YSMUZUHU/8odKGIOM2YU4VY4gy6ogn5MQhskA93X6ijCgynjjEP40dxJgggzAjhuOJ7zFul91rZWyEOEQWqC/GUJWR9112cmIOGY26ZYOL4uZ4YqzmjhiIJ4gxhwxjPhHD8cTdxEKsnphDRqbC7BqpyG72xFiHdnJiDhncclw6uIhbHq4pHqt6QrszQQZhNuYzYU2xeCJEFhBjGPMZSWuKxRMcMrhlh36RvuVZPEGQQZjNx0hcU2waW4gsIMbQ6RdJa4pNYwOHTJTFGJFfPKHLjiCDMIsxMoknECILEGYxxuvNHeIJEGQ0N0mua+Bi0X4Z26dwqShEFsg0xuj/vpuY/9LXmDgnFk+AIKO4EZ+R6AbuKXLifpfds2HxCJEFCh3xWWpOHK902YknwCGj+BhjKiF+jGniiRBPgEPGHMK8KVB4X3PE24GZEWO6YtUT4JAxKfsM8uVrBfmU396dZcRueAZBhhgjwbO+nUCI4+yGZ7MnECILOPi7rBkjRoomzoVdPAEOGdkJ8zrS1A7P/bz3S+I4YnDIiJzz5Vo5d8WfiDE4ZMiX04ixUjZwyJAvZ+SKXaMEDhnasBMKMVcMDhnccuJ4gisGhwz5MlcMDhlo0zEftD2DIAPphdnQeITIAkgbZRgaDw4ZSDhR7jCQEy9CPAGCDMScHX/nIzZVTyBEFsD8MUZ/5OaHowPfW15wyMC8B3+HoxvuRxPEGBwyMJJjvmaq3Mez/xcgyECYKgeEyAIACDIAgCADAEEGAFzL/wH9c0vrVH1/UgAAAABJRU5ErkJggg=="><img class="lg-r" alt="" src="data:image/png;base64,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"></div><div class="lg-t1">شركة سعد مفرح الشمراني</div><div class="lg-t2">للإستشارات الهندسية</div></div>
+  </div>
+  <div class="header-center">
+    <div class="company-name">شركة سعد مفرح الشمراني للاستشارات الهندسية</div>
+    <div class="company-name-en">Saad M. Al-Shamrani Engineering Consultancy</div>
+    <div class="form-title-ar">تقرير الاستلام الهندسي</div>
+    <div class="form-title-en">ENGINEERING INSPECTION REPORT (IR FORM)</div>
+  </div>
+  <div class="header-right" style="text-align:center;">
+    <div class="ir-meta-badge">
+      <div class="ir-row">
+        <div class="meta-label">رقم الطلب / IR No.</div>
+        <input type="text" id="ir-number" placeholder="IR-001" oninput="syncFields()">
+      </div>
+      <div class="ir-row">
+        <div class="meta-label">التاريخ والوقت / Date &amp; Time</div>
+        <div class="datetime-row">
+          <input type="date" id="ir-date" oninput="syncFields()">
+          <input type="time" id="ir-time" oninput="syncFields()">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 0: SITE DATA -->
+<div class="section-header">
+  <span class="num">0</span>
+  بيانات الزيارة <span class="sec-hdr-en">Visit Overview</span>
+</div>
+<div class="section-body">
+  <div class="site-photo-wrapper" id="site-wrapper">
+    <div class="site-photo-left">
+      <div class="field-group">
+        <label>اسم المشروع / Project Name</label>
+        <input type="text" placeholder="مثال: مشروع الفلل السكنية">
+      </div>
+      <div class="field-group">
+        <label>نوع الاستلام / Inspection Type</label>
+        <select id="inspection-type" onchange="updateChecklist()">
+          <option value="">-- اختر النوع --</option>
+          <option value="reinforcement">أعمال حديد التسليح / Reinforcement Works</option>
+          <option value="formwork">أعمال الشدات الخشبية / Formwork</option>
+          <option value="concrete">أعمال الصب الخرساني / Concrete Pouring</option>
+          <option value="masonry">أعمال البناء / Masonry Works</option>
+          <option value="electrical">أعمال الكهرباء / Electrical Works</option>
+          <option value="mechanical">أعمال الميكانيكا / Mechanical Works</option>
+          <option value="plumbing">أعمال السباكة / Plumbing Works</option>
+          <option value="finishing">أعمال التشطيبات / Finishing Works</option>
+          <option value="material">فحص المواد / Material Inspection</option>
+          <option value="building_condition">فحص حالة المبنى والتأكد من سلامته الإنشائية بالمعاينة الظاهرية / Visual Structural Condition Survey</option>
+          <option value="other">أخرى / Other</option>
+        </select>
+      </div>
+      <div class="field-group" id="field-next-inspection">
+        <label class="field-label-row">
+          <span>اسم الفحص التالي / Next Inspection</span>
+          <button type="button" class="field-visibility-toggle" data-target="field-next-inspection" onclick="toggleFieldVisibility(this)" title="إخفاء هذه الخانة من التقرير">👁</button>
+        </label>
+        <input type="text" placeholder="مرجع الفحص التالي">
+      </div>
+      <div class="field-group">
+        <label>تاريخ الزيارة / Visit Date</label>
+        <input type="date" id="site-visit-date" oninput="syncFieldsFromSiteDate()">
+      </div>
+      <div class="field-group">
+        <label>وقت الزيارة / Visit Time</label>
+        <input type="time" id="site-visit-time" oninput="syncFieldsFromSiteDate()">
+      </div>
+      <div class="field-group">
+        <label>رقم الزيارة / Visit No.</label>
+        <select>
+          <option>01</option><option>02</option><option>03</option>
+          <option>04</option><option>05</option><option>06</option>
+          <option>07</option><option>08</option><option>09</option>
+          <option>10</option><option>11</option><option>12</option>
+        </select>
+      </div>
+    </div>
+    <div>
+      <div class="site-photo-drop" id="site-drop">
+        <div class="drop-icon">📷</div>
+        <div class="drop-text">صورة الموقع العام</div>
+        <div class="upload-btn-row">
+          <button type="button" class="btn-upload btn-cam" onclick="document.getElementById('site-file-cam').click()">📸 التقاط بالكاميرا</button>
+          <button type="button" class="btn-upload" onclick="document.getElementById('site-file').click()">🖼️ من المعرض</button>
+        </div>
+        <input type="file" id="site-file" class="hidden-file" accept="image/*" onchange="handleSitePhoto(this)">
+        <input type="file" id="site-file-cam" class="hidden-file" accept="image/*" capture="environment" onchange="handleSitePhoto(this)">
+      </div>
+      <div id="site-preview" style="display:none;" class="site-photo-preview">
+        <img id="site-img" src="" alt="صورة الموقع">
+        <button class="btn-remove-site" onclick="removeSitePhoto()">✕ إزالة</button>
+      </div>
+      <div id="site-caption" style="display:none;" class="site-photo-caption">
+        <div class="site-photo-fixed-caption">الموقع العام</div>
+      </div>
+    </div>
+  </div>
+  <div class="field-group" style="margin-top:14px;">
+    <label>طلب استلام اعمال / Work Acceptance Request</label>
+    <textarea placeholder="حدد نوع الأعمال المطلوب استلامها..." rows="2" oninput="autoGrow(this)"></textarea>
+  </div>
+</div>
+
+<!-- SECTION 1: GENERAL INFO -->
+<div class="section-header">
+  <span class="num">1</span>
+  البيانات الأساسية <span class="sec-hdr-en">General Information</span>
+</div>
+<div class="section-body">
+  <div class="grid-2">
+    <div class="field-group">
+      <label>اسم المشروع / Project Name</label>
+      <input type="text" placeholder="أدخل اسم المشروع">
+    </div>
+    <div class="field-group">
+      <label>رقم المشروع / Project No.</label>
+      <input type="text" placeholder="PRJ-2025-001">
+    </div>
+    <div class="field-group">
+      <label>نوع المشروع / Project Type</label>
+      <select>
+        <option value="">-- اختر النوع --</option>
+        <option>شقة</option>
+        <option>فيلا</option>
+        <option>عمارة سكنية</option>
+        <option>دوبلكس</option>
+        <option>تاون هاوس</option>
+        <option>فيلا متلاصقة</option>
+        <option>عمارة تجارية</option>
+        <option>عمارة سكني تجاري</option>
+      </select>
+    </div>
+    <div class="field-group">
+      <label>الموقع / المنطقة</label>
+      <select>
+        <option value="">--- اختر المنطقة ---</option>
+        <option>الرياض</option><option>جدة</option>
+        <option>مكة المكرمة</option><option>المدينة المنورة</option>
+        <option>الدمام</option><option>أبها</option>
+        <option>تبوك</option><option>أخرى</option>
+      </select>
+    </div>
+    <div class="field-group" id="district-field">
+      <label>الحي / District</label>
+      <select id="district-select" onchange="handleDistrictChange(this)">
+        <option value="">--- اختر الحي ---</option>
+        <option>العارض</option><option>النرجس</option>
+        <option>الملقا</option><option>الياسمين</option>
+        <option>حطين</option><option>الصحافة</option>
+        <option>النخيل</option><option>الياسمين الشرقي</option>
+        <option>قرطبة</option><option>الروضة</option>
+        <option>الملز</option><option>السليمانية</option>
+        <option value="أخرى">أخرى (أدخل يدوياً)</option>
+      </select>
+      <input type="text" id="district-custom" placeholder="أدخل اسم الحي يدوياً..." style="display:none;margin-top:6px;">
+    </div>
+    <div class="field-group">
+      <label>الموقع / Location</label>
+      <input type="text" placeholder="الدور / المنطقة / الموقع">
+    </div>
+    <div class="field-group" id="field-drawing-ref">
+      <label class="field-label-row">
+        <span>مرجع الرسم / Drawing Ref.</span>
+        <button type="button" class="field-visibility-toggle" data-target="field-drawing-ref" onclick="toggleFieldVisibility(this)" title="إخفاء هذه الخانة من التقرير">👁</button>
+      </label>
+      <input type="text" placeholder="رقم الرسم المرجعي">
+    </div>
+    <div class="field-group" id="field-license-no">
+      <label class="field-label-row">
+        <span>رقم الرخصة / License No.</span>
+        <button type="button" class="field-visibility-toggle" data-target="field-license-no" onclick="toggleFieldVisibility(this)" title="إخفاء هذه الخانة من التقرير">👁</button>
+      </label>
+      <input type="text" placeholder="رقم رخصة البناء">
+    </div>
+    <div class="field-group" id="field-insurance-no">
+      <label class="field-label-row">
+        <span>رقم وثيقة التامين / Insurance Policy No.</span>
+        <button type="button" class="field-visibility-toggle" data-target="field-insurance-no" onclick="toggleFieldVisibility(this)" title="إخفاء هذه الخانة من التقرير">👁</button>
+      </label>
+      <input type="text" placeholder="رقم وثيقة التامين">
+    </div>
+    <div class="field-group" id="field-insurance-ref">
+      <label class="field-label-row">
+        <span>الرقم المرجعي لوثيقة التامين / Insurance Policy Ref.</span>
+        <button type="button" class="field-visibility-toggle" data-target="field-insurance-ref" onclick="toggleFieldVisibility(this)" title="إخفاء هذه الخانة من التقرير">👁</button>
+      </label>
+      <input type="text" placeholder="الرقم المرجعي لوثيقة التامين">
+    </div>
+    <div class="field-group" id="field-contractor-name">
+      <label class="field-label-row">
+        <span>المقاول / Contractor</span>
+        <button type="button" class="field-visibility-toggle" data-target="field-contractor-name" onclick="toggleFieldVisibility(this)" title="إخفاء هذه الخانة من التقرير">👁</button>
+      </label>
+      <input type="text" placeholder="اسم المقاول">
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 2: CHECKLIST -->
+<div class="section-header">
+  <span class="num">2</span>
+  بنود الفحص والمراجعة <span class="sec-hdr-en">Inspection Checklist</span>
+</div>
+<div class="section-body" style="padding:0;">
+  <div id="checklist-container">
+    <div class="checklist-empty">اختر نوع الاستلام أولاً لتظهر بنود الفحص المناسبة</div>
+  </div>
+</div>
+
+<!-- SECTION 3: PHOTOS -->
+<div class="section-header">
+  <span class="num">3</span>
+  الصور والتوثيق البصري <span class="sec-hdr-en">Photos &amp; Visual Documentation</span>
+</div>
+<div class="section-body">
+  <div class="photos-grid" id="photos-grid"></div>
+  <button class="btn-add-photo" onclick="addPhotoSlot()">+ إضافة صورة جديدة</button>
+</div>
+
+<!-- SECTION 4: DECISION -->
+<div class="section-header">
+  <span class="num">4</span>
+  قرار الاستلام <span class="sec-hdr-en">Inspection Decision</span>
+</div>
+<div class="section-body">
+  <div class="decision-grid">
+    <div class="decision-card" id="dec-approved" onclick="setDecision('approved')">
+      <input type="radio" name="decision" value="approved" class="hidden-radio">
+      <div class="dec-icon">✅</div>
+      <div class="dec-label-ar">معتمد</div>
+      <div class="dec-label-en">APPROVED</div>
+    </div>
+    <div class="decision-card" id="dec-conditional" onclick="setDecision('conditional')">
+      <input type="radio" name="decision" value="conditional" class="hidden-radio">
+      <div class="dec-icon">⚠️</div>
+      <div class="dec-label-ar">معتمد بشروط</div>
+      <div class="dec-label-en">CONDITIONALLY APPROVED</div>
+    </div>
+    <div class="decision-card" id="dec-rejected" onclick="setDecision('rejected')">
+      <input type="radio" name="decision" value="rejected" class="hidden-radio">
+      <div class="dec-icon">❌</div>
+      <div class="dec-label-ar">مرفوض</div>
+      <div class="dec-label-en">REJECTED</div>
+    </div>
+  </div>
+  <div class="field-group">
+    <label>الملاحظات والشروط / Notes &amp; Conditions</label>
+    <textarea placeholder="أدخل الملاحظات أو الشروط المطلوبة..." style="min-height:80px;" oninput="autoGrow(this)"></textarea>
+  </div>
+</div>
+
+<!-- END BLOCK: signatures + footer stay together; flow directly after decision -->
+<div class="end-block">
+
+<!-- SECTION 5: SIGNATURES -->
+<div class="section-header">
+  <span class="num">5</span>
+  التوقيعات <span class="sec-hdr-en">Signatures</span>
+</div>
+<div class="section-body">
+  <div class="sig-grid">
+    <div class="sig-box">
+      <div class="sig-box-header">المهندس المشرف / Supervising Engineer</div>
+      <div class="sig-box-body">
+        <div class="sig-field">
+          <label>الاسم / Name</label>
+          <select id="sig1-name-select">
+            <option value="">-- اختر المهندس --</option>
+            <option>ابراهيم عبدالحفيظ</option>
+            <option>محمد مكرم</option>
+          </select>
+        </div>
+        <div class="sig-field"><label>المسمى الوظيفي / Title</label><input type="text" placeholder="المسمى الوظيفي"></div>
+        <div class="sig-field"><label>التاريخ / Date</label><input type="text" id="sig1-date" placeholder="--"></div>
+        <div class="sig-pad-wrap sig-empty" id="sigpad1-wrap">
+          <canvas class="sig-pad" id="sigpad1"></canvas>
+          <span class="sig-pad-label">التوقيع / Signature — وقّع هنا</span>
+          <button type="button" class="btn-sig-clear" onclick="clearSigPad(1)">مسح</button>
+        </div>
+      </div>
+    </div>
+    <div class="sig-box" id="sig-box-contractor">
+      <div class="sig-box-header sig-box-header-row">
+        <span>المقاول / Contractor</span>
+        <button type="button" class="field-visibility-toggle" data-target="sig-box-contractor" onclick="toggleFieldVisibility(this)" title="إخفاء بيانات المقاول من التقرير">👁</button>
+      </div>
+      <div class="sig-box-body">
+        <div class="sig-field"><label>الاسم / Name</label><input type="text" placeholder="اسم ممثل المقاول"></div>
+        <div class="sig-field"><label>المسمى الوظيفي / Title</label><input type="text" placeholder="المسمى الوظيفي"></div>
+        <div class="sig-field"><label>التاريخ / Date</label><input type="text" id="sig2-date" placeholder="--"></div>
+        <div class="sig-pad-wrap sig-empty" id="sigpad2-wrap">
+          <canvas class="sig-pad" id="sigpad2"></canvas>
+          <span class="sig-pad-label">التوقيع / Signature — وقّع هنا</span>
+          <button type="button" class="btn-sig-clear" onclick="clearSigPad(2)">مسح</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="form-footer">
+  <div class="footer-company-name">شركة سعد مفرح الشمراني للاستشارات الهندسية</div>
+  <div class="footer-contact">
+    <span>📍 الرياض، حي العارض، شارع ريحانة بنت زيد</span>
+    <span class="footer-sep">|</span>
+    <span>✉️ s3adalshomrani2022@gmail.com</span>
+    <span class="footer-sep">|</span>
+    <span>
+      <a href="https://wa.me/966570086833" target="_blank" class="footer-link" title="فتح واتساب">📱 واتساب: <span dir="ltr">0570086833</span></a>
+    </span>
+  </div>
+</div>
+
+</div><!-- /end-block -->
+
+</div>
+</div>
+
+<script>
+'use strict';
+// ===== CHECKLIST DATA BY TYPE =====
+var CHECKLISTS = {
+  reinforcement: [
+    {ar:"مطابقة الأعمال للمخططات المعتمدة",en:"Conformance with approved drawings"},
+    {ar:"أقطار حديد التسليح صحيحة",en:"Correct rebar diameters"},
+    {ar:"مسافات الحديد (Spacing) مطابقة للمخططات",en:"Bar spacing matches drawings"},
+    {ar:"الغطاء الخرساني (Cover) كافٍ",en:"Adequate concrete cover"},
+    {ar:"ربط الحديد (Ties) سليم",en:"Proper bar tying"},
+    {ar:"وصلات الحديد (Laps) مطابقة للمواصفات",en:"Lap splices per specifications"},
+    {ar:"عدم وجود صدأ أو تلوث على الحديد",en:"No rust or contamination on bars"},
+    {ar:"حديد الانتظار في مواضعه الصحيحة",en:"Starter bars correctly positioned"},
+    {ar:"حديد الشد والضغط موزع بشكل صحيح",en:"Tension and compression bars correctly distributed"},
+    {ar:"الكراسي والأكواع في مواضعها",en:"Chairs and spacers correctly placed"},
+    {ar:"نظافة منطقة الصب من المخلفات",en:"Casting area free from debris"},
+    {ar:"التوثيق الكافي وسجلات الجودة",en:"Adequate documentation and QC records"}
+  ],
+  formwork: [
+    {ar:"استواء وإنسياب الشدات",en:"Formwork level and alignment"},
+    {ar:"متانة الشدات وقدرتها على التحمل",en:"Formwork strength and load capacity"},
+    {ar:"إحكام الوصلات ومنع تسرب الخرسانة",en:"Joints sealed to prevent leakage"},
+    {ar:"تثبيت الدعامات والسقاطات",en:"Props and shores properly secured"},
+    {ar:"تطبيق مادة الفصل (Release Agent)",en:"Release agent properly applied"},
+    {ar:"صحة الأبعاد الداخلية للشدة",en:"Internal formwork dimensions correct"},
+    {ar:"سلامة منطقة العمل والسلامة المهنية",en:"Safe working area and HSE compliance"},
+    {ar:"توافر برنامج فك الشدات",en:"Formwork removal schedule available"},
+    {ar:"فحص الشدات السابقة الإزالة",en:"Previously removed formwork inspected"},
+    {ar:"التوثيق الكافي وسجلات الجودة",en:"Adequate documentation and QC records"}
+  ],
+  concrete: [
+    {ar:"مطابقة الخلطة للمواصفات (Mix Design)",en:"Mix design per specifications"},
+    {ar:"اختبار الهبوط (Slump Test) ضمن الحدود",en:"Slump test within limits"},
+    {ar:"أخذ العينات (Cubes) وترقيمها",en:"Concrete cubes sampled and labeled"},
+    {ar:"نظافة منطقة الصب",en:"Casting area is clean"},
+    {ar:"رطوبة وتنظيف الشدة قبل الصب",en:"Formwork wetted and clean before pour"},
+    {ar:"صب مستمر بدون توقف مطوّل",en:"Continuous pour without long interruptions"},
+    {ar:"الدمك (Vibration) كافٍ وصحيح",en:"Adequate and proper vibration"},
+    {ar:"حماية الخرسانة من الشمس والجفاف",en:"Concrete protected from sun and drying"},
+    {ar:"بدء المعالجة (Curing) فور الانتهاء",en:"Curing started immediately after pour"},
+    {ar:"توافر شهادة مطابقة الخرسانة",en:"Concrete compliance certificate available"},
+    {ar:"سجل درجة حرارة الخرسانة",en:"Concrete temperature log maintained"},
+    {ar:"التوثيق الكافي وسجلات الجودة",en:"Adequate documentation and QC records"}
+  ],
+  masonry: [
+    {ar:"مطابقة نوع وأبعاد البلوك للمواصفات",en:"Block type and dimensions per spec"},
+    {ar:"سماكة الملاط (Mortar) مناسبة",en:"Mortar thickness appropriate"},
+    {ar:"استواء وشاقولية الجدار",en:"Wall level and plumb"},
+    {ar:"ربط الجدران (Bond Pattern) صحيح",en:"Correct bond pattern"},
+    {ar:"فتحات الباب والشباك في مواضعها",en:"Door and window openings correctly positioned"},
+    {ar:"العتبات والقمريات مثبتة",en:"Lintels and arches properly fixed"},
+    {ar:"نقاط التثبيت مع الهيكل الإنشائي",en:"Tie points with structural frame"},
+    {ar:"عزل الرطوبة عند اللزوم",en:"Damp proof course where required"},
+    {ar:"التوثيق الكافي وسجلات الجودة",en:"Adequate documentation and QC records"}
+  ],
+  electrical: [
+    {ar:"مطابقة المسارات والقنوات للمخططات",en:"Conduit routes match drawings"},
+    {ar:"أقطار الأنابيب مناسبة للكابلات",en:"Conduit sizes adequate for cables"},
+    {ar:"تثبيت علب التوزيع والوصلات",en:"Junction boxes properly fixed"},
+    {ar:"عدد الدارات والقواطع صحيح",en:"Correct number of circuits and breakers"},
+    {ar:"التأريض والحماية من الصواعق",en:"Earthing and lightning protection"},
+    {ar:"مقاومة العزل ضمن المواصفات",en:"Insulation resistance within spec"},
+    {ar:"تسميات الكابلات والألوان صحيحة",en:"Cable labeling and colors correct"},
+    {ar:"اختبار التشغيل والأحمال",en:"Load and operational testing done"},
+    {ar:"التوثيق الكافي وسجلات الجودة",en:"Adequate documentation and QC records"}
+  ],
+  mechanical: [
+    {ar:"مطابقة المعدات للمواصفات المعتمدة",en:"Equipment per approved specifications"},
+    {ar:"صحة تركيب المعدات والوصلات",en:"Equipment and connections correctly installed"},
+    {ar:"اتجاهات مسار الهواء صحيحة",en:"Air flow directions correct"},
+    {ar:"عزل المواسير الحرارية والصوتية",en:"Thermal and acoustic pipe insulation"},
+    {ar:"اختبار الضغط (Pressure Test)",en:"Pressure test completed"},
+    {ar:"اختبار التشغيل والتبريد",en:"Operational and cooling test"},
+    {ar:"مستوى الضوضاء ضمن الحدود",en:"Noise level within limits"},
+    {ar:"التوثيق الكافي وسجلات الجودة",en:"Adequate documentation and QC records"}
+  ],
+  plumbing: [
+    {ar:"مطابقة مسار المواسير للمخططات",en:"Pipe routes match drawings"},
+    {ar:"أقطار المواسير صحيحة",en:"Pipe diameters correct"},
+    {ar:"اختبار ضغط خطوط المياه",en:"Water line pressure test"},
+    {ar:"اختبار إحكام خطوط الصرف",en:"Drainage line tightness test"},
+    {ar:"ميول الصرف الصحيحة",en:"Correct drainage gradients"},
+    {ar:"تثبيت الأجهزة الصحية",en:"Sanitary fixtures properly fixed"},
+    {ar:"عزل مواسير المياه الساخنة",en:"Hot water pipe insulation"},
+    {ar:"فتحات التهوية للصرف",en:"Drainage vent openings"},
+    {ar:"التوثيق الكافي وسجلات الجودة",en:"Adequate documentation and QC records"}
+  ],
+  finishing: [
+    {ar:"استواء وملمس التشطيب",en:"Surface level and texture"},
+    {ar:"لون وتماثل المواد",en:"Color and material consistency"},
+    {ar:"تشطيب الأركان والحواف",en:"Corner and edge finishing"},
+    {ar:"فواصل التمدد",en:"Expansion joints"},
+    {ar:"تركيب الأبواب والشبابيك",en:"Doors and windows installation"},
+    {ar:"الأعمال الجصية والدهانات",en:"Plastering and painting works"},
+    {ar:"تركيب السيراميك والبلاط",en:"Ceramic and tiling works"},
+    {ar:"الأسقف المستعارة والديكور",en:"False ceilings and decorative works"},
+    {ar:"التوثيق الكافي وسجلات الجودة",en:"Adequate documentation and QC records"}
+  ],
+  material: [
+    {ar:"مطابقة المواد للمواصفات المعتمدة",en:"Materials per approved specifications"},
+    {ar:"شهادات المطابقة والاختبارات متوفرة",en:"Compliance certificates and tests available"},
+    {ar:"التخزين الصحيح للمواد",en:"Materials properly stored"},
+    {ar:"تاريخ الإنتاج وصلاحية الاستخدام",en:"Production date and shelf life valid"},
+    {ar:"عينات المواد معتمدة مسبقاً",en:"Material samples pre-approved"},
+    {ar:"كميات المواد كافية للتنفيذ",en:"Material quantities sufficient"},
+    {ar:"التوثيق الكافي وسجلات الجودة",en:"Adequate documentation and QC records"}
+  ],
+  building_condition: [
+    {ar:"عدم ظهور تشققات على الجدران والعناصر الإنشائية",en:"No cracks visible on walls or structural elements"},
+    {ar:"عدم وجود ترخيم بالجسور والكمرات",en:"No sagging or deflection in beams and girders"},
+    {ar:"عدم ظهور آثار ترخيم أو هبوط في البلاط وتشطيب الأرضيات",en:"No signs of deflection or settlement in slabs and floor finishes"},
+    {ar:"عدم وجود آثار رطوبة وتسريبات",en:"No signs of moisture or leakage"},
+    {ar:"مطابقة الغطاء الخرساني وعدم ظهور حديد التسليح",en:"Concrete cover adequate, no exposed reinforcement"},
+    {ar:"عدم وجود تعشيش بالعناصر الخرسانية",en:"No honeycombing in concrete elements"},
+    {ar:"عدم ظهور إلتواء أو تشوهات بالعناصر المعدنية",en:"No twisting or deformation in metal elements"},
+    {ar:"عدم ظهور صدأ بالعناصر المعدنية",en:"No corrosion or rust on metal elements"}
+  ],
+  other: [
+    {ar:"مطابقة الأعمال للمخططات المعتمدة",en:"Conformance with approved drawings"},
+    {ar:"صحة الأبعاد والمقاسات",en:"Dimensions and measurements correct"},
+    {ar:"جودة المواد المستخدمة",en:"Material quality acceptable"},
+    {ar:"سلامة وكفاءة التنفيذ",en:"Workmanship quality acceptable"},
+    {ar:"نظافة الموقع",en:"Site cleanliness"},
+    {ar:"الالتزام بمتطلبات السلامة",en:"HSE requirements compliance"},
+    {ar:"التوثيق الكافي وسجلات الجودة",en:"Adequate documentation and QC records"}
+  ]
+};
+
+function updateChecklist() {
+  var type = document.getElementById('inspection-type').value;
+  var container = document.getElementById('checklist-container');
+  if (!type) {
+    container.innerHTML = '<div class="checklist-empty">اختر نوع الاستلام أولاً لتظهر بنود الفحص المناسبة</div>';
+    scheduleSave();
+    return;
+  }
+  var items = CHECKLISTS[type] || CHECKLISTS['other'];
+  var html = '<table class="checklist-table"><thead><tr>';
+  html += '<th style="width:42%;text-align:right;padding-right:14px;">البند / Item</th>';
+  html += '<th style="width:10%;">مطابق ✓</th>';
+  html += '<th style="width:10%;">غير مطابق ✗</th>';
+  html += '<th style="width:10%;">لا ينطبق —</th>';
+  html += '<th style="width:28%;">ملاحظات / Remarks</th>';
+  html += '</tr></thead><tbody>';
+  items.forEach(function(item, i) {
+    html += '<tr>';
+    html += '<td>' + item.ar + '<br><span style="color:#8a9ab0;font-size:11px;">' + item.en + '</span></td>';
+    html += '<td><div class="radio-group"><div class="radio-btn" data-row="' + i + '" data-val="ok" onclick="setRadio(this)">✓</div></div></td>';
+    html += '<td><div class="radio-group"><div class="radio-btn" data-row="' + i + '" data-val="fail" onclick="setRadio(this)">✗</div></div></td>';
+    html += '<td><div class="radio-group"><div class="radio-btn" data-row="' + i + '" data-val="na" onclick="setRadio(this)">—</div></div></td>';
+    html += '<td><textarea class="notes-input-small" rows="1" placeholder="ملاحظات..." oninput="autoGrow(this)"></textarea></td>';
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+  container.innerHTML = html;
+  scheduleSave();
+}
+
+function setRadio(btn) {
+  var row = btn.dataset.row;
+  document.querySelectorAll('.radio-btn[data-row="' + row + '"]').forEach(function(b) {
+    b.classList.remove('active-ok','active-fail','active-na');
+  });
+  var cls = btn.dataset.val === 'ok' ? 'active-ok' : btn.dataset.val === 'fail' ? 'active-fail' : 'active-na';
+  btn.classList.add(cls);
+  scheduleSave();
+}
+
+function setDecision(type) {
+  ['approved','conditional','rejected'].forEach(function(t) {
+    document.getElementById('dec-' + t).classList.remove('selected-approved','selected-conditional','selected-rejected');
+  });
+  document.getElementById('dec-' + type).classList.add('selected-' + type);
+  document.querySelector('.decision-grid').classList.add('has-selection');
+  scheduleSave();
+}
+
+// ── Date/time synchronisation ──
+// v19 change: signature dates use an explicit Gregorian dd/mm/yyyy format
+// wrapped LTR (v18 used toLocaleDateString('ar-SA') which produced Hijri
+// dates that reversed visually inside the RTL context — playbook §4.4).
+function fmtDate(iso) {
+  var p = iso.split('-'); // yyyy-mm-dd
+  return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : iso;
+}
+function syncFields() {
+  var irDate = document.getElementById('ir-date').value || '';
+  var irTime = document.getElementById('ir-time').value || '';
+  if (irDate) {
+    document.getElementById('site-visit-date').value = irDate;
+    var d = fmtDate(irDate);
+    document.getElementById('sig1-date').value = d;
+    document.getElementById('sig2-date').value = d;
+  }
+  if (irTime) { document.getElementById('site-visit-time').value = irTime; }
+  scheduleSave();
+}
+function syncFieldsFromSiteDate() {
+  var siteDate = document.getElementById('site-visit-date').value || '';
+  var siteTime = document.getElementById('site-visit-time').value || '';
+  if (siteDate) {
+    document.getElementById('ir-date').value = siteDate;
+    var d = fmtDate(siteDate);
+    document.getElementById('sig1-date').value = d;
+    document.getElementById('sig2-date').value = d;
+  }
+  if (siteTime) { document.getElementById('ir-time').value = siteTime; }
+  scheduleSave();
+}
+function setTodayDate() {
+  var today = new Date().toISOString().split('T')[0];
+  var now = new Date();
+  var nowTime = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+  document.getElementById('ir-date').value = today;
+  document.getElementById('ir-time').value = nowTime;
+  document.getElementById('site-visit-date').value = today;
+  document.getElementById('site-visit-time').value = nowTime;
+  syncFields();
+}
+
+// ===== IMAGE COMPRESSION (playbook §5.7 — mandatory before DOM storage) =====
+var IMG_MAX_W = 1400, IMG_MAX_H = 1050, IMG_QUALITY = 0.80;
+function compressImage(file, callback) {
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var img = new Image();
+    img.onload = function() {
+      var w = img.width, h = img.height;
+      if (w > IMG_MAX_W || h > IMG_MAX_H) {
+        var ratio = Math.min(IMG_MAX_W / w, IMG_MAX_H / h);
+        w = Math.round(w * ratio); h = Math.round(h * ratio);
+      }
+      var canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      callback(canvas.toDataURL('image/jpeg', IMG_QUALITY));
+    };
+    img.onerror = function() { callback(e.target.result); };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function handleSitePhoto(input) {
+  if (!input.files || !input.files[0]) return;
+  compressImage(input.files[0], function(compressed) {
+    setSitePhoto(compressed);
+    input.value = '';
+    scheduleSave();
+  });
+}
+function setSitePhoto(src) {
+  document.getElementById('site-img').src = src;
+  document.getElementById('site-drop').style.display = 'none';
+  document.getElementById('site-preview').style.display = 'block';
+  document.getElementById('site-caption').style.display = 'block';
+  document.getElementById('site-wrapper').classList.remove('site-no-image');
+}
+function removeSitePhoto() {
+  document.getElementById('site-img').src = '';
+  document.getElementById('site-drop').style.display = 'flex';
+  document.getElementById('site-preview').style.display = 'none';
+  document.getElementById('site-caption').style.display = 'none';
+  document.getElementById('site-file').value = '';
+  document.getElementById('site-wrapper').classList.add('site-no-image');
+  scheduleSave();
+}
+
+// ===== PHOTO SLOTS (gallery + direct camera capture) =====
+var photoCount = 0;
+function emptySlotHTML(id) {
+  var uidG = 'pi-' + id, uidC = 'pic-' + id;
+  return '<div class="photo-upload-area">' +
+    '<div class="upload-icon">📷</div>' +
+    '<p>أضف صورة للفحص<br><span style="font-size:11px;color:#aaa;">Add inspection photo</span></p>' +
+    '<div class="upload-btn-row">' +
+    '<button type="button" class="btn-upload btn-cam" onclick="document.getElementById(\'' + uidC + '\').click()">📸 كاميرا</button>' +
+    '<button type="button" class="btn-upload" onclick="document.getElementById(\'' + uidG + '\').click()">🖼️ معرض</button>' +
+    '</div>' +
+    '<input type="file" id="' + uidG + '" class="hidden-file" accept="image/*" onchange="handleImage(this,' + id + ')">' +
+    '<input type="file" id="' + uidC + '" class="hidden-file" accept="image/*" capture="environment" onchange="handleImage(this,' + id + ')">' +
+    '</div>';
+}
+function addPhotoSlot() {
+  photoCount++;
+  var slot = document.createElement('div');
+  slot.className = 'photo-slot empty-slot';
+  slot.id = 'ps-' + photoCount;
+  slot.innerHTML = emptySlotHTML(photoCount);
+  document.getElementById('photos-grid').appendChild(slot);
+  return photoCount;
+}
+function fillPhotoSlot(id, src, caption) {
+  var slot = document.getElementById('ps-' + id);
+  slot.classList.remove('empty-slot');
+  slot.innerHTML = '<div class="photo-preview">' +
+    '<img src="' + src + '" alt="صورة الفحص">' +
+    '<button class="btn-remove-photo" onclick="removePhoto(' + id + ')">✕ إزالة</button>' +
+    '</div><div class="photo-caption">' +
+    '<textarea placeholder="تعليق على الصورة / Photo caption..." rows="2" oninput="scheduleSave()"></textarea></div>';
+  if (caption) slot.querySelector('textarea').value = caption;
+}
+function handleImage(input, id) {
+  if (!input.files || !input.files[0]) return;
+  compressImage(input.files[0], function(compressed) {
+    fillPhotoSlot(id, compressed, '');
+    scheduleSave();
+  });
+}
+function removePhoto(id) {
+  var slot = document.getElementById('ps-' + id);
+  if (slot) { slot.classList.add('empty-slot'); slot.innerHTML = emptySlotHTML(id); }
+  scheduleSave();
+}
+
+// Full-width treatment for a trailing odd photo (visual only — no page breaks)
+function arrangePagesForPrint() {
+  var slots = Array.from(document.querySelectorAll('#photos-grid .photo-slot:not(.empty-slot)'));
+  slots.forEach(function(slot, idx) {
+    slot.classList.toggle('photo-last-odd', idx === slots.length - 1 && idx % 2 === 0);
+  });
+}
+
+function handleDistrictChange(sel) {
+  var fieldGroup = document.getElementById('district-field');
+  var customInput = document.getElementById('district-custom');
+  var isOther = sel.value === 'أخرى';
+  customInput.style.display = isOther ? 'block' : 'none';
+  if (!isOther) customInput.value = '';
+  fieldGroup.classList.toggle('district-other-active', isOther);
+  if (isOther) customInput.focus();
+  scheduleSave();
+}
+
+function toggleFieldVisibility(btn) {
+  var target = document.getElementById(btn.dataset.target);
+  if (!target) return;
+  var excluded = target.classList.toggle('field-excluded');
+  btn.textContent = excluded ? '🚫' : '👁';
+  btn.title = excluded ? 'إظهار هذه الخانة في التقرير' : 'إخفاء هذه الخانة من التقرير';
+  scheduleSave();
+}
+
+// ── Checklist pagination for print (measured; playbook §5.5 — kept from v18) ──
+function paginateChecklistForPrint() {
+  var table = document.querySelector('#checklist-container table.checklist-table');
+  if (!table) return;
+  var tbody = table.querySelector('tbody');
+  if (!tbody) return;
+  tbody.querySelectorAll('.checklist-continued-row').forEach(function(r) { r.remove(); });
+  var rows = Array.from(tbody.querySelectorAll('tr'));
+  if (rows.length === 0) return;
+
+  // Measure at real print width (A4 content = 190mm), synchronously.
+  var wrap = document.querySelector('.page-wrap');
+  var prevMaxWidth = wrap.style.maxWidth, prevMargin = wrap.style.margin;
+  wrap.style.maxWidth = '190mm'; wrap.style.margin = '0';
+  void wrap.offsetHeight;
+  tbody.querySelectorAll('.notes-input-small').forEach(function(ta) {
+    ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px';
+  });
+
+  var MM_TO_PX = 96 / 25.4;
+  var PAGE_CONTENT_H = (297 - 16) * MM_TO_PX;
+  var SAFETY_MARGIN = 36, BANNER_HEIGHT = 38;
+  var startOffset = table.getBoundingClientRect().top + window.scrollY;
+  var budget = PAGE_CONTENT_H - SAFETY_MARGIN - startOffset;
+  if (budget < 60) budget = PAGE_CONTENT_H - SAFETY_MARGIN;
+
+  var used = 0;
+  rows.forEach(function(row) {
+    var h = row.getBoundingClientRect().height;
+    if (used + h > budget) {
+      var banner = document.createElement('tr');
+      banner.className = 'checklist-continued-row';
+      var td = document.createElement('td');
+      td.colSpan = 5;
+      td.innerHTML = '<span class="num">2</span> تابع — بنود الفحص والمراجعة / Inspection Checklist (cont.)';
+      banner.appendChild(td);
+      tbody.insertBefore(banner, row);
+      budget = PAGE_CONTENT_H - SAFETY_MARGIN - BANNER_HEIGHT;
+      used = 0;
+    }
+    used += h;
+  });
+
+  wrap.style.maxWidth = prevMaxWidth; wrap.style.margin = prevMargin;
+}
+
+function autoGrow(el) {
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+  scheduleSave();
+}
+
+// ===== SIGNATURE PADS =====
+var sigPads = {};
+function initSigPad(n) {
+  var canvas = document.getElementById('sigpad' + n);
+  var wrap = document.getElementById('sigpad' + n + '-wrap');
+  var ctx = canvas.getContext('2d');
+  var drawing = false, hasInk = false;
+  function resize() {
+    // Preserve drawing across resizes via dataURL
+    var prev = hasInk ? canvas.toDataURL() : null;
+    var r = canvas.getBoundingClientRect();
+    canvas.width = Math.max(1, Math.round(r.width * 2));
+    canvas.height = Math.max(1, Math.round(r.height * 2));
+    ctx.scale(2, 2);
+    ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#1a2a6b';
+    if (prev) { var im = new Image(); im.onload = function(){ ctx.drawImage(im, 0, 0, r.width, r.height); }; im.src = prev; }
+  }
+  function pos(e) {
+    var r = canvas.getBoundingClientRect();
+    var t = e.touches ? e.touches[0] : e;
+    return { x: t.clientX - r.left, y: t.clientY - r.top };
+  }
+  function start(e) { drawing = true; var p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); }
+  function move(e) {
+    if (!drawing) return;
+    var p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke();
+    if (!hasInk) { hasInk = true; wrap.classList.remove('sig-empty'); }
+    e.preventDefault();
+  }
+  function end() { if (drawing) { drawing = false; scheduleSave(); } }
+  canvas.addEventListener('pointerdown', start);
+  canvas.addEventListener('pointermove', move);
+  window.addEventListener('pointerup', end);
+  resize();
+  window.addEventListener('resize', resize);
+  sigPads[n] = {
+    canvas: canvas, wrap: wrap,
+    hasInk: function() { return hasInk; },
+    clear: function() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      hasInk = false; wrap.classList.add('sig-empty');
+    },
+    load: function(dataUrl) {
+      if (!dataUrl) return;
+      var r = canvas.getBoundingClientRect();
+      var im = new Image();
+      im.onload = function() { ctx.drawImage(im, 0, 0, r.width, r.height); hasInk = true; wrap.classList.remove('sig-empty'); };
+      im.src = dataUrl;
+    },
+    data: function() { return hasInk ? canvas.toDataURL() : ''; }
+  };
+}
+function clearSigPad(n) { sigPads[n].clear(); scheduleSave(); }
+
+// ===== AUTOSAVE (localStorage) =====
+// Everything — fields, checklist, photos, signatures, toggles — survives an
+// accidental reload or a closed tab. Photos are already compressed (~150-300KB
+// each) so a typical report fits well inside the ~5MB localStorage quota;
+// a quota failure degrades gracefully (fields still save, photos skipped).
+var CLOUD_ID = (location.search.match(/[?&]id=([^&#]+)/) || [])[1] || '';
+var LS_KEY = 'ir_form_v19' + (CLOUD_ID ? '_c_' + CLOUD_ID : '');
+var saveTimer = null;
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveState, 500);
+}
+function collectState() {
+  var s = { fields: [], radios: [], notes: [], photos: [], excluded: [], sitePhoto: '', decision: '', sigs: {} };
+  document.querySelectorAll('input[type=text],input[type=date],input[type=time],select,textarea').forEach(function(el, i) {
+    if (el.closest('#checklist-container') || el.closest('.photo-caption')) return;
+    s.fields.push(el.value);
+  });
+  s.inspectionType = document.getElementById('inspection-type').value;
+  document.querySelectorAll('#checklist-container tbody tr:not(.checklist-continued-row)').forEach(function(tr) {
+    var active = tr.querySelector('.radio-btn.active-ok,.radio-btn.active-fail,.radio-btn.active-na');
+    s.radios.push(active ? active.dataset.val : '');
+    var ta = tr.querySelector('.notes-input-small');
+    s.notes.push(ta ? ta.value : '');
+  });
+  document.querySelectorAll('#photos-grid .photo-slot:not(.empty-slot)').forEach(function(slot) {
+    var img = slot.querySelector('img'), ta = slot.querySelector('textarea');
+    if (img) s.photos.push({ src: img.src, cap: ta ? ta.value : '' });
+  });
+  var si = document.getElementById('site-img');
+  if (si.getAttribute('src')) s.sitePhoto = si.src;
+  ['approved','conditional','rejected'].forEach(function(t) {
+    if (document.getElementById('dec-' + t).classList.contains('selected-' + t)) s.decision = t;
+  });
+  document.querySelectorAll('.field-excluded').forEach(function(el) { s.excluded.push(el.id); });
+  s.sigs = { 1: sigPads[1] ? sigPads[1].data() : '', 2: sigPads[2] ? sigPads[2].data() : '' };
+  return s;
+}
+function saveState() {
+  var badge = document.getElementById('autosave-badge');
+  try {
+    var s = collectState();
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(s));
+    } catch (quota) {
+      // Quota exceeded → retry without photos so text data is never lost
+      s.photos = []; s.sitePhoto = ''; s.sigs = {};
+      localStorage.setItem(LS_KEY, JSON.stringify(s));
+    }
+    badge.textContent = '💾 محفوظ ' + new Date().toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
+  } catch (e) { badge.textContent = '💾 —'; }
+}
+function restoreState(given) {
+  var s = given;
+  if (!s) {
+    var raw;
+    try { raw = localStorage.getItem(LS_KEY); } catch (e) { return; }
+    if (!raw) return;
+    try { s = JSON.parse(raw); } catch (e) { return; }
+  }
+
+  if (s.inspectionType) {
+    document.getElementById('inspection-type').value = s.inspectionType;
+    updateChecklist();
+  }
+  var i = 0;
+  document.querySelectorAll('input[type=text],input[type=date],input[type=time],select,textarea').forEach(function(el) {
+    if (el.closest('#checklist-container') || el.closest('.photo-caption')) return;
+    if (s.fields[i] !== undefined && s.fields[i] !== '') el.value = s.fields[i];
+    i++;
+  });
+  // District "other" state
+  var ds = document.getElementById('district-select');
+  if (ds.value === 'أخرى') {
+    document.getElementById('district-custom').style.display = 'block';
+    document.getElementById('district-field').classList.add('district-other-active');
+  }
+  // Checklist radios + notes
+  document.querySelectorAll('#checklist-container tbody tr:not(.checklist-continued-row)').forEach(function(tr, r) {
+    if (s.radios[r]) {
+      var btn = tr.querySelector('.radio-btn[data-val="' + s.radios[r] + '"]');
+      if (btn) btn.classList.add(s.radios[r] === 'ok' ? 'active-ok' : s.radios[r] === 'fail' ? 'active-fail' : 'active-na');
+    }
+    var ta = tr.querySelector('.notes-input-small');
+    if (ta && s.notes[r]) { ta.value = s.notes[r]; ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; }
+  });
+  // Photos
+  (s.photos || []).forEach(function(p) { var id = addPhotoSlot(); fillPhotoSlot(id, p.src, p.cap); });
+  if (s.sitePhoto) setSitePhoto(s.sitePhoto);
+  if (s.decision) setDecision(s.decision);
+  (s.excluded || []).forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) {
+      el.classList.add('field-excluded');
+      var btn = document.querySelector('.field-visibility-toggle[data-target="' + id + '"]');
+      if (btn) { btn.textContent = '🚫'; btn.title = 'إظهار هذه الخانة في التقرير'; }
+    }
+  });
+  if (s.sigs) { if (s.sigs[1]) sigPads[1].load(s.sigs[1]); if (s.sigs[2]) sigPads[2].load(s.sigs[2]); }
+}
+function resetForm() {
+  if (!confirm('سيتم مسح جميع بيانات التقرير الحالي وبدء نموذج جديد. هل أنت متأكد؟')) return;
+  try { localStorage.removeItem(LS_KEY); localStorage.removeItem('ir_form_v19'); } catch (e) {}
+  location.href = location.pathname;
+}
+
+// ===== PRINT PREPARATION (all synchronous — playbook §5.1) =====
+function applyPrintLayout() {
+  document.querySelectorAll('.photo-slot').forEach(function(slot) {
+    slot.classList.toggle('empty-slot', !slot.querySelector('img'));
+  });
+  var siteImg = document.getElementById('site-img');
+  if (!siteImg.getAttribute('src')) {
+    document.getElementById('site-wrapper').classList.add('site-no-image');
+  }
+  // Expand all textareas to full content height
+  document.querySelectorAll('textarea').forEach(function(ta) {
+    ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px';
+  });
+  // Empty selects → transparent placeholder
+  document.querySelectorAll('select').forEach(function(sel) {
+    sel.classList.toggle('select-placeholder', sel.value === '');
+  });
+  // v19 FIX #5: replace every select's displayed value with a wrapping div
+  // so long option text (e.g. the Visual Structural Condition Survey type)
+  // is never silently truncated in the PDF (playbook §5.9).
+  document.querySelectorAll('.field-group select, .sig-field select').forEach(function(sel) {
+    var host = sel.parentNode;
+    var sib = sel.nextElementSibling;
+    if (!sib || !sib.classList.contains('select-print-div')) {
+      sib = document.createElement('div');
+      sib.className = 'select-print-div';
+      host.insertBefore(sib, sel.nextSibling);
+    }
+    var txt = sel.value && sel.selectedIndex >= 0 ? sel.options[sel.selectedIndex].text : '';
+    sib.textContent = txt;
+    host.classList.add('has-print-div');
+  });
+  // Checklist remarks textarea → div (playbook §5.4)
+  document.querySelectorAll('.notes-input-small').forEach(function(ta) {
+    var sib = ta.nextElementSibling;
+    if (!sib || !sib.classList.contains('notes-print-div')) {
+      sib = document.createElement('div');
+      sib.className = 'notes-print-div';
+      ta.parentNode.insertBefore(sib, ta.nextSibling);
+    }
+    sib.textContent = ta.value;
+  });
+  // v19 FIX #4: mark empty photo captions so they vanish from the PDF
+  document.querySelectorAll('.photo-caption').forEach(function(pc) {
+    var ta = pc.querySelector('textarea');
+    pc.classList.toggle('caption-empty', !ta || ta.value.trim() === '');
+  });
+  arrangePagesForPrint();
+  paginateChecklistForPrint();
+  // Meaningful PDF filename suggestion (browsers use document.title)
+  var irNo = document.getElementById('ir-number').value.trim();
+  var irDate = document.getElementById('ir-date').value;
+  document.title = 'IR' + (irNo ? '_' + irNo : '') + (irDate ? '_' + irDate : '') + ' - تقرير الاستلام الهندسي';
+  void document.body.offsetHeight; // synchronous reflow — NO setTimeout (breaks mobile print)
+}
+
+function prepareAndPrint() {
+  applyPrintLayout();
+  try {
+    if (typeof window.print !== 'function') { throw new Error('print-unsupported'); }
+    window.print();
+  } catch (err) {
+    alert('لإنشاء ملف PDF: افتح هذه الصفحة في متصفح Chrome أو Safari (وليس داخل تطبيق مثل واتساب)، ثم استخدم قائمة المتصفح ← طباعة / مشاركة ← حفظ كـ PDF.\n\nTo create the PDF: open this page in Chrome or Safari (not inside an app such as WhatsApp), then use the browser menu → Print / Share → Save as PDF.');
+  }
+}
+
+window.addEventListener('afterprint', function() {
+  document.querySelectorAll('.notes-print-div,.select-print-div').forEach(function(el) { el.remove(); });
+  document.querySelectorAll('.has-print-div').forEach(function(el) { el.classList.remove('has-print-div'); });
+  document.querySelectorAll('.checklist-continued-row').forEach(function(row) { row.remove(); });
+  document.title = 'تقرير الاستلام الهندسي - IR Form';
+});
+
+// Autosave on any input anywhere
+document.addEventListener('input', scheduleSave);
+document.addEventListener('change', scheduleSave);
+
+// ===== INIT =====
+document.getElementById('site-wrapper').classList.add('site-no-image');
+initSigPad(1); initSigPad(2);
+var hadSaved = false;
+try { hadSaved = !!localStorage.getItem(LS_KEY); } catch (e) {}
+if (CLOUD_ID) {
+  document.documentElement.classList.add('cloud-loading');
+} else if (hadSaved) {
+  restoreState();
+} else {
+  setTodayDate();
+  addPhotoSlot(); addPhotoSlot();
+}
+if (!CLOUD_ID && document.querySelectorAll('#photos-grid .photo-slot').length === 0) { addPhotoSlot(); addPhotoSlot(); }
+</script>
+<script>
+// حركات الشاشة (لا تؤثر على الطباعة)
+(function () {
+  if (!window.matchMedia || matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) return;
+  document.documentElement.classList.add('anim');
+  var io = new IntersectionObserver(function (es) {
+    es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+  }, { rootMargin: '0px 0px -40px 0px', threshold: .05 });
+  document.querySelectorAll('.section-header,.section-body').forEach(function (el) { io.observe(el); });
+  // قبل الطباعة: أظهر كل شيء فوراً
+  window.addEventListener('beforeprint', function () { document.querySelectorAll('.section-header,.section-body').forEach(function (el) { el.classList.add('in'); }); });
+  // صفوف قائمة الفحص تدخل بالتتابع عند تغيير نوع الاستلام
+  var cl = document.getElementById('checklist-container');
+  function stagger() {
+    var rows = cl.querySelectorAll('tbody tr:not(.row-in)');
+    rows.forEach(function (tr, i) { tr.style.animationDelay = Math.min(i * 28, 700) + 'ms'; tr.classList.add('row-in'); });
+  }
+  if (cl) { new MutationObserver(stagger).observe(cl, { childList: true, subtree: true }); stagger(); }
+  // وميض شارة الحفظ التلقائي
+  var badge = document.getElementById('autosave-badge');
+  if (badge) new MutationObserver(function () { badge.classList.remove('flash'); void badge.offsetWidth; badge.classList.add('flash'); }).observe(badge, { childList: true, characterData: true, subtree: true });
+  // توهج لوحة التوقيع أثناء الرسم
+  document.querySelectorAll('.sig-pad-wrap').forEach(function (w) {
+    w.addEventListener('pointerdown', function () { w.classList.add('drawing'); });
+    window.addEventListener('pointerup', function () { w.classList.remove('drawing'); });
+  });
+})();
+
+</script>
+<script type="module">
+// الأرشيف السحابي: يربط التقرير بحساب الموظف ويحفظه في Firestore (reports + rmedia)
+import * as F from '../assets/js/fb.js';
+const { auth, db, OWNER_UID } = F;
+const $ = s => document.querySelector(s);
+const btn = $('#cloudBtn'), who = $('#cloud-user');
+let me = null, emp = null, isOwner = false, meta = null, readOnly = false;
+const canMod = m => isOwner || (emp && emp.active !== false && Array.isArray(emp.mods) && emp.mods.includes(m));
+
+function veil(on) { document.documentElement.classList.toggle('cloud-loading', !!on); }
+function say(t, ok) {
+  btn.querySelector('span').textContent = t; btn.classList.toggle('done', !!ok);
+  if (ok) setTimeout(() => { btn.classList.remove('done'); btn.querySelector('span').textContent = 'حفظ في الأرشيف'; }, 2200);
+}
+// يصغّر أي صورة أكبر من حد مستند Firestore
+function shrink(src, max = 850000) {
+  return new Promise(res => {
+    if (!src || src.length <= max) return res(src);
+    const im = new Image(); im.onload = () => {
+      let k = Math.min(1, 1400 / Math.max(im.width, im.height)), q = .72, out = src;
+      const c = document.createElement('canvas');
+      for (let i = 0; i < 8 && out.length > max; i++) {
+        c.width = Math.round(im.width * k); c.height = Math.round(im.height * k);
+        c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); out = c.toDataURL('image/jpeg', q); q -= .08; k *= .88;
+      }
+      res(out);
+    }; im.onerror = () => res(''); im.src = src;
+  });
+}
+const txt = sel => { const el = $(sel); return el ? (el.value || '').trim() : ''; };
+function summary(s) {
+  const t = $('#inspection-type');
+  return {
+    project: txt('.site-photo-left input[type=text]'), irNo: txt('#ir-number'), date: txt('#ir-date'),
+    type: t && t.selectedIndex > 0 ? t.options[t.selectedIndex].text : '', decision: s.decision || ''
+  };
+}
+
+async function save() {
+  if (readOnly) return;
+  btn.disabled = true; btn.classList.add('saving'); say('جارٍ الحفظ');
+  try {
+    const s = window.collectState();
+    const media = [];
+    if (s.sitePhoto) media.push({ kind: 'site', src: s.sitePhoto, cap: '' });
+    (s.photos || []).forEach(p => media.push({ kind: 'photo', src: p.src, cap: p.cap || '' }));
+    if (s.sigs && s.sigs[1]) media.push({ kind: 'sig1', src: s.sigs[1], cap: '' });
+    if (s.sigs && s.sigs[2]) media.push({ kind: 'sig2', src: s.sigs[2], cap: '' });
+    const state = { ...s, photos: [], sitePhoto: '', sigs: {} };
+    let id = window.CLOUD_ID;
+    const fresh = !id;
+    if (fresh) id = F.doc(F.collection(db, 'reports')).id;
+    const owner = meta ? meta.by : me.uid, ownerName = meta ? meta.byName : (isOwner ? 'المالك' : (emp && emp.name) || '');
+    for (let i = 0; i < media.length; i++) {
+      const src = await shrink(media[i].src);
+      await F.setDoc(F.doc(db, 'rmedia', id + '_' + i), { rid: id, by: owner, i, kind: media[i].kind, src, cap: media[i].cap });
+    }
+    const oldN = meta ? (meta.mediaCount || 0) : 0;
+    for (let i = media.length; i < oldN; i++) { try { await F.deleteDoc(F.doc(db, 'rmedia', id + '_' + i)); } catch (e) { } }
+    const data = { ...summary(s), state: JSON.stringify(state), mediaCount: media.length, by: owner, byName: ownerName, upd: F.serverTimestamp(), updBy: me.uid };
+    if (fresh) data.at = F.serverTimestamp();
+    await F.setDoc(F.doc(db, 'reports', id), data, { merge: true });
+    meta = { ...(meta || {}), ...data };
+    if (fresh) {
+      // نقل المسودة لمفتاح التقرير السحابي، وتفريغ مسودة "تقرير جديد"
+      try { const raw = localStorage.getItem(window.LS_KEY); localStorage.removeItem(window.LS_KEY); window.LS_KEY = 'ir_form_v19_c_' + id; if (raw) localStorage.setItem(window.LS_KEY, raw); } catch (e) { }
+      window.CLOUD_ID = id; history.replaceState(null, '', '?id=' + id);
+    }
+    say('اتحفظ في الأرشيف ✓', true);
+  } catch (e) { console.error(e); say('فشل الحفظ'); alert('تعذّر الحفظ في الأرشيف: ' + F.authMsg(e) + '\nالتقرير محفوظ على الجهاز ده تلقائياً.'); }
+  btn.disabled = false; btn.classList.remove('saving');
+}
+
+async function loadCloud(id) {
+  veil(true);
+  try {
+    const r = await F.getDoc(F.doc(db, 'reports', id));
+    if (!r.exists()) throw new Error('not-found');
+    meta = r.data();
+    const s = JSON.parse(meta.state || '{}'); s.photos = []; s.sigs = {};
+    const docs = await Promise.all(Array.from({ length: meta.mediaCount || 0 }, (_, i) => F.getDoc(F.doc(db, 'rmedia', id + '_' + i)).catch(() => null)));
+    docs.forEach(d => {
+      if (!d || !d.exists()) return; const m = d.data();
+      if (m.kind === 'site') s.sitePhoto = m.src; else if (m.kind === 'photo') s.photos.push({ src: m.src, cap: m.cap }); else if (m.kind === 'sig1') s.sigs[1] = m.src; else if (m.kind === 'sig2') s.sigs[2] = m.src;
+    });
+    window.restoreState(s);
+    if (!document.querySelectorAll('#photos-grid .photo-slot').length) { window.addPhotoSlot(); window.addPhotoSlot(); }
+    readOnly = !(isOwner || meta.by === me.uid);
+    if (readOnly) {
+      btn.hidden = true;
+      const b = document.createElement('div'); b.className = 'ro-banner'; b.textContent = 'عرض فقط — التقرير ده بتاع ' + (meta.byName || 'موظف آخر') + '. تقدر تطبعه أو تحفظه PDF.';
+      document.querySelector('.page-wrap').prepend(b);
+    }
+  } catch (e) {
+    console.error(e); alert(e.message === 'not-found' ? 'التقرير مش موجود في الأرشيف.' : 'تعذّر فتح التقرير: ' + F.authMsg(e));
+    location.href = location.pathname; return;
+  }
+  veil(false);
+}
+
+F.onAuthStateChanged(auth, async u => {
+  if (!u) { location.replace('../portal.html'); return; }
+  me = u; isOwner = u.uid === OWNER_UID;
+  if (!isOwner) { try { const s = await F.getDoc(F.doc(db, 'employees', u.uid)); emp = s.exists() ? s.data() : null; } catch (e) { emp = null; } }
+  if (!canMod('report') && !canMod('reports')) {
+    document.body.innerHTML = '<div style="min-height:100vh;display:grid;place-items:center;text-align:center;font-family:Cairo,Tahoma,sans-serif;padding:20px"><div><h2>مفيش صلاحية</h2><p style="margin:8px 0 16px;color:#5a6a7e">تقرير الإشراف محتاج صلاحية من المالك.</p><a href="../portal.html" style="background:#e02828;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:700">رجوع للبوابة</a></div></div>';
+    return;
+  }
+  who.textContent = isOwner ? 'المالك' : (emp && emp.name) || '';
+  btn.hidden = !canMod('report') && !isOwner; btn.onclick = save;
+  if (window.CLOUD_ID) await loadCloud(window.CLOUD_ID);
+  else if (!canMod('report')) { location.replace('../portal.html#reports'); return; }
+  else {
+    // اقتراح اسم المهندس المشرف من الحساب لو الخانة فاضية
+    const sel = $('#sig1-name-select'), nm = emp && emp.name;
+    if (sel && nm && !sel.value) { if (![...sel.options].some(o => o.text === nm)) sel.add(new Option(nm, nm)); sel.value = nm; }
+  }
+});
+addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); if (!btn.hidden) save(); } });
+
+</script>
+<div id="cloud-veil"><div class="cv-in"><div class="lg-mini"></div><p>جارٍ فتح التقرير من الأرشيف…</p></div></div>
+</body>
+</html>
