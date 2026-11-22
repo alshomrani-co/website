@@ -71,3 +71,41 @@
         && request.resource.data.by == request.auth.uid);
       allow delete: if isOwner() || (signedIn() && resource.data.by == request.auth.uid);
     }
+
+    // ===== إضافات الإصدار الثالث =====
+
+    // إحصائيات الزوار (مجهولة): أي زائر يزوّد العدّادات، واللي معاه لوحة التحكم يقرا
+    match /stats/{day} {
+      allow read: if hasMod('cms');
+      allow create, update: if request.resource.data.size() < 40;
+    }
+    // الموجودين على الموقع دلوقتي
+    match /presence/{sid} {
+      allow read: if hasMod('cms');
+      allow create, update: if request.resource.data.keys().hasOnly(['at', 'page', 'cc', 'city', 'dev'])
+        && request.resource.data.page is string && request.resource.data.page.size() <= 60;
+      allow delete: if hasMod('cms');
+    }
+    // المحادثات المباشرة من المساعد (رقم المحادثة سري وعشوائي)
+    match /chats/{id} {
+      allow get: if true;
+      allow list, delete: if hasMod('support');
+      allow create: if request.resource.data.id == id
+        && request.resource.data.name is string && request.resource.data.name.size() <= 60
+        && request.resource.data.phone is string && request.resource.data.phone.size() <= 15
+        && request.resource.data.msgs.size() == 1;
+      allow update: if hasMod('support')
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['msgs', 'upd', 'unread'])
+            && request.resource.data.msgs.size() == resource.data.msgs.size() + 1
+            && request.resource.data.msgs.size() <= 400);
+    }
+    // العملاء (من الإكسل + الجداد) وعدّاد الترقيم
+    match /clients/{no} {
+      allow read: if hasMod('report') || hasMod('reports');
+      allow create, update: if hasMod('report') || hasMod('reports');
+      allow delete: if isOwner();
+    }
+    match /meta/{id} {
+      allow read: if hasMod('report') || hasMod('reports');
+      allow write: if hasMod('report') || hasMod('reports');
+    }

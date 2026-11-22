@@ -1,12 +1,12 @@
 // بوابة الموظفين: دخول، تسجيل بكود دعوة، انتظار موافقة، الأقسام، الدعم الفني، أرشيف التقارير
 import * as F from './fb.js';
-const { auth, db, OWNER_UID, MODULES } = F;
+const { auth, db, MODULES } = F;
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const nl = s => esc(s).replace(/\n/g, '<br>');
 const root = $('#root');
-const DEPTS = ['المساحة', 'المعماري', 'الإنشائي', 'السلامة', 'الثلاثي الأبعاد', 'المحاسب', 'الإشراف'];
+const DEPTS = ['المساحة', 'المعماري', 'الإنشائي', 'الإشراف', 'السلامة / الدفاع المدني', 'الإلكتروميكانيك', 'المحاسبة', 'الإدارة'];
 const IC = {
   finger: '<svg viewBox="0 0 24 24"><path d="M12 11v3a8 8 0 0 1-1.5 4.6M8 9.5a4 4 0 0 1 8 0V14a12 12 0 0 1-.7 4M5.5 8A7 7 0 0 1 18.4 7M4.2 13a7 7 0 0 0 .3-2M19.6 11v2.5"/></svg>',
   clip: '<svg viewBox="0 0 24 24"><path d="M9 4h6v3H9z"/><path d="M9 5H6v16h12V5h-3M9 12h6M9 16h4"/></svg>',
@@ -89,10 +89,11 @@ function top() {
   const name = isOwner ? 'المالك' : (emp && emp.name) || '';
   return `<header class="top"><div class="top-in"><a class="brand" href="portal.html"><img src="assets/img/mark.png" alt="">بوابة الشمراني</a><div class="who"><span class="av">${esc(name.slice(0, 1))}</span><span>${esc(name)}</span><button class="btn btn-ghost sm" id="lo" title="خروج">${IC.out}</button></div></div></header>`;
 }
-let counts = { tickets: 0 };
+let counts = { tickets: 0, chats: 0 };
 function viewHome() {
+  if (!can('report') && can('reports') && !mods().includes('report')) { /* يشوف تقارير الكل */ }
   const h = new Date().getHours(), gr = h < 12 ? 'صباح الخير' : 'مساء الخير';
-  const tiles = mods().map((k, i) => { const m = MODULES[k]; if (!m) return ''; const b = k === 'support' && counts.tickets ? `<span class="badge">${counts.tickets}</span>` : ''; return `<a class="tile" style="animation-delay:${i * 60}ms" href="${m.href}" data-k="${k}">${b}<span class="ic">${IC[m.ic]}</span><h3>${esc(m.t)}</h3><p>${esc(m.d)}</p></a>`; }).join('');
+  const tiles = mods().map((k, i) => { const m = MODULES[k]; if (!m || m.tile === false || (k === 'report' && false)) return ''; const b = k === 'support' && (counts.tickets + counts.chats) ? `<span class="badge">${counts.tickets + counts.chats}</span>` : ''; return `<a class="tile" style="animation-delay:${i * 60}ms" href="${m.href}" data-k="${k}">${b}<span class="ic">${IC[m.ic]}</span><h3>${esc(m.t)}</h3><p>${esc(m.d)}</p></a>`; }).join('');
   root.innerHTML = top() + `<main class="shell"><div class="hello"><div><p>${gr} 👋</p><h1>${esc(isOwner ? 'أهلاً بالمالك' : 'أهلاً ' + ((emp && emp.name) || '').split(' ')[0])}</h1></div><a class="btn btn-ghost" href="index.html">${IC.globe} الموقع</a></div>
     <div class="tiles">${tiles || '<p class="empty">لسه مفيش أقسام متحددة لحسابك — كلّم الإدارة.</p>'}</div></main>`;
   $('#lo').onclick = () => F.signOut(auth);
@@ -104,8 +105,9 @@ const STS = { new: ['جديد', 'red'], open: ['قيد المتابعة', 'warn'
 let tickets = [], tFilter = 'active';
 function viewSupport() {
   if (!can('support')) return viewHome();
-  root.innerHTML = top() + `<main class="shell"><div class="hello"><div><a class="back" href="#">← الرئيسية</a><h1>طلبات الدعم الفني</h1><p>كل الطلبات اللي جاية من الموقع والتطبيق</p></div></div>
-    <div class="toolbar"><div class="seg" id="seg"><button data-f="active" class="on">المفتوحة</button><button data-f="new">جديد</button><button data-f="done">تم الحل</button><button data-f="all">الكل</button></div><input id="q" placeholder="بحث بالاسم أو الجوال أو الرقم" style="flex:1;min-width:180px;padding:9px 12px;border-radius:12px;border:1.5px solid var(--line)"></div>
+  const tabsHtml = supTabs('support');
+  root.innerHTML = top() + `<main class="shell"><div class="hello"><div><a class="back glass-back" href="#">→ رجوع</a><h1>الدعم والمحادثات</h1><p>كل الطلبات اللي جاية من الموقع والتطبيق</p></div></div>
+    ${tabsHtml}<div class="toolbar"><div class="seg" id="seg"><button data-f="active" class="on">المفتوحة</button><button data-f="new">جديد</button><button data-f="done">تم الحل</button><button data-f="all">الكل</button></div><input id="q" placeholder="بحث بالاسم أو الجوال أو الرقم" style="flex:1;min-width:180px;padding:9px 12px;border-radius:12px;border:1.5px solid var(--line)"></div>
     <div class="list" id="tl"><p class="empty">جارٍ التحميل…</p></div></main>`;
   $('#lo').onclick = () => F.signOut(auth);
   $('#seg').onclick = e => { const b = e.target.closest('button'); if (!b) return; tFilter = b.dataset.f; $$('#seg button').forEach(x => x.classList.toggle('on', x === b)); paintTickets(); };
@@ -139,11 +141,44 @@ function openTicket(id) {
   const dl = $('#dl', sh); if (dl) dl.onclick = async () => { if (!confirm('حذف الطلب نهائياً؟')) return; try { await F.deleteDoc(F.doc(db, 'tickets', t.id)); toast('اتحذف'); close(); } catch (e) { toast(F.authMsg(e), 1); } };
 }
 
+/* المحادثات المباشرة من الموقع */
+let chats = [], openChat = null;
+const supTabs = cur => `<div class="seg" style="margin-bottom:14px"><a href="#support" class="${cur === 'support' ? 'on' : ''}" style="padding:7px 14px;border-radius:999px;font-weight:700">طلبات الخدمة ${counts.tickets ? `<span class="chip red">${counts.tickets}</span>` : ''}</a><a href="#chats" class="${cur === 'chats' ? 'on' : ''}" style="padding:7px 14px;border-radius:999px;font-weight:700">المحادثات المباشرة ${counts.chats ? `<span class="chip red">${counts.chats}</span>` : ''}</a></div>`;
+function viewChats() {
+  if (!can('support')) return viewHome();
+  root.innerHTML = top() + `<main class="shell"><div class="hello"><div><a class="back glass-back" href="#">→ رجوع</a><h1>المحادثات المباشرة</h1><p>العملاء اللي طلبوا يكلّموا موظف من المساعد في الموقع</p></div></div>${supTabs('chats')}<div class="list" id="cl"></div></main>`;
+  $('#lo').onclick = () => F.signOut(auth); paintChats();
+}
+function paintChats() {
+  const el = $('#cl'); if (!el) return;
+  el.innerHTML = chats.length ? chats.map(c => { const last = (c.msgs || []).slice(-1)[0] || {}; return `<div class="li" data-id="${esc(c.id)}"><div class="main"><b>${esc(c.name)} · <span style="display:inline;color:var(--mut)" dir="ltr">${esc(c.phone)}</span></b><span>${last.from === 'c' ? '' : '↩ '}${esc((last.text || '').slice(0, 80))}</span></div>${c.unread ? `<span class="chip red">${c.unread}</span>` : '<span class="chip ok">مقروءة</span>'}</div>`; }).join('') : '<p class="empty">مفيش محادثات لسه</p>';
+  $$('.li', el).forEach(li => li.onclick = () => openChatSheet(li.dataset.id));
+  if (openChat) renderChatSheet();
+}
+function openChatSheet(id) {
+  openChat = id; const sh = document.createElement('div'); sh.className = 'sheet'; sh.id = 'chatSheet'; document.body.appendChild(sh);
+  sh.onclick = e => { if (e.target === sh) closeChat(); }; renderChatSheet();
+  F.updateDoc(F.doc(db, 'chats', id), { unread: 0 }).catch(() => { });
+}
+function closeChat() { openChat = null; const s = $('#chatSheet'); if (s) s.remove(); }
+function renderChatSheet() {
+  const c = chats.find(x => x.id === openChat), sh = $('#chatSheet'); if (!c || !sh) return;
+  const keep = sh.querySelector('textarea') ? sh.querySelector('textarea').value : '';
+  const waL = 'https://wa.me/966' + String(c.phone).replace(/^0/, '').replace(/^966/, '');
+  sh.innerHTML = `<div class="sheet-in"><div class="sheet-h"><h3>${esc(c.name)}</h3><button class="x">×</button></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><a class="btn btn-ghost sm" href="tel:${esc(c.phone)}" dir="ltr">${esc(c.phone)}</a><a class="btn btn-ok sm" target="_blank" rel="noopener" href="${waL}">${IC.wa} واتساب</a>${c.botLog && c.botLog.length ? `<span class="chip">سأل المساعد: ${esc(c.botLog.join(' · ').slice(0, 120))}</span>` : ''}</div>
+    <div class="thread" id="thr">${(c.msgs || []).map(m => `<div class="msg ${m.from === 'c' ? '' : 'staff'}"><b>${esc(m.from === 'c' ? c.name : (m.by || 'الفريق'))}</b><br>${nl(m.text)}<small>${m.at ? new Date(m.at).toLocaleString('ar-SA') : ''}</small></div>`).join('')}</div>
+    <form id="cf" style="display:flex;gap:8px;margin-top:12px"><textarea rows="2" style="flex:1;padding:10px;border-radius:12px;border:1.5px solid var(--line)" placeholder="اكتب ردك… بيوصل للعميل على الموقع فوراً">${esc(keep)}</textarea><button class="btn btn-red">إرسال</button></form></div>`;
+  $('.x', sh).onclick = closeChat; const thr = $('#thr', sh); thr.scrollTop = 1e6;
+  $('#cf', sh).onsubmit = async e => { e.preventDefault(); const ta = $('textarea', sh), v = ta.value.trim(); if (!v) return; ta.value = '';
+    try { await F.updateDoc(F.doc(db, 'chats', c.id), { msgs: F.arrayUnion({ from: 's', text: v, by: isOwner ? 'الإدارة' : ((emp && emp.name) || 'الفريق').split(' ')[0], at: Date.now() }), upd: F.serverTimestamp(), unread: 0 }); } catch (x) { toast(F.authMsg(x), 1); ta.value = v; } };
+}
+
 /* reports archive */
 let reports = [];
 function viewReports() {
   if (!can('reports') && !can('report')) return viewHome();
-  root.innerHTML = top() + `<main class="shell"><div class="hello"><div><a class="back" href="#">← الرئيسية</a><h1>أرشيف تقارير الإشراف</h1><p>${can('reports') ? 'كل التقارير المحفوظة' : 'تقاريرك المحفوظة'}</p></div>${can('report') ? '<a class="btn btn-red" href="report/">+ تقرير جديد</a>' : ''}</div>
+  root.innerHTML = top() + `<main class="shell"><div class="hello"><div><a class="back glass-back" href="#">→ رجوع</a><h1>أرشيف تقارير الإشراف</h1><p>${can('reports') ? 'كل التقارير المحفوظة' : 'تقاريرك المحفوظة'}</p></div>${can('report') ? '<a class="btn btn-red" href="report/">+ تقرير جديد</a>' : ''}</div>
     <div class="toolbar"><input id="q" placeholder="بحث باسم المشروع أو رقم الطلب أو المهندس" style="flex:1;padding:9px 12px;border-radius:12px;border:1.5px solid var(--line)"></div><div class="list" id="rl"><p class="empty">جارٍ التحميل…</p></div></main>`;
   $('#lo').onclick = () => F.signOut(auth);
   $('#q').oninput = paintReports; loadReports();
@@ -166,6 +201,7 @@ function route() {
   if (!me) return;
   const h = location.hash.slice(1);
   if (h === 'support') return viewSupport();
+  if (h === 'chats') return viewChats();
   if (h === 'reports') return viewReports();
   viewHome();
 }
@@ -174,7 +210,7 @@ addEventListener('hashchange', route);
 F.onAuthStateChanged(auth, async u => {
   clearSubs(); me = u; emp = null; isOwner = false;
   if (!u) { if (location.hash === '#register') viewRegister(); else viewLogin(); return; }
-  isOwner = u.uid === OWNER_UID;
+  isOwner = F.isOwnerUid(u.uid);
   try { localStorage.setItem('sh.staff', '1'); } catch (e) { }
   if (isOwner) { startLive(); return route(); }
   unsubs.push(F.onSnapshot(F.doc(db, 'employees', u.uid), async s => {
@@ -190,6 +226,12 @@ F.onAuthStateChanged(auth, async u => {
 let live = false;
 function startLive() {
   if (live) return; live = true;
+  if (can('support')) unsubs.push(F.onSnapshot(F.query(F.collection(db, 'chats'), F.orderBy('upd', 'desc'), F.limit(200)), s => {
+    const before = counts.chats; chats = s.docs.map(d => ({ id: d.id, ...d.data() })); counts.chats = chats.filter(c => c.unread > 0).length;
+    if (counts.chats > before && document.hidden === false) { try { navigator.vibrate && navigator.vibrate(60); } catch (e) { } }
+    if (location.hash === '#chats') paintChats(); else if (openChat) renderChatSheet();
+    const b = $('.tile[data-k=support]'); if (b) { let bd = b.querySelector('.badge'); const n = counts.tickets + counts.chats; if (n) { if (!bd) { bd = document.createElement('span'); bd.className = 'badge'; b.prepend(bd); } bd.textContent = n; } else if (bd) bd.remove(); }
+  }, () => { }));
   if (can('support')) unsubs.push(F.onSnapshot(F.query(F.collection(db, 'tickets'), F.orderBy('at', 'desc'), F.limit(300)), s => {
     tickets = s.docs.map(d => ({ id: d.id, ...d.data() })); counts.tickets = tickets.filter(t => t.status === 'new').length;
     if (location.hash === '#support') paintTickets(); else if (!location.hash || location.hash === '#') { const b = $('.tile[data-k=support]'); if (b) { let bd = b.querySelector('.badge'); if (counts.tickets) { if (!bd) { bd = document.createElement('span'); bd.className = 'badge'; b.prepend(bd); } bd.textContent = counts.tickets; } else if (bd) bd.remove(); } }

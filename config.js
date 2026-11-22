@@ -12,3 +12,8 @@ export const firebaseConfig = {
 export const OWNER_UID = "bRGeKE9GqXYFh2F93FO6osHYxr63";
 // الموظف يدخل باسم المستخدم — نفس طريقة البصمة بالظبط
 export const EMAIL_DOMAIN = "shamrani-basma.app";
+
+// حسابات مدير إضافية بصلاحية المالك الكاملة (مثلاً حساب الإيميل) — حط الـ UID من Firebase → Authentication
+export const OWNER_UIDS = [
+  // 'ضع_هنا_UID_حساب_alshomrani.founder@gmail.com'
+];

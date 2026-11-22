@@ -1,0 +1,160 @@
+// أجزاء لوحة التحكم المتقدمة: التصميم، الفيديو، ترتيب الصفحة، الإنجليزي، الإحصائيات، العملاء المحتملين
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+
+export function emptyWarnings(D) {
+  const w = [];
+  if (D.announce && D.announce.on && !String(D.announce.text || '').trim()) w.push('• شريط الإعلان مفعّل بس مفيش نص مكتوب، فمش هيظهر.');
+  if (D.popup && D.popup.on && !String(D.popup.title || '').trim()) w.push('• نافذة العروض مفعّلة بس مفيش عنوان، فمش هتظهر.');
+  if (D.offer && D.offer.on && !String(D.offer.title || '').trim()) w.push('• العرض مفعّل بس مفيش عنوان، فمش هيظهر.');
+  if (D.offer && D.offer.on && D.offer.until && new Date(D.offer.until).getTime() < Date.now()) w.push('• تاريخ انتهاء العرض فات، فالعرض مش هيظهر.');
+  return w.length ? 'تنبيه:\n' + w.join('\n') : '';
+}
+
+const SEC_NAMES = { offer: 'العرض الحالي', gallery: 'معرض صور الأعمال', strip: 'شريط الخدمات المتحرك', services: 'كروت الخدمات', steps: 'آلية العمل', packages: 'الباقات', social: 'السوشيال ميديا', why: 'ليش الشمراني + كلمة المدير', partners: 'الشركاء', faq: 'الأسئلة الشائعة', cta: 'صندوق دعوة التواصل' };
+const FONTS = { kufi: 'نوتو كوفي + بلكس (الحالي)', cairo: 'Cairo', tajawal: 'Tajawal', almarai: 'Almarai', readex: 'Readex Pro', rubik: 'Rubik' };
+const PRESETS = [['#E1262B', '#C9A24B', 'أحمر الشركة'], ['#B91D22', '#D4AF37', 'أحمر غامق'], ['#0F766E', '#C9A24B', 'أخضر'], ['#1D4ED8', '#E0B04B', 'أزرق'], ['#111827', '#C9A24B', 'أسود ودهبي']];
+
+/* ---------- التصميم ---------- */
+function vDesign(mp, c) {
+  const D = c.D(); D.design = Object.assign({ logo: '', font: 'kufi', logoSize: 100, heroLogo: true, heroLogoSize: 100, fontScale: 100, red: '#E1262B', gold: '#C9A24B', glass: true, cursorGlow: true }, D.design || {});
+  const d = D.design; const rng = (k, l, a, b) => `<div class="fld"><label>${l}: <b id="rv-${k}">${d[k]}%</b></label><input type="range" min="${a}" max="${b}" step="5" value="${d[k]}" data-rng="${k}"></div>`;
+  const sw = (k, l) => `<label class="switch"><input type="checkbox" data-sw="${k}" ${d[k] !== false ? 'checked' : ''}><span></span> ${l}</label>`;
+  mp.innerHTML = `<h2>اللوجو والألوان والخطوط</h2><p class="desc">أي تغيير بيبان على طول في «👁 معاينة». اضغط «حفظ ونشر» علشان يوصل للناس.</p>
+  <div class="grid2"><section class="card" style="display:grid;gap:14px" id="lg"><h3 style="font-size:17px">اللوجو</h3>${c.field('logo', d.logo || '', ['design', 'logo'])}
+    <p class="hint" style="color:var(--mut);font-size:12.5px">يفضّل PNG بخلفية شفافة. لو سبته فاضي بيظهر لوجو الشركة الأصلي (المكعب المتحرك).</p>
+    ${rng('logoSize', 'حجم اللوجو في الشريط اللي فوق', 60, 160)}${sw('heroLogo', 'إظهار اللوجو الكبير في أول الصفحة')}${rng('heroLogoSize', 'حجم اللوجو الكبير', 50, 180)}</section>
+  <section class="card" style="display:grid;gap:14px"><h3 style="font-size:17px">الألوان</h3>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">${PRESETS.map(p => `<button class="btn btn-ghost sm" data-pre="${p[0]}|${p[1]}"><i style="width:14px;height:14px;border-radius:50%;background:${p[0]};display:inline-block"></i><i style="width:14px;height:14px;border-radius:50%;background:${p[1]};display:inline-block"></i> ${p[2]}</button>`).join('')}</div>
+    <div class="row2">${c.field('red', d.red, ['design', 'red'])}${c.field('gold', d.gold, ['design', 'gold'])}</div>
+    <p class="hint" style="color:var(--mut);font-size:12.5px">الأول = اللون الأساسي للأزرار والعناوين. التاني = اللون الدهبي للباقة المميزة والعروض.</p></section>
+  <section class="card" style="display:grid;gap:14px"><h3 style="font-size:17px">الخط</h3><div class="fld"><label>نوع الخط</label><select id="fontSel">${Object.keys(FONTS).map(k => `<option value="${k}" ${d.font === k ? 'selected' : ''}>${FONTS[k]}</option>`).join('')}</select></div>
+    ${rng('fontScale', 'حجم الكلام في الموقع', 85, 125)}</section>
+  <section class="card" style="display:grid;gap:14px"><h3 style="font-size:17px">تأثيرات</h3>${sw('glass', 'الكروت الزجاجية')}${sw('cursorGlow', 'توهّج الماوس على الكمبيوتر')}</section></div>`;
+  c.bindEditor(mp);
+  $$('[data-rng]', mp).forEach(r => r.oninput = () => { d[r.dataset.rng] = +r.value; $('#rv-' + r.dataset.rng).textContent = r.value + '%'; c.dirty(); });
+  $$('[data-sw]', mp).forEach(r => r.onchange = () => { d[r.dataset.sw] = r.checked; c.dirty(); });
+  $('#fontSel').onchange = e => { d.font = e.target.value; c.dirty(); };
+  $$('[data-pre]', mp).forEach(b => b.onclick = () => { const [r, g] = b.dataset.pre.split('|'); d.red = r; d.gold = g; c.dirty(); c.rerender(); });
+}
+
+/* ---------- الفيديو (يترفع على GitHub مباشرة) ---------- */
+const GH_KEY = 'sh.gh';
+const gh = () => { try { return JSON.parse(localStorage.getItem(GH_KEY) || '{}'); } catch (e) { return {}; } };
+function b64(buf) { const u = new Uint8Array(buf); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); }
+async function ghPut(path, file, msg, onp) {
+  const g = gh(); if (!g.token || !g.repo) throw new Error('حط مفتاح GitHub واسم الريبو الأول');
+  const api = `https://api.github.com/repos/${g.repo}/contents/${path}`, H = { Authorization: 'Bearer ' + g.token, Accept: 'application/vnd.github+json' };
+  let sha; try { const r = await fetch(api + '?ref=' + (g.branch || 'main'), { headers: H }); if (r.ok) sha = (await r.json()).sha; } catch (e) { }
+  onp && onp('جارٍ التجهيز…'); const content = b64(await file.arrayBuffer()); onp && onp('جارٍ الرفع على GitHub…');
+  const r = await fetch(api, { method: 'PUT', headers: H, body: JSON.stringify({ message: msg, content, branch: g.branch || 'main', ...(sha ? { sha } : {}) }) });
+  if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.message || ('GitHub ' + r.status)); }
+}
+function vVideo(mp, c) {
+  const D = c.D(), h = D.hero; if (h.videoMobile === undefined) h.videoMobile = ''; const g = gh();
+  const slot = (k, label, path, accept, note) => `<section class="card" style="display:grid;gap:12px"><h3 style="font-size:17px">${label}</h3>
+    ${accept.startsWith('video') ? `<video src="${c.esc(h[k] || '')}" muted loop playsinline controls style="width:100%;max-height:260px;border-radius:14px;background:#000;${h[k] ? '' : 'display:none'}" id="pv-${k}"></video>` : ''}
+    ${c.field(k, h[k] || '', ['hero', k])}<p class="hint" style="color:var(--mut);font-size:12.5px">${note}</p>
+    <label class="btn btn-red sm" style="cursor:pointer;justify-self:start">⬆ رفع ملف جديد<input type="file" accept="${accept}" hidden data-up-gh="${k}" data-path="${path}"></label><p class="hint" id="st-${k}" style="font-weight:700"></p></section>`;
+  mp.innerHTML = `<h2>فيديو الواجهة</h2><p class="desc">ارفع الفيديو من هنا مباشرة. المقاس المناسب: 1920×1080، من 8 لـ 15 ثانية، أقل من 4 ميجا، ومن غير صوت.</p>
+  <section class="card" style="display:grid;gap:10px;margin-bottom:16px"><h3 style="font-size:17px">🔑 ربط GitHub (مرة واحدة على الجهاز ده)</h3>
+    <p style="color:var(--mut);font-size:13.5px;line-height:1.9">الفيديو أكبر من اللي قاعدة البيانات بتشيله، فبيترفع على ريبو الموقع نفسه.<br>
+    ١- افتح <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener" style="color:var(--red);font-weight:700">github.com/settings/personal-access-tokens/new</a><br>
+    ٢- Repository access ← Only select repositories ← اختار ريبو الموقع.<br>٣- Permissions ← Contents ← <b>Read and write</b> ← Generate token.<br>٤- انسخ المفتاح وحطه هنا. بيتحفظ على الجهاز ده بس، ومحدش غيرك يشوفه.</p>
+    <div class="row2"><input id="ghRepo" class="in" dir="ltr" placeholder="alshomrani-co/alshomrani" value="${c.esc(g.repo || '')}"><input id="ghBranch" class="in" dir="ltr" placeholder="main" value="${c.esc(g.branch || 'main')}"></div>
+    <input id="ghTok" class="in" dir="ltr" type="password" placeholder="github_pat_…" value="${c.esc(g.token || '')}"><div style="display:flex;gap:8px"><button class="btn btn-ink sm" id="ghSave">حفظ الربط</button><span class="hint" id="ghSt" style="align-self:center;font-weight:700"></span></div></section>
+  <div class="grid2">${slot('videoSrc', '🖥 فيديو الكمبيوتر (عرضي 16:9)', 'assets/video/hero.mp4', 'video/mp4', 'ده اللي بيظهر على الكمبيوتر، وعلى الفون لو مفيش فيديو طولي.')}${slot('videoMobile', '📱 فيديو الفون (طولي 9:16)', 'assets/video/hero-mobile.mp4', 'video/mp4', 'اختياري: 1080×1920. لو موجود بيظهر على الفون بدل العرضي.')}${slot('poster', '🖼 صورة الغلاف', 'assets/video/hero-poster.jpg', 'image/jpeg', 'بتظهر لحد ما الفيديو يحمّل. JPG أقل من 300KB.')}</div>
+  <label class="switch" style="margin-top:14px"><input type="checkbox" id="vOn" ${h.video ? 'checked' : ''}><span></span> تشغيل الفيديو في الواجهة (لو مقفول بتظهر صورة الغلاف بس)</label>`;
+  $$('.in', mp).forEach(i => i.style.cssText += ';padding:10px 12px;border-radius:12px;border:1.5px solid var(--line);width:100%');
+  c.bindEditor(mp);
+  $('#vOn').onchange = e => { h.video = e.target.checked; c.dirty(); };
+  $('#ghSave').onclick = async () => {
+    const v = { repo: $('#ghRepo').value.trim().replace(/^https:\/\/github\.com\//, '').replace(/\/$/, ''), branch: $('#ghBranch').value.trim() || 'main', token: $('#ghTok').value.trim() };
+    try { localStorage.setItem(GH_KEY, JSON.stringify(v)); } catch (e) { }
+    $('#ghSt').textContent = 'جارٍ التأكد…';
+    try { const r = await fetch('https://api.github.com/repos/' + v.repo, { headers: { Authorization: 'Bearer ' + v.token } }); const j = await r.json(); $('#ghSt').textContent = r.ok && j.permissions && j.permissions.push ? '✓ متربط وجاهز للرفع' : '✗ المفتاح مش شغال أو مالوش صلاحية كتابة'; } catch (e) { $('#ghSt').textContent = '✗ تعذّر الاتصال'; }
+  };
+  $$('[data-up-gh]', mp).forEach(inp => inp.onchange = async () => {
+    const f = inp.files[0]; if (!f) return; const k = inp.dataset.upGh, st = $('#st-' + k);
+    if (f.size > 45e6) { st.textContent = '✗ الملف أكبر من 45 ميجا — اضغطه الأول'; return; }
+    if (k !== 'poster' && f.size > 6e6 && !confirm(`حجم الفيديو ${(f.size / 1e6).toFixed(1)} ميجا — كبير على الفون وهيبطّأ الموقع. ترفعه برضه؟`)) return;
+    try {
+      await ghPut(inp.dataset.path, f, 'تحديث ' + inp.dataset.path + ' من لوحة التحكم', x => st.textContent = x);
+      h[k] = inp.dataset.path + '?v=' + Date.now(); if (k !== 'poster') h.video = true; c.dirty(); st.textContent = '✓ اترفع. اضغط «حفظ ونشر» — والموقع بيتحدث خلال دقيقة أو اتنين.'; c.toast('اترفع ✓');
+      const pv = $('#pv-' + k); if (pv) { pv.src = URL.createObjectURL(f); pv.style.display = ''; }
+      const i2 = $(`input[data-p='${JSON.stringify(['hero', k])}']`, mp); if (i2) i2.value = h[k];
+    } catch (e) { st.textContent = '✗ ' + e.message; }
+    inp.value = '';
+  });
+}
+
+/* ---------- ترتيب الصفحة الرئيسية ---------- */
+function vLayout(mp, c) {
+  const D = c.D(); const all = Object.keys(SEC_NAMES); let on = (D.design.sections || c.DEFAULT.design.sections).filter(k => SEC_NAMES[k]);
+  const paint = () => {
+    const off = all.filter(k => !on.includes(k));
+    mp.innerHTML = `<h2>ترتيب الصفحة الرئيسية</h2><p class="desc">رتّب الأقسام بالأسهم، وشيل علامة أي قسم علشان يختفي. الفيديو والأرقام دايماً أول حاجة.</p>
+    <div class="list" id="lay">${on.map((k, i) => `<div class="li" style="cursor:default"><label class="switch" style="flex:1"><input type="checkbox" checked data-k="${k}"><span></span> <b>${i + 1}.</b> ${SEC_NAMES[k]}</label><span class="ops" style="display:flex;gap:4px"><button class="btn btn-ghost sm" data-mv="-1" data-i="${i}" ${i ? '' : 'disabled'}>↑</button><button class="btn btn-ghost sm" data-mv="1" data-i="${i}" ${i < on.length - 1 ? '' : 'disabled'}>↓</button></span></div>`).join('')}
+    ${off.map(k => `<div class="li" style="opacity:.55;cursor:default"><label class="switch" style="flex:1"><input type="checkbox" data-k="${k}"><span></span> ${SEC_NAMES[k]} <small>(مخفي)</small></label></div>`).join('')}</div>`;
+    $$('[data-mv]', mp).forEach(b => b.onclick = () => { const i = +b.dataset.i, j = i + (+b.dataset.mv); [on[i], on[j]] = [on[j], on[i]]; D.design.sections = [...on]; c.dirty(); paint(); });
+    $$('input[data-k]', mp).forEach(x => x.onchange = () => { const k = x.dataset.k; on = x.checked ? [...on, k] : on.filter(y => y !== k); D.design.sections = [...on]; c.dirty(); paint(); });
+  };
+  paint();
+}
+
+/* ---------- الإنجليزي ---------- */
+function vEn(mp, c) {
+  const D = c.D(); const keys = ['brand', 'hero', 'stats', 'offer', 'services', 'gallery', 'cats', 'projects', 'packages', 'about', 'branches', 'faq', 'prepare', 'cta', 'media', 'contact', 'confidential', 'partners', 'seo'];
+  mp.innerHTML = `<h2>النسخة الإنجليزية</h2><p class="desc">النصوص اللي بتظهر لما الزائر يضغط «EN». أي خانة فاضية بتظهر بالعربي.</p><div class="form-grid" id="ed">${keys.filter(k => D.en[k] !== undefined).map(k => { const v = D.en[k]; const inner = (v && typeof v === 'object' && !Array.isArray(v)) ? Object.keys(v).map(kk => c.field(kk, v[kk], ['en', k, kk])).join('') : c.field(k, v, ['en', k]); return `<details class="card" style="display:block"><summary style="font-weight:800;cursor:pointer">${k}</summary><div style="display:grid;gap:12px;margin-top:12px">${inner}</div></details>`; }).join('')}</div>`;
+  c.bindEditor($('#ed', mp));
+}
+
+/* ---------- الإحصائيات ---------- */
+const CC = { SA: 'السعودية', AE: 'الإمارات', EG: 'مصر', KW: 'الكويت', QA: 'قطر', BH: 'البحرين', OM: 'عُمان', JO: 'الأردن', IQ: 'العراق', YE: 'اليمن', SD: 'السودان', SY: 'سوريا', LB: 'لبنان', PS: 'فلسطين', MA: 'المغرب', DZ: 'الجزائر', TN: 'تونس', LY: 'ليبيا', TR: 'تركيا', PK: 'باكستان', IN: 'الهند', BD: 'بنجلاديش', PH: 'الفلبين', ID: 'إندونيسيا', US: 'أمريكا', GB: 'بريطانيا', DE: 'ألمانيا', FR: 'فرنسا', NL: 'هولندا', CA: 'كندا', XX: 'غير معروف' };
+const flag = cc => cc && cc.length === 2 && cc !== 'XX' ? String.fromCodePoint(...[...cc.toUpperCase()].map(ch => 127397 + ch.charCodeAt(0))) : '🌐';
+const SRC = { direct: 'دخول مباشر / رابط', google: 'جوجل', instagram: 'إنستجرام', tiktok: 'تيك توك', snapchat: 'سناب شات', whatsapp: 'واتساب', x: 'إكس', facebook: 'فيسبوك', youtube: 'يوتيوب', search: 'محركات بحث أخرى', other: 'مواقع أخرى' };
+const DEV = { iphone: '📱 آيفون', android: '🤖 أندرويد', ipad: '📲 آيباد', desktop: '💻 كمبيوتر' };
+const PAGES = { home: 'الرئيسية', services: 'الخدمات', service: 'صفحة خدمة', projects: 'أعمالنا', packages: 'الباقات', about: 'من نحن', contact: 'تواصل معنا', support: 'الدعم الفني', request: 'اطلب خدمة', track: 'تتبع طلب', media: 'السوشيال' };
+const EVS = { wa: '💬 ضغط واتساب', call: '📞 ضغط اتصال', bot: '🤖 فتح المساعد', chat: '🧑‍💼 بدأ محادثة مع موظف', 'soc:youtube': 'يوتيوب', 'soc:tiktok': 'تيك توك', 'soc:instagram': 'إنستجرام', 'soc:snapchat': 'سناب شات', 'soc:x': 'إكس' };
+const dk = d => new Date(d.getTime() + 3 * 3600e3).toISOString().slice(0, 10);
+async function vStats(mp, c, days = 30) {
+  const F = c.F;
+  mp.innerHTML = `<h2>الإحصائيات والزوار</h2><p class="desc">الزوار مجهولين الهوية: بنعرف الدولة والمدينة والجهاز والمصدر بس. زيارات الموظفين مش بتتحسب.</p>
+  <div class="seg" id="per" style="margin-bottom:16px">${[[1, 'النهارده'], [7, '٧ أيام'], [30, '٣٠ يوم'], [90, '٣ شهور']].map(([n, l]) => `<button data-n="${n}" class="${n === days ? 'on' : ''}">${l}</button>`).join('')}</div><div id="sv"><p class="empty">جارٍ التحميل…</p></div>`;
+  $('#per').onclick = e => { const b = e.target.closest('button'); if (b) vStats(mp, c, +b.dataset.n); };
+  const now = new Date(), keys = []; for (let i = days - 1; i >= 0; i--) keys.push(dk(new Date(now.getTime() - i * 864e5)));
+  let docs;
+  try { docs = await Promise.all(keys.map(k => F.getDoc(F.doc(c.db, 'stats', k)).then(s => s.exists() ? s.data() : {}).catch(() => ({})))); } catch (e) { $('#sv').innerHTML = `<p class="empty">${c.esc(F.authMsg(e))}</p>`; return; }
+  let live = '—'; try { const s = await F.getDocs(F.query(F.collection(c.db, 'presence'), F.where('at', '>', F.Timestamp.fromMillis(Date.now() - 150000)))); live = s.size; } catch (e) { }
+  const sum = (field) => { const o = {}; docs.forEach(d => { const m = d[field] || {}; for (const k in m) o[k] = (o[k] || 0) + (+m[k] || 0); }); return o; };
+  const tot = f => docs.reduce((a, d) => a + (+d[f] || 0), 0);
+  const today = docs[docs.length - 1] || {};
+  const svcName = id => { const v = c.D().services.find(x => x.id === id); return v ? v.title : id; };
+  const bars = (o, name, max = 12) => { const arr = Object.entries(o).sort((a, b) => b[1] - a[1]).slice(0, max); const m = arr.length ? arr[0][1] : 1; return arr.length ? arr.map(([k, v]) => `<div class="bar"><span>${name(k)}</span><i style="width:${Math.max(4, v / m * 100)}%"></i><b>${v}</b></div>`).join('') : '<p class="empty" style="padding:14px">لسه مفيش بيانات</p>'; };
+  const vis = docs.map(d => +d.visits || 0), mx = Math.max(1, ...vis);
+  const ev = sum('ev');
+  $('#sv').innerHTML = `<div class="stats4"><div class="card"><b style="color:#1f9d55">${live}</b><span>🟢 موجودين على الموقع دلوقتي</span></div><div class="card"><b>${+today.visits || 0}</b><span>زيارات النهارده</span></div><div class="card"><b>${+today.uniq || 0}</b><span>زوار جدد النهارده</span></div><div class="card"><b>${tot('visits')}</b><span>زيارات الفترة</span></div><div class="card"><b>${tot('views')}</b><span>صفحات اتشافت</span></div><div class="card"><b>${(ev.wa || 0) + (ev.call || 0)}</b><span>ضغطوا واتساب أو اتصال</span></div></div>
+  <div class="card" style="margin:16px 0"><h3 style="font-size:16px;margin-bottom:12px">الزيارات باليوم</h3><div class="chart">${vis.map((v, i) => `<div class="col" title="${keys[i]}: ${v}"><i style="height:${v / mx * 100}%"></i>${days <= 31 ? `<small>${keys[i].slice(8)}</small>` : ''}</div>`).join('')}</div></div>
+  <div class="grid2"><div class="card"><h3>🌍 الدول</h3>${bars(sum('cc'), k => `${flag(k)} ${CC[k] || k}`)}</div><div class="card"><h3>🏙 المدن</h3>${bars(sum('city'), k => k)}</div>
+  <div class="card"><h3>🔗 جايين منين</h3>${bars(sum('src'), k => SRC[k] || k)}</div><div class="card"><h3>📱 الأجهزة</h3>${bars(sum('dev'), k => DEV[k] || k)}</div>
+  <div class="card"><h3>📄 أكتر الصفحات</h3>${bars(sum('page'), k => PAGES[k] || k)}</div><div class="card"><h3>🛠 أكتر الخدمات اهتماماً</h3>${bars(sum('svc'), svcName)}</div>
+  <div class="card"><h3>👆 التفاعل</h3>${bars(ev, k => EVS[k] || k)}</div><div class="card"><h3>🌐 اللغة</h3>${bars(sum('lang'), k => k === 'en' ? 'English' : 'عربي')}</div></div>`;
+}
+
+/* ---------- العملاء المحتملين (طلبات + محادثات) ---------- */
+async function vLeads(mp, c) {
+  const F = c.F, esc = c.esc;
+  mp.innerHTML = `<h2>العملاء المحتملين</h2><p class="desc">كل حد ساب اسمه ورقمه: من «اطلب خدمة» أو من المحادثة المباشرة.</p><div class="toolbar"><input id="lq" placeholder="بحث بالاسم أو الجوال" class="in" style="flex:1"><button class="btn btn-ghost sm" id="lx">⬇ تنزيل Excel (CSV)</button></div><div class="list" id="ll"><p class="empty">جارٍ التحميل…</p></div>`;
+  $$('.in', mp).forEach(i => i.style.cssText += ';padding:10px 12px;border-radius:12px;border:1.5px solid var(--line)');
+  const rows = [];
+  try { (await F.getDocs(F.query(F.collection(c.db, 'tickets'), F.orderBy('at', 'desc'), F.limit(300)))).forEach(d => { const x = d.data(); rows.push({ kind: 'طلب خدمة', id: x.code, name: x.name, phone: x.phone, what: x.dept + (x.msg ? ' — ' + x.msg : ''), at: x.at, href: 'portal.html#support' }); }); } catch (e) { }
+  try { (await F.getDocs(F.query(F.collection(c.db, 'chats'), F.orderBy('upd', 'desc'), F.limit(300)))).forEach(d => { const x = d.data(); const last = (x.msgs || []).filter(m => m.from === 'c').slice(-1)[0]; rows.push({ kind: 'محادثة', id: x.id, name: x.name, phone: x.phone, what: last ? last.text : '', at: x.upd || x.at, href: 'portal.html#chats' }); }); } catch (e) { }
+  rows.sort((a, b) => ((b.at && b.at.seconds) || 0) - ((a.at && a.at.seconds) || 0));
+  const waL = p => 'https://wa.me/966' + String(p || '').replace(/^0/, '').replace(/^966/, '');
+  const paint = () => { const q = $('#lq').value.trim(); const L = rows.filter(r => !q || (r.name + r.phone).includes(q));
+    $('#ll').innerHTML = L.length ? L.map(r => `<div class="li"><div class="main"><b>${esc(r.name)} <span class="chip" style="display:inline-flex">${r.kind}</span></b><span>${esc((r.what || '').slice(0, 90))} — ${r.at && r.at.toDate ? r.at.toDate().toLocaleString('ar-SA') : ''}</span></div><a class="btn btn-ghost sm" href="tel:${esc(r.phone)}" dir="ltr">${esc(r.phone)}</a><a class="btn btn-ok sm" target="_blank" rel="noopener" href="${waL(r.phone)}">واتساب</a><a class="btn btn-ghost sm" href="${r.href}">فتح</a></div>`).join('') : '<p class="empty">لسه مفيش عملاء محتملين</p>'; };
+  $('#lq').oninput = paint; paint();
+  $('#lx').onclick = () => { const csv = '﻿' + [['النوع', 'الاسم', 'الجوال', 'الطلب', 'التاريخ']].concat(rows.map(r => [r.kind, r.name, r.phone, (r.what || '').replace(/\n/g, ' '), r.at && r.at.toDate ? r.at.toDate().toLocaleString('en-GB') : ''])).map(a => a.map(x => '"' + String(x || '').replace(/"/g, '""') + '"').join(',')).join('\n'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = 'leads-' + new Date().toISOString().slice(0, 10) + '.csv'; a.click(); };
+}
+
+export const VIEWS = { design: vDesign, video: vVideo, layout: vLayout, en: vEn, stats: (mp, c) => vStats(mp, c), leads: vLeads };

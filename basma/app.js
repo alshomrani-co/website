@@ -10,8 +10,10 @@ let auth;
 try { auth = initializeAuth(app, { persistence: [indexedDBLocalPersistence, browserLocalPersistence] }); }
 catch (e) { auth = getAuth(app); }
 let db;
-try { db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) }); }
-catch (e) { db = initializeFirestore(app, {}); }
+// لو التحميل علّق قبل كده (متصفح واتساب الداخلي مثلاً) نشتغل من غير كاش محلي ونستخدم الاتصال البديل
+const SAFE_MODE = (() => { try { return localStorage.getItem('basma-safe') === '1'; } catch (e) { return false; } })();
+try { db = SAFE_MODE ? initializeFirestore(app, { experimentalForceLongPolling: true }) : initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }), experimentalAutoDetectLongPolling: true }); }
+catch (e) { db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true }); }
 
 /* ========== constants ========== */
 let COMPANY = 'شركة سعد مفرح الشمراني للاستشارات الهندسية';
@@ -590,7 +592,19 @@ function renderPass() {
     finally { btn.disabled = false; }
   };
 }
-function renderMsg(title, body) { show('vMsg'); $('msgTitle').textContent = title; $('msgBody').textContent = body; document.querySelector('#vMsg .loader').hidden = !title.startsWith('جارٍ'); }
+let msgWatch = null;
+function renderMsg(title, body) {
+  show('vMsg'); $('msgTitle').textContent = title; $('msgBody').textContent = body; document.querySelector('#vMsg .loader').hidden = !title.startsWith('جارٍ');
+  const old = document.getElementById('msgRetry'); if (old) old.remove(); clearTimeout(msgWatch);
+  // لو التحميل اتأخر: زرار إعادة المحاولة بطريقة الاتصال البديلة
+  if (title.startsWith('جارٍ')) msgWatch = setTimeout(() => {
+    if (!$('vMsg') || $('vMsg').hidden || !$('msgTitle').textContent.startsWith('جارٍ')) return;
+    $('msgBody').textContent = 'التحميل أخد وقت أطول من العادي. لو فاتح من جوه واتساب أو إنستجرام جرّب تفتح من سفاري أو كروم، أو اضغط إعادة المحاولة.';
+    const b = document.createElement('button'); b.id = 'msgRetry'; b.className = 'btn primary'; b.type = 'button'; b.textContent = 'إعادة المحاولة'; b.style.cssText = 'margin-top:16px;padding:12px 26px;border-radius:14px;font-weight:700';
+    b.onclick = () => { try { localStorage.setItem('basma-safe', '1'); } catch (e) { } location.reload(); };
+    $('msgBody').after(b);
+  }, 9000);
+}
 
 /* ========== التخصيص: الألوان والنصوص (من غرفة التحكم) ========== */
 const FL_DEF = { ...FL };

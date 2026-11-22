@@ -31,7 +31,7 @@ export const UI = {
     rights: 'جميع الحقوق محفوظة.', city: 'الرياض — المملكة العربية السعودية', links: 'روابط', fServices: 'الخدمات', fContact: 'تواصل', aboutLic: 'من نحن والتراخيص', helpCenter: 'مركز الدعم الفني',
     liveNow: 'متاحين الآن', needToday: 'وش تحتاج اليوم؟', preview: 'وضع المعاينة — التعديلات لسه متحفظتش', staffHint: 'بوابة الموظفين…',
     offerEnds: 'ينتهي العرض خلال', d: 'يوم', h: 'ساعة', m: 'دقيقة', s: 'ثانية',
-    socialEy: 'السوشيال ميديا', watchAll: 'شوف كل الفيديوهات', openOn: 'افتح حسابنا على {p}', noVideos: 'لسه ما أضفنا فيديوهات هنا — تقدر تتابعنا مباشرة على الحساب.', loading: 'جارٍ التحميل…',
+    socialEy: 'السوشيال ميديا', followOn: 'تابعنا على {p}', watchAll: 'شوف كل الفيديوهات', openOn: 'افتح حسابنا على {p}', noVideos: 'لسه ما أضفنا فيديوهات هنا — تقدر تتابعنا مباشرة على الحساب.', loading: 'جارٍ التحميل…',
     botName: 'مساعد الشمراني', botSub: 'متصل الآن · يرد فوراً', ask: 'اسألنا', botPh: 'اكتب سؤالك…', sendB: 'إرسال',
     botHi: 'أهلاً وسهلاً 👋 أنا مساعد شركة سعد الشمراني. اسألني عن أي خدمة، أو الأسعار، أو الفروع، أو مواعيد الدوام — وأنا أدلّك على الطريق.',
     quick: ['السلام عليكم', 'أبغى رخصة بناء', 'كم سعر الإشراف؟', 'وين موقعكم؟', 'أوقات الدوام']
@@ -67,7 +67,7 @@ export const UI = {
     rights: 'All rights reserved.', city: 'Riyadh — Saudi Arabia', links: 'Links', fServices: 'Services', fContact: 'Contact', aboutLic: 'About & licences', helpCenter: 'Support centre',
     liveNow: 'Online now', needToday: 'What do you need today?', preview: 'Preview mode — changes not saved yet', staffHint: 'Staff portal…',
     offerEnds: 'Offer ends in', d: 'days', h: 'hrs', m: 'min', s: 'sec',
-    socialEy: 'Social media', watchAll: 'Watch all videos', openOn: 'Open our {p} account', noVideos: 'No videos added here yet — follow us directly on the account.', loading: 'Loading…',
+    socialEy: 'Social media', followOn: 'Follow us on {p}', watchAll: 'Watch all videos', openOn: 'Open our {p} account', noVideos: 'No videos added here yet — follow us directly on the account.', loading: 'Loading…',
     botName: 'Al-Shamrani Assistant', botSub: 'Online · instant replies', ask: 'Ask us', botPh: 'Type your question…', sendB: 'Send',
     botHi: 'Welcome 👋 I\'m the Al-Shamrani assistant. Ask me about any service, prices, branches or working hours — and I\'ll point you the right way.',
     quick: ['Hello', 'I need a building permit', 'Supervision prices?', 'Where are you located?', 'Working hours']

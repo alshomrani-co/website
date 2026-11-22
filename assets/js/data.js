@@ -26,7 +26,7 @@ export const DEFAULT = {
     title: 'من المخطط', highlight: 'إلى التسليم',
     lead: 'نجمع لك التصميم، الرخص والمعاملات البلدية، الأعمال المساحية، الإشراف الهندسي، وأنظمة السلامة — تحت سقف واحد، بفريق مرخّص ومعتمد رسمياً.',
     cta1: 'احصل على استشارة مجانية', cta2: 'تعرّف على خدماتنا',
-    video: true, videoSrc: 'assets/video/hero.mp4', poster: 'assets/video/hero-poster.jpg'
+    video: true, videoSrc: 'assets/video/hero.mp4', videoMobile: '', poster: 'assets/video/hero-poster.jpg'
   },
   stats: [
     { n: 2016, pre: '', suf: '', l: 'سنة التأسيس', plain: true },
@@ -168,7 +168,7 @@ export const DEFAULT = {
   popup: { on: false, title: '', text: '', btn: 'تواصل الآن', link: '', img: '', delay: 6 },
   support: { on: true, depts: ['استفسار عام', 'التصميم', 'الرخص والمعاملات', 'المساحة', 'الإشراف', 'السلامة', 'إدارة المشاريع', 'تصميم 3D', 'شكوى أو ملاحظة'] },
   offer: { on: false, title: 'عرض خاص لفترة محدودة', text: 'خصم على باقات الإشراف للعقود الموقعة هذا الشهر.', badge: 'عرض', img: '', until: '', btn: 'استفد من العرض', link: '#/request' },
-  design: { logoSize: 100, heroLogo: true, heroLogoSize: 100, fontScale: 100, red: '#E1262B', gold: '#C9A24B', glass: true, cursorGlow: true, sections: ['offer', 'strip', 'services', 'steps', 'gallery', 'packages', 'social', 'why', 'partners', 'faq', 'cta'] },
+  design: { logo: '', font: 'kufi', logoSize: 100, heroLogo: true, heroLogoSize: 100, fontScale: 100, red: '#E1262B', gold: '#C9A24B', glass: true, cursorGlow: true, sections: ['offer', 'gallery', 'strip', 'steps', 'packages', 'social', 'why', 'partners', 'faq', 'cta'] },
   media: { title: 'تابعنا على السوشيال ميديا', sub: 'شغلنا في الميدان يومياً — فيديوهات وصور من مواقع المشاريع.', youtubeKey: '', youtube: [], tiktok: [], instagram: [], snapchat: [], x: [] },
   seo: { title: 'شركة سعد الشمراني للاستشارات الهندسية | تصميم، رخص، مساحة، إشراف، سلامة', desc: 'شركة استشارات هندسية مرخّصة في الرياض منذ 2016: تصميم معماري وإنشائي، رخص بناء، رفع مساحي، إشراف هندسي، وأنظمة سلامة — تحت سقف واحد.' }
 };

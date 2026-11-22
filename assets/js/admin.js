@@ -1,7 +1,9 @@
 // لوحة التحكم الكاملة: كل محتوى الموقع + الصور + الموظفين + كود الدعوة + النسخ الاحتياطي
 import * as F from './fb.js';
 import { DEFAULT } from './data.js';
-const { auth, db, OWNER_UID, MODULES } = F;
+import { EN } from './data-en.js';
+import * as X from './admin-x.js';
+const { auth, db, MODULES } = F;
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -23,6 +25,7 @@ const L = {
   price: 'السعر', unit: 'العملة/الوحدة', note: 'ملاحظة تحت السعر', featured: 'باقة مميزة (مُبرزة)', features: 'المميزات', list: 'القائمة', badge: 'الشارة',
   story: 'قصة الشركة (فقرات)', quotes: 'اقتباسات', ceo: 'المدير التنفيذي', role: 'المنصب', quote: 'الاقتباس', why: 'ليش نحن', steps: 'خطوات العمل', licenses: 'التراخيص', isic: 'الأنشطة (ISIC)', code: 'الرمز', num: 'الرقم', t: 'العنوان', d: 'الوصف',
   addr: 'العنوان', auth: 'الجهة', q: 'السؤال', a: 'الإجابة', depts: 'الأقسام في نموذج الدعم', label: 'التسمية', href: 'الرابط', url: 'الرابط',
+  until: 'ينتهي العرض في (تاريخ)', youtubeKey: 'مفتاح YouTube API (اختياري — يجيب كل فيديوهات القناة لوحده)', videoMobile: 'فيديو الفون (طولي 9:16 — اختياري)',
   replyNote: 'ملاحظة وقت الرد', videoSrc: 'ملف الفيديو', video: 'تشغيل فيديو الخلفية', scope: 'نطاق العمل', quote2: 'اقتباس ثاني', ceoTitle: 'مسمى المدير', fields: 'المجالات'
 };
 const lab = k => L[k] || KEYT[k] || k;
@@ -31,26 +34,34 @@ const LONGK = /^(lead|desc|text|a|long|quote|story|note|confidential|sub|d)$/;
 
 /* ---------- sections ---------- */
 const SECTIONS = [
-  { h: 'الموقع' },
-  { id: 'brand', t: 'الهوية والتواصل', keys: ['brand', 'contact', 'socials'], ic: '◆', d: 'اسم الشركة، أرقام التواصل، العنوان، وحسابات السوشيال.' },
-  { id: 'hero', t: 'الواجهة والفيديو', keys: ['hero', 'stats'], ic: '▶', d: 'العنوان الكبير، الفيديو، والأرقام اللي تحته.' },
-  { id: 'announce', t: 'شريط الإعلان والعروض', keys: ['announce', 'popup'], ic: '✦', d: 'شريط أعلى الموقع + نافذة عرض منبثقة.' },
+  { h: 'الإدارة' },
+  { id: 'dash', t: 'نظرة عامة', ic: '◉' },
+  { id: 'stats', t: 'الإحصائيات والزوار', ic: '📈' },
+  { id: 'leads', t: 'العملاء المحتملين', ic: '☎' },
+  { id: 'team', t: 'الموظفين والصلاحيات', ic: '☺', own: 1 },
+  { id: 'tickets', t: 'الدعم والمحادثات', ic: '✉', href: 'portal.html#support' },
+  { id: 'sup', t: 'الإشراف والعملاء', ic: '▤', href: 'supervision.html' },
+  { h: 'الشكل' },
+  { id: 'design', t: 'اللوجو والألوان والخطوط', ic: '🎨' },
+  { id: 'video', t: 'فيديو الواجهة', ic: '▶' },
+  { id: 'layout', t: 'ترتيب الصفحة الرئيسية', ic: '☰' },
+  { h: 'المحتوى' },
+  { id: 'hero', t: 'الواجهة والأرقام', keys: ['hero', 'stats'], ic: '◧', d: 'العنوان الكبير والأزرار والأرقام اللي تحت الفيديو.' },
+  { id: 'offer', t: 'العروض', keys: ['offer', 'announce', 'popup'], ic: '🎁', d: 'عرض يظهر للناس بشكل واضح في الرئيسية بعدّاد تنازلي، وشريط أعلى الموقع، ونافذة منبثقة.' },
+  { id: 'brand', t: 'الهوية والتواصل', keys: ['brand', 'contact'], ic: '◆', d: 'اسم الشركة، أرقام التواصل، العنوان، ومواعيد العمل.' },
+  { id: 'social', t: 'السوشيال ميديا', keys: ['socials', 'media'], ic: '♥', d: 'روابط الحسابات (الضغط على الأيقونة يفتح الحساب مباشرة)، ولينكات فيديوهات تظهر في صفحة السوشيال.' },
   { id: 'services', t: 'الخدمات', keys: ['services'], ic: '▦', d: 'كل خدمة لها صفحة خاصة بالبنود والصورة.' },
-  { id: 'projects', t: 'الأعمال والمعرض', keys: ['cats', 'projects', 'confidential', 'gallery'], ic: '▣', d: 'المشاريع وتصنيفاتها وصور المعرض.' },
+  { id: 'projects', t: 'الأعمال والمعرض', keys: ['gallery', 'cats', 'projects', 'confidential'], ic: '▣', d: 'صور المعرض (أول الصفحة الرئيسية)، والمشاريع وتصنيفاتها.' },
   { id: 'packages', t: 'الباقات', keys: ['packages'], ic: '★', d: 'باقات الإشراف وأسعارها ومميزاتها.' },
   { id: 'about', t: 'من نحن', keys: ['about', 'partners'], ic: 'ⓘ', d: 'القصة، الرسالة، التراخيص، والشركاء.' },
   { id: 'branches', t: 'الفروع', keys: ['branches'], ic: '⌂', d: 'الفروع وعناوينها والجهات.' },
   { id: 'faq', t: 'الأسئلة والمساعد', keys: ['faq', 'prepare', 'support'], ic: '?', d: 'الأسئلة الشائعة (يستخدمها المساعد الآلي) + أقسام الدعم.' },
   { id: 'cta', t: 'دعوة التواصل', keys: ['cta'], ic: '➜', d: 'الصندوق الأحمر آخر الصفحات.' },
+  { id: 'en', t: 'النسخة الإنجليزية', ic: 'EN', d: 'نصوص الموقع لما الزائر يحوّل للإنجليزي. أي خانة فاضية بتظهر بالعربي.' },
   { id: 'seo', t: 'محركات البحث', keys: ['seo'], ic: '⌕', d: 'عنوان الموقع ووصفه في جوجل.' },
-  { id: 'json', t: 'النسخ الاحتياطي', ic: '⇩', d: 'تصدير واستيراد واسترجاع المحتوى.' },
-  { h: 'الإدارة' },
-  { id: 'dash', t: 'نظرة عامة', ic: '◉' },
-  { id: 'team', t: 'الموظفين والصلاحيات', ic: '☺', own: 1 },
-  { id: 'tickets', t: 'طلبات الدعم', ic: '✉', href: 'portal.html#support' },
-  { id: 'reports', t: 'أرشيف التقارير', ic: '▤', href: 'portal.html#reports' }
+  { id: 'json', t: 'النسخ الاحتياطي', ic: '⇩', d: 'تصدير واستيراد واسترجاع المحتوى.' }
 ];
-const KEYT = { brand: 'الهوية', contact: 'التواصل', socials: 'السوشيال ميديا', hero: 'الواجهة', stats: 'الأرقام', announce: 'شريط الإعلان', popup: 'نافذة العروض المنبثقة', services: 'الخدمات', cats: 'تصنيفات الأعمال', projects: 'المشاريع', confidential: 'نص سرية الأعمال', gallery: 'معرض الصور', packages: 'الباقات', about: 'من نحن', partners: 'الشركاء والجهات', branches: 'الفروع', faq: 'الأسئلة الشائعة', prepare: 'جهّز قبل التواصل', support: 'إعدادات الدعم الفني', cta: 'دعوة التواصل', seo: 'SEO' };
+const KEYT = { offer: 'عرض الصفحة الرئيسية', media: 'فيديوهات السوشيال', design: 'التصميم', brand: 'الهوية', contact: 'التواصل', socials: 'السوشيال ميديا', hero: 'الواجهة', stats: 'الأرقام', announce: 'شريط الإعلان', popup: 'نافذة العروض المنبثقة', services: 'الخدمات', cats: 'تصنيفات الأعمال', projects: 'المشاريع', confidential: 'نص سرية الأعمال', gallery: 'معرض الصور', packages: 'الباقات', about: 'من نحن', partners: 'الشركاء والجهات', branches: 'الفروع', faq: 'الأسئلة الشائعة', prepare: 'جهّز قبل التواصل', support: 'إعدادات الدعم الفني', cta: 'دعوة التواصل', seo: 'SEO' };
 
 /* ---------- state ---------- */
 let me = null, isOwner = false, emp = null;
@@ -65,7 +76,8 @@ function dirty() {
 addEventListener('beforeunload', e => { if (JSON.stringify(D) !== saved) { e.preventDefault(); e.returnValue = ''; } });
 
 async function loadContent() {
-  try { const s = await F.getDoc(F.doc(db, 'site', 'content')); if (s.exists() && s.data().data) D = deepMerge(clone(DEFAULT), s.data().data); } catch (e) { toast('تعذّر تحميل المحتوى: ' + F.authMsg(e), 1); }
+  try { const s = await F.getDoc(F.doc(db, 'site', 'content')); const d = s.exists() ? s.data() : null; const r = d && d.json ? JSON.parse(d.json) : d && d.data; if (r) D = deepMerge(clone(DEFAULT), r); } catch (e) { toast('تعذّر تحميل المحتوى: ' + F.authMsg(e), 1); }
+  D.en = deepMerge(clone(EN), D.en || {});
   saved = JSON.stringify(D);
 }
 async function save() {
@@ -73,7 +85,9 @@ async function save() {
   if (json.length > 950000) return toast('المحتوى كبير جداً — قلّل النصوص أو استخدم رفع الصور', 1);
   const b = $('#saveBtn'); b.disabled = true; b.textContent = 'جارٍ الحفظ…';
   try {
-    await F.setDoc(F.doc(db, 'site', 'content'), { data: D, at: F.serverTimestamp(), by: me.uid });
+    const warn = X.emptyWarnings(D); if (warn && !confirm(warn + '\n\nتكمّل الحفظ؟')) { b.disabled = false; b.textContent = 'حفظ ونشر'; return; }
+    // بيتحفظ كنص واحد: Firestore مش بيقبل جداول جوه جداول (زي أرقام التراخيص)
+    await F.setDoc(F.doc(db, 'site', 'content'), { json, at: F.serverTimestamp(), by: me.uid, v: 2 });
     saved = json; try { localStorage.setItem('sh.site', json); } catch (e) { } dirty(); toast('اتنشر على الموقع ✓');
   } catch (e) { toast(F.authMsg(e), 1); }
   b.disabled = false; b.textContent = 'حفظ ونشر';
@@ -102,6 +116,8 @@ function field(k, v, p) {
   if (typeof v === 'boolean') return `<label class="switch"><input type="checkbox" data-p="${P(p)}" data-t="b" ${v ? 'checked' : ''}><span></span> ${esc(lab(k))}</label>`;
   if (typeof v === 'number') return `<div class="fld"><label for="${id}">${esc(lab(k))}</label><input id="${id}" type="number" data-p="${P(p)}" data-t="n" value="${v}"></div>`;
   if (typeof v === 'string' && IMGK.test(k)) return imgField(k, v, p);
+  if (typeof v === 'string' && /^(red|gold|ink|color)$/.test(k)) return `<div class="fld"><label>${esc(lab(k))}</label><div style="display:flex;gap:10px;align-items:center"><input type="color" data-p="${P(p)}" value="${esc(v || '#E1262B')}" style="width:56px;height:42px;padding:2px;border-radius:10px"><code dir="ltr">${esc(v)}</code></div></div>`;
+  if (typeof v === 'string' && k === 'until') return `<div class="fld"><label>${esc(lab(k))}</label><input type="datetime-local" data-p="${P(p)}" value="${esc(v)}"><span class="hint">اتركه فاضي لو العرض مفتوح من غير مدة. العرض بيختفي لوحده بعد التاريخ ده.</span></div>`;
   if (typeof v === 'string' && (k === 'video' || k === 'videoSrc')) return `<div class="fld"><label>${esc(lab(k))}</label><input data-p="${P(p)}" dir="ltr" value="${esc(v)}"><span class="hint">مسار ملف على GitHub (مثلاً assets/video/hero.mp4) أو رابط mp4 مباشر. يفضّل أقل من 3MB، 720p، 8–12 ثانية. اتركه فاضي لإظهار الصورة فقط.</span></div>`;
   if (typeof v === 'string') return isLong(k, v)
     ? `<div class="fld"><label for="${id}">${esc(lab(k))}</label><textarea id="${id}" rows="${Math.min(8, Math.max(2, Math.ceil(v.length / 70)))}" data-p="${P(p)}">${esc(v)}</textarea></div>`
@@ -186,6 +202,8 @@ function rerender() {
   if (cur === 'dash') return viewDash(mp);
   if (cur === 'team') return viewTeam(mp);
   if (cur === 'json') return viewJson(mp);
+  const ctx = { F, db, D: () => D, setD: v => { D = v; }, dirty, rerender, toast, esc, me: () => me, isOwner: () => isOwner, upload, mediaURL, bindEditor, field, EN, DEFAULT, clone, deepMerge };
+  if (X.VIEWS[cur]) return X.VIEWS[cur](mp, ctx);
   const open = $$('details.item[open]', mp).map(d => [...d.parentElement.children].indexOf(d) + '|' + d.parentElement.dataset.arr);
   const y = scrollY;
   mp.innerHTML = `<h2>${esc(s.t)}</h2><p class="desc">${esc(s.d || '')}</p><div class="form-grid" id="ed">${s.keys.map(k => {
@@ -230,7 +248,7 @@ function viewJson(mp) {
 }
 
 /* ---------- team (owner only) ---------- */
-const DEPTS = ['المساحة', 'المعماري', 'الإنشائي', 'السلامة', 'الثلاثي الأبعاد', 'المحاسب', 'الإشراف', 'الإدارة'];
+const DEPTS = ['المساحة', 'المعماري', 'الإنشائي', 'الإشراف', 'السلامة / الدفاع المدني', 'الإلكتروميكانيك', 'المحاسبة', 'الإدارة'];
 const pad = n => String(n).padStart(2, '0');
 const todayKey = () => { const d = new Date(Date.now() + 10800000); return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate()); };
 const modsBox = (sel, name) => `<div class="mods">${Object.keys(MODULES).map(k => `<label><input type="checkbox" name="${name}" value="${k}" ${sel.includes(k) ? 'checked' : ''}>${esc(MODULES[k].t)}</label>`).join('')}</div>`;
@@ -240,7 +258,7 @@ async function viewTeam(mp) {
   mp.innerHTML = `<h2>الموظفين والصلاحيات</h2><p class="desc">نفس حسابات البصمة — الموظف يدخل بنفس اسم المستخدم وكلمة السر في كل الأقسام.</p>
   <div class="grid2"><div class="card" style="display:grid;gap:10px"><h3 style="font-size:16px">كود الدعوة للتسجيل الذاتي</h3><p style="color:var(--mut);font-size:13.5px">ابعته للموظف الجديد. يسجّل من البوابة بالكود، وحسابه يستنى موافقتك هنا.</p>
   <div style="display:flex;gap:8px;align-items:center"><input id="inv" dir="ltr" style="flex:1;padding:10px 12px;border-radius:12px;border:1.5px solid var(--line);font-weight:800;letter-spacing:2px;text-transform:uppercase" placeholder="بدون كود = التسجيل مقفول"><button class="btn btn-ghost sm" id="invG">توليد</button><button class="btn btn-ink sm" id="invS">حفظ</button></div></div>
-  <div class="card" style="display:grid;gap:10px"><h3 style="font-size:16px">إضافة موظف مباشرة</h3><form id="addF" style="display:grid;gap:10px"><div class="row2"><input id="aN" placeholder="الاسم الكامل" class="in"><input id="aU" placeholder="اسم المستخدم" class="in"></div><div class="row2"><input id="aP" placeholder="كلمة سر مؤقتة (٦+)" class="in" dir="ltr"><select id="aD" class="in">${DEPTS.map(d => `<option>${d}</option>`).join('')}</select></div>${modsBox(['basma'], 'am')}<button class="btn btn-red sm" style="justify-self:start">إضافة</button></form></div></div>
+  <div class="card" style="display:grid;gap:10px;border:2px solid var(--red);box-shadow:0 14px 34px -20px rgba(225,38,43,.6)"><h3 style="font-size:19px">➕ إضافة موظف جديد</h3><p style="color:var(--mut);font-size:13px;margin-top:-6px">بيدخل بيه البصمة والبوابة على طول، وأول دخول هيطلب منه يغيّر كلمة السر.</p><form id="addF" style="display:grid;gap:10px"><div class="row2"><input id="aN" placeholder="الاسم الكامل" class="in"><input id="aU" placeholder="اسم المستخدم" class="in"></div><div class="row2"><input id="aP" placeholder="كلمة سر مؤقتة (٦+)" class="in" dir="ltr"><select id="aD" class="in">${DEPTS.map(d => `<option>${d}</option>`).join('')}</select></div>${modsBox(['basma'], 'am')}<button class="btn btn-red sm" style="justify-self:start">إضافة</button></form></div></div>
   <h3 style="margin:22px 0 10px;font-size:18px">طلبات التسجيل <span class="chip red" id="rqC">…</span></h3><div class="list" id="rq"></div>
   <h3 style="margin:22px 0 10px;font-size:18px">الموظفين <span class="chip" id="emC">…</span></h3><input id="eq" placeholder="بحث…" class="in" style="margin-bottom:10px;width:100%"><div class="list" id="em"></div>`;
   $$('.in', mp).forEach(i => i.style.cssText += ';padding:10px 12px;border-radius:12px;border:1.5px solid var(--line);background:#fff;width:100%');
@@ -291,7 +309,7 @@ function paintEmps() {
 /* ---------- boot ---------- */
 F.onAuthStateChanged(auth, async u => {
   if (!u) { location.replace('portal.html'); return; }
-  me = u; isOwner = u.uid === OWNER_UID;
+  me = u; isOwner = F.isOwnerUid(u.uid);
   if (!isOwner) {
     try { const s = await F.getDoc(F.doc(db, 'employees', u.uid)); emp = s.exists() ? s.data() : null; } catch (e) { emp = null; }
     if (!emp || emp.active === false || !(emp.mods || []).includes('cms')) { root.innerHTML = `<div style="min-height:100svh;display:grid;place-items:center;text-align:center;padding:20px"><div><h2>مفيش صلاحية</h2><p style="color:var(--mut);margin:8px 0 16px">لوحة التحكم محتاجة صلاحية «لوحة التحكم» من المالك.</p><a class="btn btn-red" href="portal.html">رجوع للبوابة</a></div></div>`; return; }

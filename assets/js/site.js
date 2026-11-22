@@ -54,8 +54,9 @@ async function loadRemote() {
   if (PREVIEW) return;
   try {
     const F = await fb(); const d = await F.getDoc(F.doc(F.db, 'site', 'content'));
-    if (d.exists() && d.data().data) {
-      const remote = d.data().data; storeSet('sh.site', JSON.stringify(remote));
+    const dd = d.exists() ? d.data() : null; let remote = null;
+    if (dd && dd.json) { try { remote = JSON.parse(dd.json); } catch (e) { } } else if (dd && dd.data) remote = dd.data;
+    if (remote) { storeSet('sh.site', JSON.stringify(remote));
       const next = deepMerge(DEFAULT, remote);
       if (JSON.stringify(next) !== JSON.stringify(C)) { setC(next); chrome(); render(true); }
     }
@@ -98,11 +99,19 @@ function applyDesign() {
   r.setProperty('--logo', ((+d.logoSize || 100) / 100).toFixed(2));
   r.setProperty('--hlogo', ((+d.heroLogoSize || 100) / 100).toFixed(2));
   document.documentElement.classList.toggle('no-glass', d.glass === false);
+  // الخط
+  const FONTS = { cairo: 'Cairo', tajawal: 'Tajawal', almarai: 'Almarai', readex: 'Readex Pro', rubik: 'Rubik' };
+  const fam = FONTS[d.font];
+  if (fam) { if (!document.getElementById('fx-font')) { const l = document.createElement('link'); l.id = 'fx-font'; l.rel = 'stylesheet'; document.head.appendChild(l); } document.getElementById('fx-font').href = `https://fonts.googleapis.com/css2?family=${fam.replace(/ /g, '+')}:wght@400;500;700;800&display=swap`; r.setProperty('--hd', `'${fam}',system-ui,sans-serif`); r.setProperty('--bd', `'${fam}',system-ui,sans-serif`); }
+  else { r.removeProperty('--hd'); r.removeProperty('--bd'); }
+  // اللوجو
+  const logo = d.logo ? src(d.logo) : 'assets/img/mark.png';
+  $$('img[data-logo]').forEach(i => { i.src = logo; if (d.logo && d.logo.startsWith('m:')) i.dataset.m = d.logo.slice(2); });
 }
 
 /* ---------- chrome ---------- */
 const NAV_MAIN = ['services', 'projects', 'packages', 'contact'];
-const NAV_ALL = ['', 'services', 'projects', 'packages', 'about', 'media', 'support', 'track', 'request', 'contact'];
+const NAV_ALL = ['', 'services', 'projects', 'packages', 'about', 'support', 'track', 'request', 'contact'];
 function chrome() {
   const v = V();
   document.documentElement.lang = LANG; document.documentElement.dir = LANG === 'en' ? 'ltr' : 'rtl';
@@ -118,15 +127,16 @@ function chrome() {
   const an = v.announce; if (an.on && an.text && store('sh.annX','session') !== an.text) { $('#announce').hidden = false; $('#announceText').innerHTML = an.link ? `<a href="${esc(an.link)}">${esc(an.text)}</a>` : esc(an.text); } else $('#announce').hidden = true;
   const s = v.socials, soc = SOC.filter(x => s[x[0]]).map(x => `<a href="${esc(s[x[0]])}" target="_blank" rel="noopener" aria-label="${socName(x)}">${I[x[1]]}</a>`).join('');
   $('#ftr').innerHTML = `<div class="wrap"><div class="ftr-grid">
-    <div><div class="brand" style="color:#fff"><span class="mark"><img src="assets/img/mark.png" alt="" width="40"></span><span class="bname"><b>${esc(v.brand.short)}</b><small>${t('company')}</small></span></div>
+    <div><div class="brand" style="color:#fff"><span class="mark"><img src="assets/img/mark.png" data-logo alt="" width="40"></span><span class="bname"><b>${esc(v.brand.short)}</b><small>${t('company')}</small></span></div>
       <p style="margin-top:14px;max-width:360px">${esc(v.hero.lead)}</p><div class="soc">${soc}</div></div>
     <div><h5>${t('fServices')}</h5>${v.services.map(x => `<a href="#/service/${esc(x.id)}">${esc(x.title)}</a>`).join('')}</div>
-    <div><h5>${t('links')}</h5><a href="#/projects">${t('projects')}</a>${v.packages.on ? `<a href="#/packages">${t('packages')}</a>` : ''}<a href="#/about">${t('aboutLic')}</a><a href="#/media">${t('media')}</a><a href="#/support">${t('helpCenter')}</a><a href="#/track">${t('track')}</a><a href="#/contact">${t('contact')}</a></div>
+    <div><h5>${t('links')}</h5><a href="#/projects">${t('projects')}</a>${v.packages.on ? `<a href="#/packages">${t('packages')}</a>` : ''}<a href="#/about">${t('aboutLic')}</a><a href="#/support">${t('helpCenter')}</a><a href="#/track">${t('track')}</a><a href="#/contact">${t('contact')}</a></div>
     <div><h5>${t('fContact')}</h5><a href="${tel()}" dir="ltr" class="num">${esc(v.contact.phone)}</a>${v.contact.phone2 ? `<a href="${tel(v.contact.phone2)}" dir="ltr" class="num">${esc(v.contact.phone2)}</a>` : ''}<a href="mailto:${esc(v.contact.email)}">${esc(v.contact.email)}</a><p style="margin-top:8px">${esc(v.contact.address)}</p></div>
   </div><div class="ftr-bot"><span>© ${new Date().getFullYear()} ${esc(v.brand.name)}. ${t('rights')}</span><span>${store('sh.staff') ? `<a href="portal.html" style="display:inline;opacity:1;color:var(--red)">${t('staff')}</a>` : t('city')}</span></div></div>`;
   $('#botName').textContent = t('botName'); $('#botSubT').textContent = t('botSub'); $('#botIn').placeholder = t('botPh'); $('#botSend').textContent = t('sendB'); $('#botFabT').textContent = t('ask');
   $('#holdHint').textContent = t('staffHint');
   $$('[data-lang]').forEach(b => b.onclick = switchLang);
+  applyDesign();
 }
 function toggleMore(on) {
   const m = $('#more'), open = on === undefined ? m.hidden : on;
@@ -168,7 +178,7 @@ function offerBlock() {
     <a class="btn btn-gold" href="${esc(o.link || '#/request')}" ${ext(o.link || '')}>${esc(o.btn || t('request'))} ${I.arrow}</a></div></div></section>`;
 }
 const socialBlock = () => { const s = V().socials, m = V().media; const list = SOC.filter(x => s[x[0]]); if (!list.length) return '';
-  return `<section class="sec social-sec"><div class="wrap">${head(t('socialEy'), esc(m.title), m.sub)}<div class="soc-grid">${list.map((x, i) => `<a class="soc-tile s-${x[0]} rv d${i % 4}" href="#/media/${x[0]}"><span class="si">${I[x[1]]}</span><b>${socName(x)}</b><small>${t('watchAll')} ${I.arrow}</small></a>`).join('')}</div></div></section>`; };
+  return `<section class="sec social-sec"><div class="wrap">${head(t('socialEy'), esc(m.title), m.sub)}<div class="soc-grid">${list.map((x, i) => `<a class="soc-tile s-${x[0]} rv d${i % 4}" href="${esc(s[x[0]])}" target="_blank" rel="noopener" data-ev="soc:${x[0]}"><span class="si">${I[x[1]]}</span><b>${socName(x)}</b><small>${esc(t('followOn', { p: socName(x) }))} ${I.arrow}</small></a>`).join('')}</div></div></section>`; };
 const faqItem = (f) => `<details class="glass rv"><summary>${esc(f.q)}${f.cat ? `<span class="cat">${esc(f.cat)}</span>` : ''}</summary><div class="ans">${nl(f.a)}</div></details>`;
 
 /* ---------- pages ---------- */
@@ -188,9 +198,10 @@ P[''] = () => {
     cta: ctaBox
   };
   const order = (d.sections && d.sections.length ? d.sections : DEFAULT.design.sections);
-  return `<section class="hero">${h.video && h.videoSrc ? `<video autoplay muted loop playsinline preload="auto" poster="${esc(src(h.poster))}"><source src="${esc(h.videoSrc)}" type="video/mp4"></video>` : `<img class="poster" src="${esc(src(h.poster))}" alt="">`}
+  const vsrc = (h.videoMobile && matchMedia('(max-width:700px) and (orientation:portrait)').matches) ? h.videoMobile : h.videoSrc;
+  return `<section class="hero">${h.video && vsrc ? `<video autoplay muted loop playsinline preload="auto" poster="${esc(src(h.poster))}"><source src="${esc(vsrc)}" type="video/mp4"></video>` : `<img class="poster" src="${esc(src(h.poster))}" alt="">`}
     <div class="hero-in"><div>
-      ${d.heroLogo !== false ? `<div class="hero-logo"><span class="hl-cube"><img class="g" src="assets/img/cube-gray.png" alt=""><img class="r" src="assets/img/cube-red.png" alt=""></span><span class="hl-t"><b>${esc(v.brand.short)}</b><small>${t('company')}</small></span></div>` : ''}
+      ${d.heroLogo !== false ? `<div class="hero-logo">${d.logo ? `<span class="hl-cube custom">${img(d.logo, '')}</span>` : `<span class="hl-cube"><img class="g" src="assets/img/cube-gray.png" alt=""><img class="r" src="assets/img/cube-red.png" alt=""></span>`}<span class="hl-t"><b>${esc(v.brand.short)}</b><small>${t('company')}</small></span></div>` : ''}
       <span class="eyebrow">${esc(h.eyebrow)}</span><h1><span class="l"><span>${esc(h.title)}</span></span><span class="l"><span>${esc(h.highlight)}</span></span></h1><p class="lead">${esc(h.lead)}</p>
       <div class="ctas"><a class="btn btn-red" href="#/request">${esc(h.cta1)} ${I.arrow}</a><a class="btn btn-ghost" href="#/services">${esc(h.cta2)}</a></div>
       <button class="lang-pill" data-lang><span>${LANG === 'en' ? 'ع' : 'EN'}</span>${t('switchLang')}</button></div>
@@ -381,7 +392,7 @@ function render(soft) {
   if (!soft) window.scrollTo({ top: 0, behavior: 'instant' });
   toggleMore(false);
   const desc = document.querySelector('meta[name=description]'); if (desc) desc.content = V().seo.desc;
-  wire(r);
+  wire(r); pageView();
 }
 function wire(r) {
   reveal(); counters(); countdown(); initStrip();
@@ -449,16 +460,18 @@ function botAsk(q) {
 }
 function resetBot() { $('#botMsgs').innerHTML = ''; $('#botQuick').innerHTML = ''; if (!$('#bot').hidden) openBot(); }
 function openBot() {
-  $('#bot').hidden = false; $('#botFab').classList.add('hide');
+  $('#bot').hidden = false; $('#botFab').classList.add('hide'); track('bot');
+  if (chatId && !chatMode && !$('#botMsgs').children.length) { startChat(); return; }
   if (!$('#botMsgs').children.length) { botSay(t('botHi')); $('#botQuick').innerHTML = t('quick').map(q => `<button>${esc(q)}</button>`).join(''); }
   if (matchMedia('(hover:hover)').matches) setTimeout(() => $('#botIn').focus(), 200);
 }
 function initBot() {
   $('#botFab').onclick = openBot;
   $('#botX').onclick = () => { $('#bot').hidden = true; $('#botFab').classList.remove('hide'); };
-  $('#botQuick').onclick = e => { const b = e.target.closest('button'); if (b) botAsk(b.textContent); };
-  $('#botForm').onsubmit = e => { e.preventDefault(); const v = $('#botIn').value.trim(); if (!v) return; $('#botIn').value = ''; botAsk(v); };
-  $('#botMsgs').onclick = e => { const a = e.target.closest('a.in'); if (a && matchMedia('(max-width:700px)').matches) { $('#bot').hidden = true; $('#botFab').classList.remove('hide'); } };
+  $('#botQuick').onclick = e => { const b = e.target.closest('button'); if (b && !b.dataset.botBack) botAsk(b.textContent); };
+  $('#botForm').onsubmit = e => { e.preventDefault(); const v = $('#botIn').value.trim(); if (!v) return; $('#botIn').value = ''; if (chatMode) chatSend(v); else botAsk(v); };
+  $('#bot').addEventListener('click', e => { const a = e.target.closest('a[href="#chat"]'); if (a) { e.preventDefault(); if (chatId) startChat(); else chatForm(); } if (e.target.closest('[data-bot-back]')) stopChat(); });
+  $('#botMsgs').onclick = e => { const a = e.target.closest('a.in:not([href="#chat"])'); if (a && matchMedia('(max-width:700px)').matches) { $('#bot').hidden = true; $('#botFab').classList.remove('hide'); } };
 }
 
 /* ---------- long-press logo → staff portal ---------- */
@@ -474,6 +487,20 @@ function initHold() {
 }
 
 /* ---------- توهّج الماوس (كمبيوتر فقط) ---------- */
+/* واتساب: يفتح التطبيق مباشرة بدل صفحة «Open app» */
+const IS_MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+function initWa() {
+  document.addEventListener('click', e => {
+    const a = e.target.closest && e.target.closest('a[href^="https://wa.me/"]'); if (!a) return;
+    e.preventDefault(); track('wa');
+    const u = new URL(a.href), phone = u.pathname.replace(/\D/g, ''), text = u.searchParams.get('text') || '';
+    if (IS_MOBILE) {
+      const t0 = Date.now(); location.href = `whatsapp://send?phone=${phone}&text=${encodeURIComponent(text)}`;
+      setTimeout(() => { if (!document.hidden && Date.now() - t0 < 2500) location.href = a.href; }, 1600);
+    } else window.open(`https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(text)}`, '_blank', 'noopener');
+  });
+  document.addEventListener('click', e => { const a = e.target.closest && e.target.closest('a[href^="tel:"]'); if (a) track('call'); const s = e.target.closest && e.target.closest('[data-ev]'); if (s) track(s.dataset.ev); });
+}
 function initGlow() {
   if (!matchMedia('(hover:hover) and (pointer:fine)').matches || (C.design && C.design.cursorGlow === false)) return;
   const g = document.createElement('div'); g.className = 'cursor-glow'; const dot = document.createElement('div'); dot.className = 'cursor-dot';
@@ -483,6 +510,88 @@ function initGlow() {
   addEventListener('pointerdown', () => dot.classList.add('press')); addEventListener('pointerup', () => dot.classList.remove('press'));
   document.addEventListener('mouseleave', () => { shown = false; document.body.classList.remove('glow-on'); });
   const loop = () => { gx += (x - gx) * .14; gy += (y - gy) * .14; g.style.transform = `translate(${gx}px,${gy}px)`; requestAnimationFrame(loop); }; loop();
+}
+
+/* ---------- الإحصائيات (مجهولة الهوية: دولة، مدينة، جهاز، مصدر، صفحات) ---------- */
+const dayKey = () => { const d = new Date(Date.now() + 3 * 3600e3); return d.toISOString().slice(0, 10); };
+const SID = (() => { let x = store('sh.sid', 'session'); if (!x) { x = Math.random().toString(36).slice(2, 12); storeSet('sh.sid', x, 'session'); } return x; })();
+const DEV = /iPad/.test(navigator.userAgent) ? 'ipad' : /iPhone|iPod/.test(navigator.userAgent) ? 'iphone' : /Android/.test(navigator.userAgent) ? 'android' : 'desktop';
+function srcOf() {
+  const q = new URLSearchParams(location.search).get('utm_source'); if (q) return q.toLowerCase().slice(0, 20);
+  const ua = navigator.userAgent, r = document.referrer;
+  if (/Instagram/i.test(ua) || /instagram/.test(r)) return 'instagram';
+  if (/TikTok|musical_ly|BytedanceWebview/i.test(ua) || /tiktok/.test(r)) return 'tiktok';
+  if (/Snapchat/i.test(ua) || /snapchat/.test(r)) return 'snapchat';
+  if (/FBAN|FBAV/i.test(ua) || /facebook/.test(r)) return 'facebook';
+  if (/WhatsApp/i.test(ua) || /whatsapp|wa\.me/.test(r)) return 'whatsapp';
+  if (/google\./.test(r)) return 'google'; if (/bing\.|yahoo\./.test(r)) return 'search';
+  if (/t\.co|twitter|x\.com/.test(r)) return 'x'; if (/youtube/.test(r)) return 'youtube';
+  if (r && !r.includes(location.host)) return 'other'; return 'direct';
+}
+const TZ_CC = { 'Asia/Riyadh': 'SA', 'Asia/Dubai': 'AE', 'Africa/Cairo': 'EG', 'Asia/Kuwait': 'KW', 'Asia/Qatar': 'QA', 'Asia/Bahrain': 'BH', 'Asia/Muscat': 'OM', 'Asia/Amman': 'JO', 'Asia/Baghdad': 'IQ', 'Asia/Karachi': 'PK', 'Asia/Kolkata': 'IN', 'Europe/London': 'GB', 'America/New_York': 'US' };
+async function geo() {
+  try { const c = JSON.parse(store('sh.geo') || 'null'); if (c && Date.now() - c.t < 864e5) return c; } catch (e) { }
+  let g = null;
+  try { const r = await fetch('https://ipapi.co/json/', { cache: 'no-store' }); const j = await r.json(); if (j && j.country_code) g = { cc: j.country_code, city: (j.city || '').slice(0, 40), region: (j.region || '').slice(0, 40) }; } catch (e) { }
+  if (!g) { let tz = ''; try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone; } catch (e) { } g = { cc: TZ_CC[tz] || 'XX', city: '', region: '' }; }
+  g.t = Date.now(); storeSet('sh.geo', JSON.stringify(g)); return g;
+}
+const safeKey = k => String(k || '—').replace(/[.~*/\[\]`]/g, ' ').trim().slice(0, 40) || '—';
+let statQ = [], statT = null, statsReady = false;
+function bump(obj) { statQ.push(obj); clearTimeout(statT); statT = setTimeout(flushStats, 1200); }
+async function flushStats() {
+  if (PREVIEW || !statsReady || !statQ.length) return; const items = statQ; statQ = [];
+  try {
+    const F = await fb(); const inc = F.increment(1), data = {};
+    items.forEach(o => { for (const g in o) { if (typeof o[g] === 'string') { data[g] = data[g] || {}; data[g][safeKey(o[g])] = inc; } else data[g] = inc; } });
+    data.upd = F.serverTimestamp();
+    await F.setDoc(F.doc(F.db, 'stats', dayKey()), data, { merge: true });
+  } catch (e) { }
+}
+function track(ev, extra) { if (ev) bump({ ev: ev.slice(0, 30), ...(extra || {}) }); }
+async function initStats() {
+  if (PREVIEW || store('sh.staff')) { statsReady = false; return; } // الموظفين مش بيتحسبوا
+  const g = await geo(); statsReady = true;
+  const first = !store('sh.v', 'session'); storeSet('sh.v', '1', 'session');
+  if (first) { const seen = store('sh.seen') === dayKey(); storeSet('sh.seen', dayKey()); const o = { visits: 1, cc: g.cc, src: srcOf(), dev: DEV, lang: LANG }; if (g.city) o.city = g.city; if (!seen) o.uniq = 1; bump(o); }
+  pageView(); presence(g); setInterval(() => presence(g), 60000);
+}
+function pageView() { if (!statsReady) return; const h = location.hash.replace(/^#\/?/, '').split('?')[0]; const [r, a] = h.split('/'); const o = { views: 1, page: r || 'home' }; if (r === 'service' && a) o.svc = a; bump(o); }
+async function presence(g) { if (document.hidden || PREVIEW) return; try { const F = await fb(); await F.setDoc(F.doc(F.db, 'presence', SID), { at: F.serverTimestamp(), page: (location.hash.replace(/^#\/?/, '') || 'home').slice(0, 40), cc: g.cc, city: g.city || '', dev: DEV }); } catch (e) { } }
+
+/* ---------- الشات المباشر مع الموظفين ---------- */
+let chatId = store('sh.chat'), chatUnsub = null, chatMode = false;
+function chatForm() {
+  const f = document.createElement('div'); f.className = 'bm bt chat-form';
+  f.innerHTML = `<b>${LANG === 'en' ? 'Talk to our team' : 'كلّم فريقنا مباشرة'}</b><p>${LANG === 'en' ? 'Leave your name and mobile and a team member will reply here.' : 'اكتب اسمك وجوالك، وموظف من الفريق يرد عليك هنا.'}</p><input id="cName" placeholder="${t('nameL')}" maxlength="60" autocomplete="name"><input id="cPhone" placeholder="05xxxxxxxx" inputmode="tel" dir="ltr" maxlength="15" autocomplete="tel"><button class="btn btn-red sm" id="cGo">${LANG === 'en' ? 'Start chat' : 'ابدأ المحادثة'}</button><p class="err" id="cErr"></p>`;
+  $('#botMsgs').appendChild(f); $('#botMsgs').scrollTop = 1e6;
+  $('#cGo').onclick = async () => {
+    const n = $('#cName').value.trim(), ph = toEnDigits($('#cPhone').value).replace(/\D/g, '');
+    if (n.length < 2) return $('#cErr').textContent = t('writeName'); if (ph.length < 9) return $('#cErr').textContent = t('writePhone');
+    $('#cGo').disabled = true;
+    try {
+      const F = await fb(); const id = 'C' + Date.now().toString(36).toUpperCase() + Array.from(crypto.getRandomValues(new Uint8Array(5)), b => ALPH[b % ALPH.length]).join('');
+      let log = []; try { log = JSON.parse(sessionStorage.getItem('sh.botlog') || '[]').slice(-8).map(x => x.q); } catch (e) { }
+      await F.setDoc(F.doc(F.db, 'chats', id), { id, name: n.slice(0, 60), phone: ph.slice(0, 15), at: F.serverTimestamp(), upd: F.serverTimestamp(), open: true, unread: 1, lang: LANG, page: location.hash.slice(0, 60), botLog: log, msgs: [{ from: 'c', text: LANG === 'en' ? 'Started a chat' : 'بدأ محادثة جديدة', at: Date.now() }] });
+      chatId = id; storeSet('sh.chat', id); f.remove(); track('chat'); startChat();
+    } catch (e) { $('#cErr').textContent = t('connErr'); $('#cGo').disabled = false; }
+  };
+}
+async function startChat() {
+  chatMode = true; $('#bot').classList.add('live'); $('#botSubT').textContent = LANG === 'en' ? 'Live chat with our team' : 'محادثة مباشرة مع الفريق';
+  $('#botQuick').innerHTML = `<button data-bot-back>${LANG === 'en' ? '← Back to assistant' : '→ رجوع للمساعد'}</button>`;
+  const F = await fb(); if (chatUnsub) chatUnsub();
+  chatUnsub = F.onSnapshot(F.doc(F.db, 'chats', chatId), d => {
+    if (!d.exists()) { storeSet('sh.chat', ''); chatId = null; return; }
+    const m = d.data().msgs || []; const box = $('#botMsgs'); box.innerHTML = '';
+    m.forEach(x => { const el = document.createElement('div'); el.className = 'bm ' + (x.from === 'c' ? 'me' : 'bt staff'); el.innerHTML = (x.from !== 'c' ? `<b class="who">${esc(x.by || t('team'))}</b>` : '') + nl(x.text); box.appendChild(el); });
+    if (m.length < 2) { const el = document.createElement('div'); el.className = 'bm bt'; el.textContent = LANG === 'en' ? 'Thanks! A team member will reply here shortly. You can keep writing.' : 'شكراً لك 🌷 موظف من الفريق هيرد عليك هنا خلال دقايق في وقت الدوام. تقدر تكتب سؤالك.'; box.appendChild(el); }
+    box.scrollTop = 1e6;
+  }, () => { });
+}
+function stopChat() { chatMode = false; if (chatUnsub) { chatUnsub(); chatUnsub = null; } $('#bot').classList.remove('live'); $('#botSubT').textContent = t('botSub'); $('#botMsgs').innerHTML = ''; $('#botQuick').innerHTML = ''; openBot(); }
+async function chatSend(text) {
+  try { const F = await fb(); await F.updateDoc(F.doc(F.db, 'chats', chatId), { msgs: F.arrayUnion({ from: 'c', text: text.slice(0, 1500), at: Date.now() }), upd: F.serverTimestamp(), unread: F.increment(1) }); } catch (e) { toast(t('connErr')); }
 }
 
 /* ---------- boot ---------- */
@@ -499,7 +608,7 @@ function boot() {
   addEventListener('hashchange', () => render());
   addEventListener('keydown', e => { if (e.key === 'Escape') { $('#popup').hidden = true; $('#lb').hidden = true; toggleMore(false); } });
   document.addEventListener('touchstart', () => { }, { passive: true }); // يفعّل تأثير الضغط :active على الآيفون
-  chrome(); render(); initBot(); initHold(); popup(); initGlow();
+  chrome(); render(); initBot(); initHold(); popup(); initGlow(); initWa(); initStats();
   loadRemote();
 }
 boot();

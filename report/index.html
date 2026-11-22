@@ -487,6 +487,48 @@ html.cloud-loading #cloud-veil{display:grid}
 @media screen and (max-width:860px){.lg-cube{width:54px;height:62px}.lg-t1{font-size:9.2px}.lg-t2{font-size:8.2px}}
 @media screen and (max-width:600px){.lg-cube{width:58px;height:67px}.lg-t1{font-size:9.6px}.lg-t2{font-size:8.6px}#toolbar{flex-wrap:wrap}}
 
+
+/* شريط الأدوات الرفيع (v2) */
+#ir-number{direction:ltr;unicode-bidi:plaintext}
+#toolbar{background:rgba(22,23,26,.86)!important;-webkit-backdrop-filter:blur(16px) saturate(1.5);backdrop-filter:blur(16px) saturate(1.5);padding:8px 12px!important;gap:8px!important;flex-wrap:nowrap!important;min-height:54px;border-bottom:1px solid rgba(255,255,255,.08);box-shadow:0 8px 24px -14px rgba(0,0,0,.6)!important}
+#toolbar .title{color:#fff;font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+#toolbar .title b{font-family:'Inter',Cairo,sans-serif;direction:ltr;unicode-bidi:isolate;display:inline-block;background:#e02828;color:#fff;border-radius:7px;padding:1px 8px;margin-inline-start:4px;font-size:13px}
+#toolbar .title b:empty{display:none}
+.tb-sp{flex:1}
+@property --tba{syntax:'<angle>';inherits:false;initial-value:0deg}
+.tb-back{position:relative;display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:12px;color:#fff;font-weight:800;font-size:13px;text-decoration:none;white-space:nowrap;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:inset 0 1px 0 rgba(255,255,255,.2),0 0 16px -3px rgba(224,40,40,.6);isolation:isolate;transition:transform .2s}
+.tb-back::before{content:"";position:absolute;inset:-1px;border-radius:13px;padding:1.5px;background:conic-gradient(from var(--tba),transparent 0 55%,#ff4d52,#ffd0d1,#ff4d52,transparent 90%);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:tbaSpin 3s linear infinite;z-index:-1}
+@keyframes tbaSpin{to{--tba:360deg}}
+.tb-back:active{transform:scale(.95)}
+.tb-ic{position:relative;flex:none;height:38px;min-width:38px;padding:0 9px;border-radius:19px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;font-family:inherit;font-weight:700;font-size:13px;transition:transform .18s,background .2s}
+.tb-ic[hidden]{display:none!important}
+.tb-ic svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.tb-ic:hover{background:rgba(255,255,255,.18);transform:translateY(-1px)}.tb-ic:active{transform:scale(.92)}
+.tb-ic.tb-save{background:#e02828;border-color:#e02828;padding:0 14px}
+.tb-ic.tb-save.saving{opacity:.7}.tb-ic.tb-save.done{background:#1a7a4a;border-color:#1a7a4a}
+.tb-ic[data-tip]::after{content:attr(data-tip);position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%) translateY(-4px);background:#16171A;color:#fff;font-size:11.5px;padding:5px 9px;border-radius:8px;white-space:nowrap;opacity:0;pointer-events:none;transition:.18s}
+.tb-ic:hover::after,.tb-ic:focus-visible::after,.tb-ic:active::after{opacity:1;transform:translateX(-50%)}
+.tb-av{flex:none;width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#e02828,#8f1418);color:#fff;font-weight:800;font-size:14px;border:2px solid rgba(255,255,255,.35);cursor:pointer;font-family:inherit}
+.tb-av:empty{display:none}
+#autosave-badge{font-size:0!important;width:10px;height:10px;border-radius:50%;background:#3ddc84;flex:none;padding:0!important;box-shadow:0 0 0 3px rgba(61,220,132,.2)}
+#autosave-badge.flash{animation:sbPing .9s ease!important}
+@keyframes sbPing{0%{box-shadow:0 0 0 0 rgba(61,220,132,.8)}100%{box-shadow:0 0 0 10px rgba(61,220,132,0)}}
+.client-chip{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:8px 12px;margin:0 0 12px;box-shadow:0 6px 18px -12px rgba(0,0,0,.25)}
+.client-chip b{background:#16171A;color:#fff;border-radius:8px;padding:2px 10px;font-family:'Inter',Cairo,sans-serif}
+.client-chip span{flex:1;font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.client-chip a{color:#e02828;font-weight:800;text-decoration:none;font-size:13px;white-space:nowrap}
+@media screen and (max-width:600px){#toolbar .title{font-size:12.5px}.tb-ic span{display:none}.tb-ic.tb-save{padding:0 10px}.tb-back{padding:7px 10px;font-size:12px}}
+/* الفون: الصفحة ماتتسحبش يمين وشمال */
+@media screen and (max-width:760px){
+  html,body{overflow-x:hidden;max-width:100%}
+  .page-wrap,.form-card{max-width:100%;overflow-x:hidden}
+  .site-photo-wrapper,.site-photo-left,.site-photo-drop{width:100%;max-width:100%;box-sizing:border-box;min-width:0}
+  .site-photo-drop{padding:18px 12px}
+  .upload-btn-row{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .upload-btn-row .btn-upload{justify-content:center;padding:11px 8px;font-size:13px;border-radius:10px}
+  input,select,textarea{max-width:100%;box-sizing:border-box}
+}
+@media print{.client-chip,.tb-back{display:none!important}}
 </style>
 <link rel="icon" href="../assets/img/icon-192.png">
 <meta name="robots" content="noindex,nofollow">
@@ -494,14 +536,16 @@ html.cloud-loading #cloud-veil{display:grid}
 <body>
 
 <div id="toolbar">
-  <a class="btn-tool btn-back" href="../portal.html" title="بوابة الموظفين">→ البوابة</a>
-  <span class="title"><span class="tb-dot"></span>تقرير الاستلام الهندسي (IR Form)</span>
-  <span id="cloud-user" class="cloud-user"></span>
-  <span id="autosave-badge" title="يُحفظ تلقائياً في هذا الجهاز">💾 …</span>
-  <button class="btn-tool btn-cloud" id="cloudBtn" type="button" hidden>☁️ <span>حفظ في الأرشيف</span></button>
-  <button class="btn-tool btn-clear" onclick="resetForm()">🔄 نموذج جديد</button>
-  <button class="btn-tool btn-print" onclick="prepareAndPrint()">🖨️ طباعة / حفظ كـ PDF</button>
+  <a class="tb-back" id="tbBack" href="../supervision.html">→ رجوع</a>
+  <span class="title">تقرير <b id="tb-ir"></b></span>
+  <span id="autosave-badge" title="محفوظ تلقائياً على الجهاز">…</span>
+  <span class="tb-sp"></span>
+  <button class="tb-ic tb-save" id="cloudBtn" type="button" hidden aria-label="حفظ في الأرشيف" data-tip="حفظ في الأرشيف"><svg viewBox="0 0 24 24"><path d="M7 18a4.5 4.5 0 0 1-.6-9A6 6 0 0 1 18 8a4 4 0 0 1-.5 8"/><path d="M12 12v8M9 15l3-3 3 3"/></svg><span>حفظ</span></button>
+  <button class="tb-ic" type="button" onclick="resetForm()" aria-label="نموذج جديد" data-tip="نموذج جديد"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg></button>
+  <button class="tb-ic" type="button" onclick="prepareAndPrint()" aria-label="طباعة / PDF" data-tip="طباعة / PDF"><svg viewBox="0 0 24 24"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/></svg></button>
+  <button class="tb-av" id="cloud-user" type="button" aria-label="الحساب"></button>
 </div>
+
 
 <div class="page-wrap">
 <div class="form-card">
@@ -1283,7 +1327,8 @@ function clearSigPad(n) { sigPads[n].clear(); scheduleSave(); }
 // each) so a typical report fits well inside the ~5MB localStorage quota;
 // a quota failure degrades gracefully (fields still save, photos skipped).
 var CLOUD_ID = (location.search.match(/[?&]id=([^&#]+)/) || [])[1] || '';
-var LS_KEY = 'ir_form_v19' + (CLOUD_ID ? '_c_' + CLOUD_ID : '');
+var CLIENT_NO = ((location.search.match(/[?&]client=(\d+)/) || [])[1]) || '';
+var LS_KEY = 'ir_form_v19' + (CLOUD_ID ? '_c_' + CLOUD_ID : (CLIENT_NO ? '_n_' + CLIENT_NO : ''));
 var saveTimer = null;
 function scheduleSave() {
   clearTimeout(saveTimer);
@@ -1380,7 +1425,7 @@ function restoreState(given) {
 function resetForm() {
   if (!confirm('سيتم مسح جميع بيانات التقرير الحالي وبدء نموذج جديد. هل أنت متأكد؟')) return;
   try { localStorage.removeItem(LS_KEY); localStorage.removeItem('ir_form_v19'); } catch (e) {}
-  location.href = location.pathname;
+  location.href = location.pathname + (CLIENT_NO && !CLOUD_ID ? "?client=" + CLIENT_NO : "");
 }
 
 // ===== PRINT PREPARATION (all synchronous — playbook §5.1) =====
@@ -1505,41 +1550,56 @@ if (!CLOUD_ID && document.querySelectorAll('#photos-grid .photo-slot').length ==
 
 </script>
 <script type="module">
-// الأرشيف السحابي: يربط التقرير بحساب الموظف ويحفظه في Firestore (reports + rmedia)
+// الأرشيف السحابي: يربط التقرير بالعميل وبحساب الموظف، ويرقّمه (رقم العميل-مسلسل)، ويحفظه في Firestore
 import * as F from '../assets/js/fb.js';
-const { auth, db, OWNER_UID } = F;
+const { auth, db } = F;
 const $ = s => document.querySelector(s);
 const btn = $('#cloudBtn'), who = $('#cloud-user');
-let me = null, emp = null, isOwner = false, meta = null, readOnly = false;
+const params = new URLSearchParams(location.search);
+let me = null, emp = null, isOwner = false, meta = null, readOnly = false, client = null;
+const clientNo = +(params.get('client') || 0) || null;
 const canMod = m => isOwner || (emp && emp.active !== false && Array.isArray(emp.mods) && emp.mods.includes(m));
+const pad2 = n => String(n).padStart(2, '0');
 
 function veil(on) { document.documentElement.classList.toggle('cloud-loading', !!on); }
 function say(t, ok) {
-  btn.querySelector('span').textContent = t; btn.classList.toggle('done', !!ok);
-  if (ok) setTimeout(() => { btn.classList.remove('done'); btn.querySelector('span').textContent = 'حفظ في الأرشيف'; }, 2200);
+  const s = btn.querySelector('span'); s.textContent = t; btn.classList.toggle('done', !!ok);
+  if (ok) setTimeout(() => { btn.classList.remove('done'); s.textContent = 'حفظ'; }, 2400);
 }
+// زرار الرجوع: يرجع للصفحة اللي قبلها، أو لصفحة العميل
+const backBtn = $('#tbBack');
+backBtn.onclick = e => {
+  e.preventDefault();
+  const no = (meta && meta.clientNo) || clientNo;
+  if (document.referrer && /supervision\.html|portal\.html/.test(document.referrer) && history.length > 1) history.back();
+  else location.href = '../supervision.html' + (no ? '#c/' + no : '');
+};
 // يصغّر أي صورة أكبر من حد مستند Firestore
 function shrink(src, max = 850000) {
   return new Promise(res => {
     if (!src || src.length <= max) return res(src);
     const im = new Image(); im.onload = () => {
-      let k = Math.min(1, 1400 / Math.max(im.width, im.height)), q = .72, out = src;
-      const c = document.createElement('canvas');
-      for (let i = 0; i < 8 && out.length > max; i++) {
-        c.width = Math.round(im.width * k); c.height = Math.round(im.height * k);
-        c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); out = c.toDataURL('image/jpeg', q); q -= .08; k *= .88;
-      }
+      let k = Math.min(1, 1400 / Math.max(im.width, im.height)), q = .72, out = src; const c = document.createElement('canvas');
+      for (let i = 0; i < 8 && out.length > max; i++) { c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); out = c.toDataURL('image/jpeg', q); q -= .08; k *= .88; }
       res(out);
     }; im.onerror = () => res(''); im.src = src;
   });
 }
 const txt = sel => { const el = $(sel); return el ? (el.value || '').trim() : ''; };
+const inp = ph => document.querySelector(`input[placeholder="${ph}"]`);
 function summary(s) {
   const t = $('#inspection-type');
-  return {
-    project: txt('.site-photo-left input[type=text]'), irNo: txt('#ir-number'), date: txt('#ir-date'),
-    type: t && t.selectedIndex > 0 ? t.options[t.selectedIndex].text : '', decision: s.decision || ''
-  };
+  return { project: txt('.site-photo-left input[type=text]') || (inp('أدخل اسم المشروع') || {}).value || '', irNo: txt('#ir-number'), date: txt('#ir-date'), type: t && t.selectedIndex > 0 ? t.options[t.selectedIndex].text : '', decision: s.decision || '' };
+}
+const setVal = (el, v) => { if (el && v && !el.value) { el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); } };
+function prefill(c, seq) {
+  setVal($('.site-photo-left input[type=text]'), c.name); setVal(inp('أدخل اسم المشروع'), c.name);
+  setVal(inp('PRJ-2025-001'), String(c.no));
+  setVal(inp('رقم رخصة البناء'), (c.licenses || []).map(l => l.no).filter(Boolean).join(' / '));
+  if (c.district) { const sel = $('#district-select'); if (sel && !sel.value) { const o = [...sel.options].find(o => o.text.trim() === c.district.trim()); if (o) { sel.value = o.value; sel.dispatchEvent(new Event('change', { bubbles: true })); } else { const cu = $('#district-custom'); if (cu) { const oth = [...sel.options].find(o => /أخرى|اخرى|other/i.test(o.text + o.value)); if (oth) { sel.value = oth.value; sel.dispatchEvent(new Event('change', { bubbles: true })); } cu.style.display = ''; setVal(cu, c.district); } } } }
+  const ir = $('#ir-number'); if (ir && (!ir.value || ir.value === 'IR-001')) { ir.value = `${c.no}-${pad2(seq)}`; ir.dispatchEvent(new Event('input', { bubbles: true })); }
+  $('#tb-ir').textContent = `${c.no}-${pad2(seq)}`;
+  const chip = document.createElement('div'); chip.className = 'client-chip'; chip.innerHTML = `<b>${c.no}</b><span>${c.name.replace(/[<>&]/g, '')}</span><a href="../supervision.html#c/${c.no}">ملف العميل ←</a>`; document.querySelector('.page-wrap').prepend(chip);
 }
 
 async function save() {
@@ -1552,74 +1612,72 @@ async function save() {
     (s.photos || []).forEach(p => media.push({ kind: 'photo', src: p.src, cap: p.cap || '' }));
     if (s.sigs && s.sigs[1]) media.push({ kind: 'sig1', src: s.sigs[1], cap: '' });
     if (s.sigs && s.sigs[2]) media.push({ kind: 'sig2', src: s.sigs[2], cap: '' });
-    const state = { ...s, photos: [], sitePhoto: '', sigs: {} };
-    let id = window.CLOUD_ID;
-    const fresh = !id;
+    let id = window.CLOUD_ID; const fresh = !id;
     if (fresh) id = F.doc(F.collection(db, 'reports')).id;
     const owner = meta ? meta.by : me.uid, ownerName = meta ? meta.byName : (isOwner ? 'المالك' : (emp && emp.name) || '');
-    for (let i = 0; i < media.length; i++) {
-      const src = await shrink(media[i].src);
-      await F.setDoc(F.doc(db, 'rmedia', id + '_' + i), { rid: id, by: owner, i, kind: media[i].kind, src, cap: media[i].cap });
+    const cNo = (meta && meta.clientNo) || (client && client.no) || null;
+    // الرقم المسلسل للعميل بيتحجز مرة واحدة أول ما التقرير يتحفظ
+    let seq = meta && meta.seq;
+    if (fresh && cNo) {
+      seq = await F.runTransaction(db, async tx => { const ref = F.doc(db, 'clients', String(cNo)); const c = await tx.get(ref); const n = ((c.exists() && c.data().reportsCount) || 0) + 1; tx.update(ref, { reportsCount: n, lastReport: F.serverTimestamp() }); return n; });
+      const ir = $('#ir-number'); ir.value = `${cNo}-${pad2(seq)}`; ir.dispatchEvent(new Event('input', { bubbles: true })); $('#tb-ir').textContent = ir.value; s.fields && window.collectState && Object.assign(s, window.collectState());
     }
+    for (let i = 0; i < media.length; i++) { const src = await shrink(media[i].src); await F.setDoc(F.doc(db, 'rmedia', id + '_' + i), { rid: id, by: owner, i, kind: media[i].kind, src, cap: media[i].cap }); }
     const oldN = meta ? (meta.mediaCount || 0) : 0;
     for (let i = media.length; i < oldN; i++) { try { await F.deleteDoc(F.doc(db, 'rmedia', id + '_' + i)); } catch (e) { } }
+    const state = { ...s, photos: [], sitePhoto: '', sigs: {} };
     const data = { ...summary(s), state: JSON.stringify(state), mediaCount: media.length, by: owner, byName: ownerName, upd: F.serverTimestamp(), updBy: me.uid };
+    if (cNo) { data.clientNo = cNo; data.clientName = (client && client.name) || (meta && meta.clientName) || data.project; data.seq = seq || null; if (seq) data.irNo = `${cNo}-${pad2(seq)}`; }
     if (fresh) data.at = F.serverTimestamp();
     await F.setDoc(F.doc(db, 'reports', id), data, { merge: true });
     meta = { ...(meta || {}), ...data };
     if (fresh) {
-      // نقل المسودة لمفتاح التقرير السحابي، وتفريغ مسودة "تقرير جديد"
       try { const raw = localStorage.getItem(window.LS_KEY); localStorage.removeItem(window.LS_KEY); window.LS_KEY = 'ir_form_v19_c_' + id; if (raw) localStorage.setItem(window.LS_KEY, raw); } catch (e) { }
       window.CLOUD_ID = id; history.replaceState(null, '', '?id=' + id);
     }
-    say('اتحفظ في الأرشيف ✓', true);
-  } catch (e) { console.error(e); say('فشل الحفظ'); alert('تعذّر الحفظ في الأرشيف: ' + F.authMsg(e) + '\nالتقرير محفوظ على الجهاز ده تلقائياً.'); }
+    say('اتحفظ ✓', true);
+  } catch (e) { console.error(e); say('فشل'); alert('تعذّر الحفظ في الأرشيف: ' + F.authMsg(e) + '\nالتقرير محفوظ على الجهاز ده تلقائياً.'); }
   btn.disabled = false; btn.classList.remove('saving');
 }
 
 async function loadCloud(id) {
   veil(true);
   try {
-    const r = await F.getDoc(F.doc(db, 'reports', id));
-    if (!r.exists()) throw new Error('not-found');
+    const r = await F.getDoc(F.doc(db, 'reports', id)); if (!r.exists()) throw new Error('not-found');
     meta = r.data();
     const s = JSON.parse(meta.state || '{}'); s.photos = []; s.sigs = {};
     const docs = await Promise.all(Array.from({ length: meta.mediaCount || 0 }, (_, i) => F.getDoc(F.doc(db, 'rmedia', id + '_' + i)).catch(() => null)));
-    docs.forEach(d => {
-      if (!d || !d.exists()) return; const m = d.data();
-      if (m.kind === 'site') s.sitePhoto = m.src; else if (m.kind === 'photo') s.photos.push({ src: m.src, cap: m.cap }); else if (m.kind === 'sig1') s.sigs[1] = m.src; else if (m.kind === 'sig2') s.sigs[2] = m.src;
-    });
+    docs.forEach(d => { if (!d || !d.exists()) return; const m = d.data(); if (m.kind === 'site') s.sitePhoto = m.src; else if (m.kind === 'photo') s.photos.push({ src: m.src, cap: m.cap }); else if (m.kind === 'sig1') s.sigs[1] = m.src; else if (m.kind === 'sig2') s.sigs[2] = m.src; });
     window.restoreState(s);
     if (!document.querySelectorAll('#photos-grid .photo-slot').length) { window.addPhotoSlot(); window.addPhotoSlot(); }
+    $('#tb-ir').textContent = meta.irNo || '';
+    if (meta.clientNo) { const chip = document.createElement('div'); chip.className = 'client-chip'; chip.innerHTML = `<b>${meta.clientNo}</b><span>${String(meta.clientName || '').replace(/[<>&]/g, '')}</span><a href="../supervision.html#c/${meta.clientNo}">ملف العميل ←</a>`; document.querySelector('.page-wrap').prepend(chip); }
     readOnly = !(isOwner || meta.by === me.uid);
-    if (readOnly) {
-      btn.hidden = true;
-      const b = document.createElement('div'); b.className = 'ro-banner'; b.textContent = 'عرض فقط — التقرير ده بتاع ' + (meta.byName || 'موظف آخر') + '. تقدر تطبعه أو تحفظه PDF.';
-      document.querySelector('.page-wrap').prepend(b);
-    }
-  } catch (e) {
-    console.error(e); alert(e.message === 'not-found' ? 'التقرير مش موجود في الأرشيف.' : 'تعذّر فتح التقرير: ' + F.authMsg(e));
-    location.href = location.pathname; return;
-  }
+    if (readOnly) { btn.hidden = true; const b = document.createElement('div'); b.className = 'ro-banner'; b.textContent = 'عرض فقط — التقرير ده بتاع ' + (meta.byName || 'موظف آخر') + '. تقدر تطبعه أو تحفظه PDF.'; document.querySelector('.page-wrap').prepend(b); }
+  } catch (e) { console.error(e); alert(e.message === 'not-found' ? 'التقرير مش موجود في الأرشيف.' : 'تعذّر فتح التقرير: ' + F.authMsg(e)); location.href = '../supervision.html'; return; }
   veil(false);
 }
 
 F.onAuthStateChanged(auth, async u => {
   if (!u) { location.replace('../portal.html'); return; }
-  me = u; isOwner = u.uid === OWNER_UID;
+  me = u; isOwner = F.isOwnerUid(u.uid);
   if (!isOwner) { try { const s = await F.getDoc(F.doc(db, 'employees', u.uid)); emp = s.exists() ? s.data() : null; } catch (e) { emp = null; } }
   if (!canMod('report') && !canMod('reports')) {
     document.body.innerHTML = '<div style="min-height:100vh;display:grid;place-items:center;text-align:center;font-family:Cairo,Tahoma,sans-serif;padding:20px"><div><h2>مفيش صلاحية</h2><p style="margin:8px 0 16px;color:#5a6a7e">تقرير الإشراف محتاج صلاحية من المالك.</p><a href="../portal.html" style="background:#e02828;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:700">رجوع للبوابة</a></div></div>';
     return;
   }
-  who.textContent = isOwner ? 'المالك' : (emp && emp.name) || '';
+  const nm = isOwner ? 'المالك' : (emp && emp.name) || ''; who.textContent = nm.trim().slice(0, 1); who.title = nm; who.onclick = () => alert(nm);
   btn.hidden = !canMod('report') && !isOwner; btn.onclick = save;
   if (window.CLOUD_ID) await loadCloud(window.CLOUD_ID);
-  else if (!canMod('report')) { location.replace('../portal.html#reports'); return; }
+  else if (!canMod('report')) { location.replace('../supervision.html'); return; }
   else {
-    // اقتراح اسم المهندس المشرف من الحساب لو الخانة فاضية
-    const sel = $('#sig1-name-select'), nm = emp && emp.name;
-    if (sel && nm && !sel.value) { if (![...sel.options].some(o => o.text === nm)) sel.add(new Option(nm, nm)); sel.value = nm; }
+    if (clientNo) {
+      veil(true);
+      try { const s = await F.getDoc(F.doc(db, 'clients', String(clientNo))); if (s.exists()) { client = s.data(); prefill(client, (client.reportsCount || 0) + 1); } } catch (e) { alert('تعذّر تحميل بيانات العميل: ' + F.authMsg(e)); }
+      veil(false);
+    }
+    const sel = $('#sig1-name-select'), n = emp && emp.name;
+    if (sel && n && !sel.value) { if (![...sel.options].some(o => o.text === n)) sel.add(new Option(n, n)); sel.value = n; }
   }
 });
 addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); if (!btn.hidden) save(); } });

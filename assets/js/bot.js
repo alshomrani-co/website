@@ -40,7 +40,8 @@ export function makeBot(ctx) {
   const S = (ar, e) => en() ? e : ar;
   const chip = (label, go, ext) => ({ label, go, ext });
   const svcChips = () => ctx.V().services.map(v => chip(v.title, '#/service/' + v.id));
-  const contactChips = q => [chip(S('📞 اتصال', '📞 Call'), ctx.tel(), 1), chip(S('💬 واتساب', '💬 WhatsApp'), ctx.wa(q), 1)];
+  const liveChip = () => chip(S('🧑‍💼 كلّم موظف هنا', '🧑‍💼 Chat with our team'), '#chat');
+  const contactChips = q => [liveChip(), chip(S('📞 اتصال', '📞 Call'), ctx.tel(), 1), chip(S('💬 واتساب', '💬 WhatsApp'), ctx.wa(q), 1)];
   function findSvc(q) { const n = norm(q); for (const id in SVC_KW) if (SVC_KW[id].test(n)) { const v = ctx.V().services.find(x => x.id === id); if (v) return v; } return null; }
   function faq(q) {
     const w = norm(q).split(' ').filter(x => x.length > 2); let best = null, sc = 0;

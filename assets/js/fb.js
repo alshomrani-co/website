@@ -1,14 +1,18 @@
 // اتصال Firebase المشترك بين الموقع وبوابة الموظفين ولوحة التحكم
-import { firebaseConfig, OWNER_UID, EMAIL_DOMAIN } from '../../config.js';
+import * as CFG from '../../config.js';
+const { firebaseConfig, OWNER_UID, EMAIL_DOMAIN } = CFG;
+export const OWNER_UIDS = [OWNER_UID, ...((CFG.OWNER_UIDS || []).filter(Boolean))];
+export const isOwnerUid = uid => !!uid && OWNER_UIDS.includes(uid);
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, setPersistence, indexedDBLocalPersistence, browserSessionPersistence, updatePassword } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, collection, getDocs, query, where, orderBy, limit, onSnapshot, serverTimestamp, arrayUnion, Timestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { initializeFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, collection, getDocs, query, where, orderBy, limit, onSnapshot, serverTimestamp, arrayUnion, Timestamp, increment, runTransaction, writeBatch, deleteField } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+// الاتصال بيتحوّل لوحده لطريقة بديلة لو المتصفح (زي متصفح واتساب الداخلي) قاطع الاتصال المباشر
+export const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
 export { OWNER_UID, EMAIL_DOMAIN, onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, setPersistence, indexedDBLocalPersistence, browserSessionPersistence, updatePassword,
-  doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, collection, getDocs, query, where, orderBy, limit, onSnapshot, serverTimestamp, arrayUnion, Timestamp };
+  doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, collection, getDocs, query, where, orderBy, limit, onSnapshot, serverTimestamp, arrayUnion, Timestamp, increment, runTransaction, writeBatch, deleteField };
 
 let secondary = null;
 export function secondaryAuth() { if (!secondary) { const a = initializeApp(firebaseConfig, 'secondary'); secondary = getAuth(a); } return secondary; }
@@ -33,7 +37,9 @@ export function authMsg(e) {
   if (c.includes('weak-password')) return 'كلمة السر لازم تكون ٦ حروف أو أرقام على الأقل';
   if (c.includes('email-already-in-use')) return 'اسم المستخدم مستخدم بالفعل';
   if (c.includes('permission-denied')) return 'مفيش صلاحية — اتأكد إن قواعد الحماية اتحدّثت في Firebase';
-  return (e && e.msg) || 'حدث خطأ، حاول مرة أخرى';
+  if (c.includes('invalid-argument')) return 'البيانات فيها حاجة مش مقبولة (' + ((e && e.message) || c).slice(0, 120) + ')';
+  if (c.includes('unavailable')) return 'الاتصال بقاعدة البيانات ضعيف — حاول تاني';
+  return (e && e.msg) || ('حدث خطأ: ' + (c || (e && e.message) || 'غير معروف')).slice(0, 160);
 }
 
 /* ضغط صورة لـ webp/jpeg كـ dataURL */
@@ -53,8 +59,8 @@ export function compressImage(file, max = 1600, q = 0.8) {
 /* وحدات النظام اللي المالك بيحددها لكل موظف */
 export const MODULES = {
   basma: { t: 'البصمة', d: 'الحضور والانصراف', href: 'basma/', ic: 'finger' },
-  report: { t: 'تقرير الإشراف', d: 'نموذج الاستلام الهندسي', href: 'report/', ic: 'clip' },
-  reports: { t: 'أرشيف التقارير', d: 'كل تقارير الإشراف', href: 'portal.html#reports', ic: 'folder' },
-  support: { t: 'الدعم الفني', d: 'طلبات العملاء والردود', href: 'portal.html#support', ic: 'chat' },
-  cms: { t: 'لوحة التحكم', d: 'تعديل الموقع بالكامل', href: 'admin.html', ic: 'gear' }
+  report: { t: 'الإشراف', d: 'العملاء والتقارير الميدانية', href: 'supervision.html', ic: 'clip' },
+  reports: { t: 'كل تقارير المهندسين', d: 'صلاحية مشاهدة تقارير الكل', href: 'supervision.html', ic: 'folder', tile: false },
+  support: { t: 'الدعم والمحادثات', d: 'طلبات العملاء والشات المباشر', href: 'portal.html#support', ic: 'chat' },
+  cms: { t: 'لوحة التحكم', d: 'تعديل الموقع والإحصائيات', href: 'admin.html', ic: 'gear' }
 };
