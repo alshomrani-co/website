@@ -32,27 +32,30 @@ const head = (ttl, lead) => `<section class="phead"><div class="wrap"><div class
 const G_IC = '<svg viewBox="0 0 48 48" width="20" height="20"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>';
 
 /* ---------- الدخول والتسجيل ---------- */
-let mode = 'in';
+let mode = 'in', gUser = null; // gUser = حساب جوجل لسه مش مسجل عندنا
 export function pageAccount() {
   return head(T('حسابي', 'My account'), T('سجّل بحسابك علشان تتابع مشروعك: تقارير الإشراف والمخططات، وتكتب تعليقك للمهندس مباشرة.', 'Sign in to follow your project: supervision reports, drawings, and comments to your engineer.')) +
   `<section class="sec tight" style="padding-top:10px"><div class="wrap" style="max-width:520px"><div class="form-card glass acc" id="acc"></div></div></section>`;
 }
 function paintAcc() {
   const el = $('#acc'); if (!el) return;
-  el.innerHTML = `<div class="seg acc-tabs"><button data-m="in" class="${mode === 'in' ? 'on' : ''}">${T('تسجيل الدخول', 'Sign in')}</button><button data-m="up" class="${mode === 'up' ? 'on' : ''}">${T('حساب جديد', 'Create account')}</button></div>
+  if (gUser) mode = 'up';
+  el.innerHTML = (gUser ? `<div class="g-note">${G_IC} ${T('حساب جوجل ده مش مسجل عندنا لسه. كمّل البيانات دي مرة واحدة، وبعد كده تقدر تدخل بجوجل أو بالإيميل وكلمة السر.', 'This Google account is not registered yet. Complete these details once; then you can sign in with Google or email & password.')}<button type="button" class="link-btn" id="gCancel">${T('إلغاء', 'Cancel')}</button></div>` : '') + `<div class="seg acc-tabs"><button data-m="in" class="${mode === 'in' ? 'on' : ''}">${T('تسجيل الدخول', 'Sign in')}</button><button data-m="up" class="${mode === 'up' ? 'on' : ''}">${T('حساب جديد', 'Create account')}</button></div>
   <button class="btn g-btn" id="gIn" type="button">${G_IC} ${T('المتابعة بحساب جوجل', 'Continue with Google')}</button>
   <div class="or"><span>${T('أو بالإيميل', 'or with email')}</span></div>
   <form class="form" id="accF">
     ${mode === 'up' ? `<div class="fld"><label>${T('الاسم', 'Name')}</label><input id="aName" maxlength="60" autocomplete="name" required></div><div class="fld"><label>${T('رقم الجوال', 'Mobile')}</label><input id="aPhone" inputmode="tel" dir="ltr" maxlength="15" placeholder="05xxxxxxxx" autocomplete="tel"><span class="hint">${T('بيساعدنا نربط حسابك بمشروعك بسرعة', 'Helps us link your account to your project')}</span></div>` : ''}
-    <div class="fld"><label>${T('الإيميل', 'Email')}</label><input id="aMail" type="email" dir="ltr" autocomplete="email" required></div>
+    <div class="fld"><label>${T('الإيميل', 'Email')}</label><input id="aMail" type="email" dir="ltr" autocomplete="email" required value="${esc(gUser ? gUser.email : '')}" ${gUser ? 'readonly' : ''}></div>
     <div class="fld"><label>${T('كلمة السر', 'Password')}</label><input id="aPw" type="password" dir="ltr" minlength="6" autocomplete="${mode === 'up' ? 'new-password' : 'current-password'}" required></div>
+    ${mode === 'in' ? `<label class="remember"><input type="checkbox" id="aRem" ${st('sh.rem') === '0' ? '' : 'checked'}> ${T('تذكرني على الجهاز ده', 'Remember me on this device')}</label>` : ''}
     <button class="btn btn-red" id="aGo">${mode === 'up' ? T('إنشاء الحساب', 'Create account') : T('دخول', 'Sign in')}</button>
     ${mode === 'in' ? `<button type="button" class="link-btn" id="aForgot">${T('نسيت كلمة السر؟', 'Forgot password?')}</button>` : ''}
     <p class="err" id="aErr"></p>
   </form>
   <p class="acc-note">${T('🔒 بياناتك محفوظة ومش بتتشارك مع حد. المهندس هيربط حسابك بملف مشروعك بعد التسجيل.', '🔒 Your data is private. Our engineer will link your account to your project file after you sign up.')}</p>`;
   $$('[data-m]', el).forEach(b => b.onclick = () => { mode = b.dataset.m; paintAcc(); });
-  $('#gIn').onclick = google;
+  $('#gIn').onclick = google; if (gUser) { $('#gIn').hidden = true; $('.or', el).hidden = true; $('.acc-tabs', el).hidden = true; const nm = $('#aName'); if (nm && !nm.value) nm.value = gUser.displayName || ''; }
+  const gc = $('#gCancel'); if (gc) gc.onclick = async () => { const F = await fb(); gUser = null; mode = 'in'; await F.signOut(F.auth); paintAcc(); };
   $('#accF').onsubmit = submit;
   const fg = $('#aForgot'); if (fg) fg.onclick = forgot;
 }
@@ -61,15 +64,23 @@ async function afterLogin(F, u, extra) {
   const base = { email: u.email || '', name: (extra && extra.name) || u.displayName || '', upd: F.serverTimestamp() };
   if (!s || !s.exists()) await F.setDoc(ref, { ...base, phone: (extra && extra.phone) || '', clientNo: null, at: F.serverTimestamp(), via: (extra && extra.via) || 'email' });
   else await F.updateDoc(ref, { upd: F.serverTimestamp(), ...(extra && extra.phone ? { phone: extra.phone } : {}), ...(base.name && !s.data().name ? { name: base.name } : {}) });
-  st('sh.cust', u.uid); location.hash = '#/my';
+  st('sh.cust', u.uid); st('sh.custName', base.name || ''); if (extra && extra.phone) st('sh.custPhone', extra.phone); gUser = null; location.hash = '#/my';
 }
+async function persist(F) { const rem = !$('#aRem') || $('#aRem').checked; st('sh.rem', rem ? '1' : '0'); try { await F.setPersistence(F.auth, rem ? F.indexedDBLocalPersistence : F.browserSessionPersistence); } catch (e) { } }
 async function google() {
   const F = await fb(); const p = new F.GoogleAuthProvider(); $('#aErr').textContent = '';
-  try { const r = await F.signInWithPopup(F.auth, p); await afterLogin(F, r.user, { via: 'google' }); }
+  await persist(F);
+  try { const r = await F.signInWithPopup(F.auth, p); await googleDone(F, r.user); }
   catch (e) {
     if ((e.code || '').includes('popup-blocked') || (e.code || '').includes('operation-not-supported')) { try { st('sh.gr', '1'); await F.signInWithRedirect(F.auth, p); return; } catch (x) { e = x; } }
     $('#aErr').textContent = errMsg(F, e);
   }
+}
+// جوجل: لو العميل مسجل يدخل، لو لأ يكمّل التسجيل الأول (الإيميل متملي)
+async function googleDone(F, u) {
+  let s = null; try { s = await F.getDoc(F.doc(F.db, 'customers', u.uid)); } catch (e) { }
+  if (s && s.exists()) return afterLogin(F, u, { via: 'google' });
+  gUser = u; mode = 'up'; paintAcc(); toast(T('كمّل بياناتك علشان نسجّل حسابك', 'Complete your details to register'));
 }
 async function submit(e) {
   e.preventDefault(); const F = await fb(); const er = $('#aErr'); er.textContent = '';
@@ -78,10 +89,16 @@ async function submit(e) {
     if (mode === 'up') {
       const name = $('#aName').value.trim(), phone = F.toEn($('#aPhone').value).replace(/\D/g, '');
       if (name.length < 2) throw { msg: T('اكتب اسمك', 'Enter your name') };
+      if (pw.length < 6) throw { msg: T('كلمة السر لازم ٦ حروف أو أرقام على الأقل', 'Password must be at least 6 characters') };
+      if (gUser) { // نربط كلمة السر بحساب جوجل علشان يقدر يدخل بالطريقتين
+        try { await F.linkWithCredential(gUser, F.EmailAuthProvider.credential(gUser.email, pw)); } catch (x) { if (!String(x.code || '').includes('provider-already-linked')) throw x; }
+        try { await F.updateProfile(gUser, { displayName: name }); } catch (x) { }
+        return afterLogin(F, gUser, { name, phone, via: 'google' });
+      }
       const r = await F.createUserWithEmailAndPassword(F.auth, mail, pw);
       try { await F.updateProfile(r.user, { displayName: name }); } catch (x) { }
       await afterLogin(F, r.user, { name, phone, via: 'email' });
-    } else { const r = await F.signInWithEmailAndPassword(F.auth, mail, pw); await afterLogin(F, r.user); }
+    } else { await persist(F); const r = await F.signInWithEmailAndPassword(F.auth, mail, pw); await afterLogin(F, r.user); }
   } catch (x) { er.textContent = x.msg || errMsg(F, x); }
   b.disabled = false;
 }
@@ -94,7 +111,7 @@ async function forgot() {
 export async function wireAccount() {
   paintAcc();
   const F = await fb();
-  if (st('sh.gr')) { st('sh.gr', null); try { const r = await F.getRedirectResult(F.auth); if (r && r.user) return afterLogin(F, r.user, { via: 'google' }); } catch (e) { $('#aErr').textContent = errMsg(F, e); } }
+  if (st('sh.gr')) { st('sh.gr', null); try { const r = await F.getRedirectResult(F.auth); if (r && r.user) return googleDone(F, r.user); } catch (e) { $('#aErr').textContent = errMsg(F, e); } }
   const un = F.onAuthStateChanged(F.auth, u => { un(); if (u && st('sh.cust') === u.uid) location.hash = '#/my'; });
 }
 
@@ -110,7 +127,8 @@ export async function wireMy() {
     un();
     if (!u) { st('sh.cust', null); location.hash = '#/account'; return; }
     let cu = null; try { const s = await F.getDoc(F.doc(F.db, 'customers', u.uid)); cu = s.exists() ? s.data() : null; } catch (e) { }
-    if (!cu) { try { await afterLoginQuiet(F, u); const s = await F.getDoc(F.doc(F.db, 'customers', u.uid)); cu = s.exists() ? s.data() : null; } catch (e) { } }
+    if (!cu) { gUser = u; mode = 'up'; location.hash = '#/account'; return; }
+    st('sh.custName', cu.name || ''); if (cu.phone) st('sh.custPhone', cu.phone);
     st('sh.cust', u.uid);
     const top = `<div class="my-top glass"><div><b>${esc((cu && cu.name) || u.displayName || u.email)}</b><small dir="ltr">${esc(u.email || '')}</small></div><button class="btn btn-ghost sm" id="myOut">${T('خروج', 'Sign out')}</button></div>`;
     if (!cu || cu.clientNo == null) {

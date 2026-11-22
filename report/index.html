@@ -1757,6 +1757,7 @@ async function loadCloud(id) {
 F.onAuthStateChanged(auth, async u => {
   if (!u) { let c = null; try { c = localStorage.getItem('sh.cust'); } catch (e) { } location.replace(c ? '../#/account' : '../portal.html'); return; }
   me = u; isOwner = await F.ownerOf(u.uid);
+  if (isOwner) { try { localStorage.setItem('sh.staff', '1'); } catch (e) { } }
   if (!isOwner) { try { const s = await F.getDoc(F.doc(db, 'employees', u.uid)); emp = s.exists() ? s.data() : null; } catch (e) { emp = null; } }
   if (!canMod('report') && !canMod('reports')) {
     // العميل: يشوف تقرير مشروعه بس (قراءة فقط) ويكتب تعليق

@@ -99,7 +99,8 @@ const ext = href => /^https?:|^mailto:|^tel:/.test(href) ? 'target="_blank" rel=
 
 /* ---------- design (من لوحة التحكم) ---------- */
 function applyDesign() {
-  const d = C.design || {}, r = document.documentElement.style;
+  const pgk = (location.hash.replace(/^#\/?/, '').split(/[/?]/)[0]) || 'home';
+  const d0 = C.design || {}, d = { ...d0, ...((d0.pageStyle || {})[pgk] || {}) }, r = document.documentElement.style;
   if (d.red) { r.setProperty('--red', d.red); r.setProperty('--red2', `color-mix(in srgb, ${d.red} 82%, #000)`); }
   if (d.gold) r.setProperty('--gold', d.gold);
   r.setProperty('--fs', ((+d.fontScale || 100) / 100).toFixed(2));
@@ -126,7 +127,7 @@ function chrome() {
   $('#bShort').textContent = v.brand.short; $('#bSub').textContent = t('company');
   $('#langBtn').textContent = t('langBtn'); $('#langBtn').title = t('langName');
   $('#reqBtn').textContent = t('request');
-  { const ab = $('#accBtn'); if (ab) { ab.href = '#/' + (ACC.signedIn() ? 'my' : 'account'); ab.title = ACC.signedIn() ? t('myProject') : t('myAccount'); ab.classList.toggle('on', ACC.signedIn()); } }
+  paintAcc();
   $('#nav').innerHTML = NAV_MAIN.filter(r => r !== 'packages' || v.packages.on).map(r => `<a href="#/${r}" data-r="${r}">${t(r)}</a>`).join('') + `<button class="more-btn" id="moreBtn" aria-label="${t('more')}" aria-expanded="false"><i></i><i></i><i></i></button>`;
   $('#moreList').innerHTML = NAV_ALL.filter(r => r !== 'packages' || v.packages.on).map((r, i) => `<a href="#/${r}" data-r="${r}" style="--i:${i}"><span>${t(r || 'home')}</span>${I.prev}</a>`).join('') + `<a href="#/${ACC.signedIn() ? 'my' : 'account'}" data-r="${ACC.signedIn() ? 'my' : 'account'}" class="acc-link" style="--i:10"><span>${ACC.signedIn() ? t('myProject') : t('myAccount')}</span>${I.prev}</a>` + (store('sh.staff') ? `<a href="portal.html" class="staff-link" style="--i:11"><span>${t('staff')}</span>${I.prev}</a>` : '') +
     `<div class="more-foot"><a class="btn btn-red" href="${wa()}" target="_blank" rel="noopener">${I.wa} ${t('waNow')}</a><a class="btn btn-ghost" href="${tel()}" dir="ltr">${I.phone} ${esc(v.contact.phone)}</a><button class="btn btn-ghost" data-lang>${t('switchLang')}</button></div>`;
@@ -151,6 +152,9 @@ function seoMeta(v) {
   let j = document.getElementById('ld-org'); if (!j) { j = document.createElement('script'); j.type = 'application/ld+json'; j.id = 'ld-org'; document.head.appendChild(j); }
   const c = v.contact, url = location.origin + location.pathname;
   j.textContent = JSON.stringify({ '@context': 'https://schema.org', '@type': 'ProfessionalService', additionalType: 'https://schema.org/EngineeringService', name: v.brand.name, alternateName: v.brand.short, url, logo: url.replace(/[^/]*$/, '') + 'assets/img/icon-512.png', image: url.replace(/[^/]*$/, '') + 'assets/video/hero-poster.jpg', description: v.seo.desc, telephone: '+966' + String(c.phone || '').replace(/\D/g, '').replace(/^0/, ''), email: c.email, foundingDate: String(v.brand.founded || ''), address: { '@type': 'PostalAddress', streetAddress: c.address, addressLocality: 'Riyadh', addressCountry: 'SA' }, areaServed: 'SA', keywords: v.seo.keywords, sameAs: Object.values(v.socials || {}).filter(x => /^https?:/.test(x)), makesOffer: v.services.map(x => ({ '@type': 'Offer', itemOffered: { '@type': 'Service', name: x.title, description: x.short } })) });
+}
+function paintAcc() {
+  { const ab = $('#accBtn'); if (ab) { ab.href = '#/' + (ACC.signedIn() ? 'my' : 'account'); ab.title = ACC.signedIn() ? t('myProject') : t('myAccount'); ab.classList.toggle('on', ACC.signedIn()); ab.innerHTML = `<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>${ACC.signedIn() ? (LANG === 'en' ? 'My project' : 'مشروعي') : (LANG === 'en' ? 'Sign in' : 'دخول')}</span>`; } }
 }
 function toggleMore(on) {
   const m = $('#more'), open = on === undefined ? m.hidden : on;
@@ -410,7 +414,7 @@ function render(soft) {
   if (!soft) window.scrollTo({ top: 0, behavior: 'instant' });
   toggleMore(false);
   const desc = document.querySelector('meta[name=description]'); if (desc) desc.content = V().seo.desc;
-  wire(r); pageView();
+  applyDesign(); paintAcc(); wire(r); pageView();
 }
 function wire(r) {
   applyBlocks(r); reveal(); counters(); countdown(); initStrip();
@@ -519,16 +523,56 @@ function resetBot() { $('#botMsgs').innerHTML = ''; $('#botQuick').innerHTML = '
 function openBot() {
   $('#bot').hidden = false; $('#botFab').classList.add('hide'); track('bot');
   if (chatId && !chatMode && !$('#botMsgs').children.length) { startChat(); return; }
-  if (!$('#botMsgs').children.length) { botSay(t('botHi')); $('#botQuick').innerHTML = t('quick').map(q => `<button>${esc(q)}</button>`).join(''); }
+  if (!$('#botMsgs').children.length) { botSay(t('botHi')); showChoice(); }
+  hideTease();
   if (matchMedia('(hover:hover)').matches) setTimeout(() => $('#botIn').focus(), 200);
 }
+/* اختيار: المساعد أو المهندس المختص */
+const ENG = () => LANG === 'en' ? 'Our engineer' : 'المهندس المختص', ASSIST = () => LANG === 'en' ? 'Assistant' : 'المساعد';
+function showChoice() {
+  $('#botQuick').innerHTML = `<div class="bot-choice"><button data-mode="bot"><span>🤖</span><b>${LANG === 'en' ? 'Talk to the assistant' : 'التحدث إلى المساعد'}</b><small>${LANG === 'en' ? 'Instant answers' : 'رد فوري على أسئلتك'}</small></button><button data-mode="eng"><span>👷</span><b>${LANG === 'en' ? 'Talk to the engineer' : 'التحدث إلى المهندس'}</b><small>${LANG === 'en' ? 'Chat with a real engineer' : 'كلّم مهندس من الفريق'}</small></button></div>`;
+  paintSwitch(true);
+}
+function setAssist() {
+  chatMode = false; if (chatUnsub) { chatUnsub(); chatUnsub = null; } snapOn = false; $('#bot').classList.remove('live'); $('#botSubT').textContent = ASSIST(); $('#botMsgs').innerHTML = ''; botSay(t('botHi'));
+  $('#botQuick').innerHTML = t('quick').map(q => `<button>${esc(q)}</button>`).join(''); paintSwitch();
+}
+function paintSwitch(hide) {
+  const b = $('#botSwitch'); if (!b) return; b.hidden = !!hide;
+  b.innerHTML = chatMode ? `🤖 ${LANG === 'en' ? 'Talk to the assistant' : 'التحدث إلى المساعد'}` : `👷 ${LANG === 'en' ? 'Talk to the engineer' : 'التحدث إلى المهندس'}`;
+}
+// المهندس: محادثة مباشرة على الموقع، من غير اسم ولا رقم. لو الاتصال فشل الرسايل بتستنى وتتبعت لوحدها
+function startEngineer() {
+  if (!chatId) {
+    const id = 'C' + Date.now().toString(36).toUpperCase() + Array.from(crypto.getRandomValues(new Uint8Array(5)), b => ALPH[b % ALPH.length]).join('');
+    let log = []; try { log = JSON.parse(sessionStorage.getItem('sh.botlog') || '[]').slice(-8).map(x => x.q); } catch (e) { }
+    const nm = (store('sh.custName') || '').slice(0, 60) || ((LANG === 'en' ? 'Visitor ' : 'زائر ') + id.slice(-4));
+    chatId = id; storeSet('sh.chat', id);
+    storeSet('sh.chatPend', JSON.stringify({ id, name: nm, phone: (store('sh.custPhone') || '').slice(0, 15), uid: store('sh.cust') || '', lang: LANG, page: location.hash.slice(0, 60), botLog: log, dev: DEV, at0: Date.now() }));
+    track('chat');
+  }
+  $('#botMsgs').innerHTML = ''; startChat();
+}
+/* فقاعة الترحيب جنب أيقونة الشات — مرة واحدة في الزيارة */
+function initTease() {
+  if (store('sh.tease', 'session') || PREVIEW) return;
+  setTimeout(() => {
+    if (!$('#bot').hidden || store('sh.tease', 'session')) return; storeSet('sh.tease', '1', 'session');
+    const d = document.createElement('div'); d.className = 'bot-tease'; d.id = 'botTease';
+    d.innerHTML = `<button class="bt-x" aria-label="×">×</button><b>${LANG === 'en' ? 'Hi 👋 How can I help?' : 'هلا 👋 كيف أقدر أخدمك؟'}</b>`;
+    document.body.appendChild(d); $('#botFab').classList.add('has-n');
+    d.onclick = e => { if (e.target.closest('.bt-x')) { hideTease(); return; } openBot(); };
+  }, 1800);
+}
+function hideTease() { const d = $('#botTease'); if (d) d.remove(); $('#botFab').classList.remove('has-n'); }
 function initBot() {
   $('#botFab').onclick = openBot;
-  const hb = document.createElement('a'); hb.href = '#chat'; hb.className = 'bot-human'; hb.textContent = LANG === 'en' ? 'Talk to staff' : '🧑‍💼 كلّم موظف'; $('#bot header').insertBefore(hb, $('#botX'));
+  const sw = document.createElement('button'); sw.type = 'button'; sw.id = 'botSwitch'; sw.className = 'bot-switch'; sw.hidden = true; $('#botForm').after(sw);
+  sw.onclick = () => { if (chatMode) setAssist(); else startEngineer(); };
   $('#botX').onclick = () => { $('#bot').hidden = true; $('#botFab').classList.remove('hide'); };
-  $('#botQuick').onclick = e => { const b = e.target.closest('button'); if (b && !b.dataset.botBack) botAsk(b.textContent); };
+  $('#botQuick').onclick = e => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.mode === 'bot') return setAssist(); if (b.dataset.mode === 'eng') return startEngineer(); if (!b.dataset.botBack) botAsk(b.textContent); };
   $('#botForm').onsubmit = e => { e.preventDefault(); const v = $('#botIn').value.trim(); if (!v) return; $('#botIn').value = ''; if (chatMode) chatSend(v); else botAsk(v); };
-  $('#bot').addEventListener('click', e => { const a = e.target.closest('a[href="#chat"]'); if (a) { e.preventDefault(); if (chatId) startChat(); else chatForm(); } if (e.target.closest('[data-bot-back]')) stopChat(); });
+  $('#bot').addEventListener('click', e => { const a = e.target.closest('a[href="#chat"]'); if (a) { e.preventDefault(); startEngineer(); } if (e.target.closest('[data-bot-back]')) setAssist(); });
   $('#botMsgs').onclick = e => { const a = e.target.closest('a.in:not([href="#chat"])'); if (a && matchMedia('(max-width:700px)').matches) { $('#bot').hidden = true; $('#botFab').classList.remove('hide'); } };
 }
 
@@ -651,7 +695,9 @@ async function flushStats() {
 }
 function track(ev, extra) { if (ev) bump({ ev: ev.slice(0, 30), ...(extra || {}) }); }
 async function initStats() {
-  if (PREVIEW || store('sh.staff')) { statsReady = false; return; } // الموظفين مش بيتحسبوا
+  // الموظفين والمالك والبرامج الآلية (بوتات جوجل ومعاينات الروابط) مش بيتحسبوا
+  const BOT = /bot|crawl|spider|slurp|headless|lighthouse|pagespeed|preview|facebookexternalhit|whatsapp|telegram|twitterbot|discord|bingpreview|yandex|baidu|semrush|ahrefs|python|curl|wget|phantom|puppeteer|playwright/i;
+  if (PREVIEW || store('sh.staff') || navigator.webdriver || BOT.test(navigator.userAgent) || !navigator.languages) { statsReady = false; return; }
   const g = await geo(); statsReady = true;
   const first = !store('sh.v', 'session'); storeSet('sh.v', '1', 'session');
   if (first) { const seen = store('sh.seen') === dayKey(); storeSet('sh.seen', dayKey()); const o = { visits: 1, cc: g.cc, src: srcOf(), dev: DEV, lang: LANG }; if (g.city) o.city = g.city; if (!seen) o.uniq = 1; bump(o); }
@@ -678,22 +724,55 @@ function chatForm() {
     } catch (e) { console.warn('chat', e); $('#cErr').innerHTML = `${t('connErr')} <a href="${wa()}" target="_blank" rel="noopener" style="color:var(--red);font-weight:700">${LANG === 'en' ? 'WhatsApp' : 'واتساب'}</a>`; $('#cGo').disabled = false; }
   };
 }
-async function startChat() {
-  chatMode = true; $('#bot').classList.add('live'); $('#botSubT').textContent = LANG === 'en' ? 'Live chat with our team' : 'محادثة مباشرة مع الفريق';
-  $('#botQuick').innerHTML = `<button data-bot-back>${LANG === 'en' ? '← Back to assistant' : '→ رجوع للمساعد'}</button>`;
-  const F = await fb(); if (chatUnsub) chatUnsub();
+const chatQ = () => { try { return JSON.parse(store('sh.chatQ') || '[]'); } catch (e) { return []; } };
+const setQ = q => storeSet('sh.chatQ', JSON.stringify(q));
+let serverMsgs = [], flushing = false, flushT = null;
+const ENG_HI = () => LANG === 'en' ? 'Hi 🌷 Write your question and our engineer will reply here shortly during working hours.' : 'أهلاً بك 🌷 اكتب سؤالك، والمهندس المختص هيرد عليك هنا خلال دقايق في وقت الدوام.';
+function paintChat() {
+  if (!chatMode) return; const box = $('#botMsgs'); box.innerHTML = '';
+  const add = (cls, html) => { const el = document.createElement('div'); el.className = 'bm ' + cls; el.innerHTML = html; box.appendChild(el); };
+  if (!serverMsgs.some(x => x.from === 's')) add('bt', esc(ENG_HI()));
+  serverMsgs.filter(x => !x.sys).forEach(x => x.from === 'c' ? add('me', nl(x.text) + '<i class="tk">✓</i>') : add('bt staff', `<b class="who">${esc(x.by || t('team'))}</b>` + nl(x.text)));
+  chatQ().forEach(x => add('me pend', nl(x.text) + `<i class="tk" title="${LANG === 'en' ? 'Sending…' : 'جارٍ الإرسال'}">⏳</i>`));
+  box.scrollTop = 1e6;
+}
+let snapOn = false;
+async function listen() {
+  if (snapOn || store('sh.chatPend')) return; const F = await fb(); if (chatUnsub) chatUnsub(); snapOn = true;
   chatUnsub = F.onSnapshot(F.doc(F.db, 'chats', chatId), d => {
-    if (!d.exists()) { storeSet('sh.chat', ''); chatId = null; return; }
-    const m = d.data().msgs || []; const box = $('#botMsgs'); box.innerHTML = '';
-    m.forEach(x => { const el = document.createElement('div'); el.className = 'bm ' + (x.from === 'c' ? 'me' : 'bt staff'); el.innerHTML = (x.from !== 'c' ? `<b class="who">${esc(x.by || t('team'))}</b>` : '') + nl(x.text); box.appendChild(el); });
-    if (m.length < 2) { const el = document.createElement('div'); el.className = 'bm bt'; el.textContent = LANG === 'en' ? 'Thanks! A team member will reply here shortly. You can keep writing.' : 'شكراً لك 🌷 موظف من الفريق هيرد عليك هنا خلال دقايق في وقت الدوام. تقدر تكتب سؤالك.'; box.appendChild(el); }
-    box.scrollTop = 1e6;
-  }, e => { const box = $('#botMsgs'); const el = document.createElement('div'); el.className = 'bm bt err'; el.innerHTML = (LANG === 'en' ? 'The chat could not connect. ' : 'المحادثة مش قادرة تتصل دلوقتي. ') + `<a href="${wa()}" target="_blank" rel="noopener">${LANG === 'en' ? 'Message us on WhatsApp' : 'كلّمنا واتساب'}</a>`; box.appendChild(el); console.warn('chat', e); });
+    if (!d.exists()) { if (!store('sh.chatPend')) { storeSet('sh.chat', ''); chatId = null; } return; }
+    serverMsgs = d.data().msgs || [];
+    if (!$('#bot').hidden && serverMsgs.some(x => x.from === 's' && x.at > (d.data().seenAt || 0))) F.updateDoc(F.doc(F.db, 'chats', chatId), { seenAt: Date.now() }).catch(() => { });
+    paintChat();
+  }, e => { console.warn('chat listen', e); snapOn = false; chatUnsub = null; retrySoon(); });
 }
-function stopChat() { chatMode = false; if (chatUnsub) { chatUnsub(); chatUnsub = null; } $('#bot').classList.remove('live'); $('#botSubT').textContent = t('botSub'); $('#botMsgs').innerHTML = ''; $('#botQuick').innerHTML = ''; openBot(); }
-async function chatSend(text) {
-  try { const F = await fb(); await F.updateDoc(F.doc(F.db, 'chats', chatId), { msgs: F.arrayUnion({ from: 'c', text: text.slice(0, 1500), at: Date.now() }), upd: F.serverTimestamp(), unread: F.increment(1) }); } catch (e) { console.warn('chat', e); toast(t('connErr')); const box = $('#botMsgs'); const el = document.createElement('div'); el.className = 'bm bt err'; el.textContent = (LANG === 'en' ? 'Not sent: ' : 'الرسالة متبعتتش: ') + text.slice(0, 80); box.appendChild(el); box.scrollTop = 1e6; }
+function retrySoon() { clearTimeout(flushT); flushT = setTimeout(flushChat, 5000); }
+// بيبعت المحادثة والرسايل المستنية بالترتيب، ولو فشل يحاول تاني كل ٥ ثواني
+async function flushChat() {
+  if (flushing || !chatId) return; flushing = true; clearTimeout(flushT);
+  try {
+    const F = await fb();
+    const pend = store('sh.chatPend');
+    if (pend) { const p = JSON.parse(pend); const { at0, ...rest } = p;
+      await F.setDoc(F.doc(F.db, 'chats', chatId), { ...rest, at: F.serverTimestamp(), upd: F.serverTimestamp(), open: true, unread: 1, msgs: [{ from: 'c', sys: true, text: LANG === 'en' ? 'Started a chat' : 'بدأ محادثة مع المهندس', at: at0 || Date.now() }] });
+      storeSet('sh.chatPend', ''); try { localStorage.removeItem('sh.chatPend'); } catch (e) { } }
+    let q = chatQ();
+    while (q.length) { const m = q[0];
+      await F.updateDoc(F.doc(F.db, 'chats', chatId), { msgs: F.arrayUnion({ from: 'c', text: m.text, at: m.at }), upd: F.serverTimestamp(), unread: F.increment(1) });
+      serverMsgs = [...serverMsgs, { from: 'c', text: m.text, at: m.at }]; q = chatQ().slice(1); setQ(q); paintChat(); }
+    if (chatMode) listen();
+  } catch (e) { console.warn('chat flush', e); retrySoon(); }
+  flushing = false;
 }
+async function startChat() {
+  chatMode = true; $('#bot').classList.add('live'); $('#botSubT').textContent = ENG(); $('#botQuick').innerHTML = ''; paintSwitch();
+  paintChat(); if (store('sh.chatPend') || chatQ().length) flushChat(); else listen();
+}
+function stopChat() { return setAssist(); }
+function chatSend(text) {
+  const q = chatQ(); q.push({ text: text.slice(0, 1500), at: Date.now() }); setQ(q); paintChat(); flushChat();
+}
+addEventListener('online', () => { if (chatId && (store('sh.chatPend') || chatQ().length)) flushChat(); });
 
 /* ---------- boot ---------- */
 function boot() {
@@ -711,7 +790,7 @@ function boot() {
   $('#lb').insertAdjacentHTML('beforeend', `<button class="lb-nav p" aria-label="prev">${I.prev}</button><button class="lb-nav n" aria-label="next">${I.next}</button>`); $('#lb .lb-nav.p').onclick = () => lbStep(LANG === 'en' ? -1 : 1); $('#lb .lb-nav.n').onclick = () => lbStep(LANG === 'en' ? 1 : -1);
   { let sx = 0; $('#lb').addEventListener('touchstart', e => { sx = e.touches[0].clientX; }, { passive: true }); $('#lb').addEventListener('touchend', e => { const dx = e.changedTouches[0].clientX - sx; if (Math.abs(dx) > 50) lbStep(dx > 0 ? 1 : -1); }); }
   document.addEventListener('touchstart', () => { }, { passive: true }); // يفعّل تأثير الضغط :active على الآيفون
-  chrome(); render(); initBot(); initHold(); popup(); initGlow(); initWa(); initStats();
+  chrome(); render(); initBot(); initTease(); initHold(); popup(); initGlow(); initWa(); initStats();
   loadRemote();
 }
 boot();

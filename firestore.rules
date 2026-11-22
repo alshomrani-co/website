@@ -3,7 +3,14 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     function signedIn() { return request.auth != null; }
-    function isOwner() { return signedIn() && request.auth.uid in ['bRGeKE9GqXYFh2F93FO6osHYxr63']; }
+    function isOwner() {
+      return signedIn() && (exists(/databases/$(database)/documents/owners/$(request.auth.uid))
+        || (request.auth.uid in ['bRGeKE9GqXYFh2F93FO6osHYxr63']
+            && !exists(/databases/$(database)/documents/ownersOff/$(request.auth.uid))));
+    }
+    function isCust() { return signedIn() && exists(/databases/$(database)/documents/customers/$(request.auth.uid)); }
+    function custNo() { return get(/databases/$(database)/documents/customers/$(request.auth.uid)).data.get('clientNo', null); }
+    function myClient(n) { return isCust() && n != null && custNo() == n; }
     function empDoc() { return get(/databases/$(database)/documents/employees/$(request.auth.uid)); }
     function isActiveEmp() {
       return signedIn() && exists(/databases/$(database)/documents/employees/$(request.auth.uid)) && empDoc().data.active == true;
@@ -194,14 +201,17 @@ service cloud.firestore {
     }
 
     match /reports/{id} {
-      allow read: if hasMod('reports') || (signedIn() && resource.data.by == request.auth.uid);
+      allow read: if hasMod('reports') || (signedIn() && resource.data.by == request.auth.uid)
+        || (hasMod('report') && resource.data.get('clientNo', null) != null)
+        || myClient(resource.data.get('clientNo', null));
       allow create: if hasMod('report') && request.resource.data.by == request.auth.uid;
       allow update: if isOwner() || (hasMod('report') && resource.data.by == request.auth.uid
                                      && request.resource.data.by == request.auth.uid);
       allow delete: if isOwner();
     }
     match /rmedia/{id} {
-      allow read: if hasMod('reports') || (signedIn() && resource.data.by == request.auth.uid);
+      allow read: if hasMod('reports') || (signedIn() && resource.data.by == request.auth.uid)
+        || myClient(get(/databases/$(database)/documents/reports/$(resource.data.rid)).data.get('clientNo', null));
       allow create: if isOwner() || (hasMod('report') && request.resource.data.by == request.auth.uid
         && request.resource.data.src is string && request.resource.data.src.size() < 1000000);
       allow update: if isOwner() || (hasMod('report') && resource.data.by == request.auth.uid
@@ -229,10 +239,12 @@ service cloud.firestore {
       allow update: if hasMod('support')
         || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['msgs', 'upd', 'unread'])
             && request.resource.data.msgs.size() == resource.data.msgs.size() + 1
-            && request.resource.data.msgs.size() <= 400);
+            && request.resource.data.msgs.size() <= 400)
+        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['seenAt']);
     }
     match /clients/{no} {
       allow read: if hasMod('report') || hasMod('reports');
+      allow get: if isCust() && custNo() != null && string(custNo()) == no;
       allow create, update: if hasMod('report') || hasMod('reports');
       allow delete: if isOwner();
     }
@@ -240,5 +252,51 @@ service cloud.firestore {
       allow read: if hasMod('report') || hasMod('reports');
       allow write: if hasMod('report') || hasMod('reports');
     }
-  }
+  
+    match /owners/{uid} {
+      allow get: if signedIn() && (request.auth.uid == uid || isOwner());
+      allow list, write: if isOwner();
+    }
+    match /ownersOff/{uid} {
+      allow get: if signedIn() && (request.auth.uid == uid || isOwner());
+      allow list, write: if isOwner();
+    }
+    match /botlogs/{sid} {
+      allow read, delete: if hasMod('support');
+      allow create: if request.resource.data.id == sid
+        && request.resource.data.qs is list && request.resource.data.qs.size() == 1;
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['qs', 'upd', 'n'])
+        && request.resource.data.qs.size() == resource.data.qs.size() + 1
+        && request.resource.data.qs.size() <= 60;
+    }
+    match /customers/{uid} {
+      allow get: if signedIn() && (request.auth.uid == uid || hasMod('report') || hasMod('reports') || hasMod('support'));
+      allow list: if hasMod('report') || hasMod('reports');
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.get('clientNo', null) == null
+        && request.resource.data.get('name', '') is string && request.resource.data.get('name', '').size() <= 80;
+      allow update: if (signedIn() && request.auth.uid == uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'phone', 'email', 'upd']))
+        || hasMod('report') || hasMod('reports');
+      allow delete: if isOwner();
+    }
+    match /cfiles/{id} {
+      allow read: if hasMod('report') || hasMod('reports') || myClient(resource.data.clientNo);
+      allow create: if (hasMod('report') || hasMod('reports')) && request.resource.data.by == request.auth.uid
+        && request.resource.data.url is string && request.resource.data.url.size() <= 600;
+      allow update: if hasMod('report') || hasMod('reports');
+      allow delete: if isOwner() || (hasMod('report') && resource.data.by == request.auth.uid);
+    }
+    match /ccomments/{id} {
+      allow read: if hasMod('report') || hasMod('reports') || hasMod('support') || myClient(resource.data.clientNo);
+      allow create: if (myClient(request.resource.data.clientNo)
+          && request.resource.data.from == 'c' && request.resource.data.uid == request.auth.uid
+          && request.resource.data.text is string && request.resource.data.text.size() <= 1500)
+        || ((hasMod('report') || hasMod('reports') || hasMod('support'))
+          && request.resource.data.from == 's' && request.resource.data.uid == request.auth.uid);
+      allow update: if hasMod('report') || hasMod('reports') || hasMod('support')
+        || (myClient(resource.data.clientNo) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['seenC']));
+      allow delete: if isOwner();
+    }
+}
 }

@@ -18,11 +18,33 @@ const FONTS = { kufi: 'نوتو كوفي + بلكس (الحالي)', cairo: 'Cai
 const PRESETS = [['#E1262B', '#C9A24B', 'أحمر الشركة'], ['#B91D22', '#D4AF37', 'أحمر غامق'], ['#0F766E', '#C9A24B', 'أخضر'], ['#1D4ED8', '#E0B04B', 'أزرق'], ['#111827', '#C9A24B', 'أسود ودهبي']];
 
 /* ---------- التصميم ---------- */
+import { PAGE_BLOCKS } from './data.js';
+let dsPg = 'all';
+const dsTabs = D => `<div class="ds-tabs">${[['all', 'كل الموقع (عام)'], ...Object.keys(PAGE_BLOCKS).map(k => [k, PAGE_BLOCKS[k].t])].map(([k, t]) => `<button data-ds="${k}" class="${k === dsPg ? 'on' : ''} ${k !== 'all' && D.design.pageStyle && D.design.pageStyle[k] ? 'mod' : ''}">${t}</button>`).join('')}</div>`;
+function vDesignPage(mp, c) {
+  const D = c.D(), g = D.design; g.pageStyle = g.pageStyle || {}; const pg = PAGE_BLOCKS[dsPg];
+  const has = !!g.pageStyle[dsPg]; const d = g.pageStyle[dsPg] || { red: g.red || '#E1262B', gold: g.gold || '#C9A24B', font: g.font || 'kufi', fontScale: g.fontScale || 100 };
+  const commit = () => { g.pageStyle[dsPg] = d; c.dirty(); };
+  mp.innerHTML = `<h2>اللوجو والألوان والخطوط</h2><p class="desc">اختار صفحة علشان تديها ألوان أو خط مختلف عن باقي الموقع. أي صفحة متتعدلش بتاخد الإعدادات العامة. (الصفحات المعدّلة عليها •)</p>${dsTabs(D)}
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"><a class="btn btn-ghost sm" href="index.html?preview=1#/${pg.hash}" target="_blank" rel="noopener">👁 معاينة «${pg.t}»</a>${has ? '<button class="btn btn-ghost sm" id="dsReset" style="color:var(--red)">↺ رجّع الصفحة دي للإعدادات العامة</button>' : '<span class="chip">بتاخد الإعدادات العامة دلوقتي</span>'}</div>
+  <div class="grid2"><section class="card" style="display:grid;gap:14px"><h3 style="font-size:17px">ألوان «${pg.t}»</h3>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">${PRESETS.map(p => `<button class="btn btn-ghost sm" data-pre="${p[0]}|${p[1]}"><i style="width:14px;height:14px;border-radius:50%;background:${p[0]};display:inline-block"></i><i style="width:14px;height:14px;border-radius:50%;background:${p[1]};display:inline-block"></i> ${p[2]}</button>`).join('')}</div>
+    <div class="row2"><div class="fld"><label>اللون الأساسي</label><input type="color" id="pRed" value="${c.esc(d.red)}" style="width:56px;height:42px"></div><div class="fld"><label>اللون الدهبي</label><input type="color" id="pGold" value="${c.esc(d.gold)}" style="width:56px;height:42px"></div></div></section>
+  <section class="card" style="display:grid;gap:14px"><h3 style="font-size:17px">خط «${pg.t}»</h3><div class="fld"><label>نوع الخط</label><select id="pFont">${Object.keys(FONTS).map(k => `<option value="${k}" ${d.font === k ? 'selected' : ''}>${FONTS[k]}</option>`).join('')}</select></div>
+    <div class="fld"><label>حجم الكلام: <b id="pFsV">${d.fontScale}%</b></label><input type="range" min="85" max="125" step="5" value="${d.fontScale}" id="pFs"></div></section></div>`;
+  $$('[data-ds]', mp).forEach(b => b.onclick = () => { dsPg = b.dataset.ds; vDesign(mp, c); });
+  const rs = $('#dsReset'); if (rs) rs.onclick = () => { delete g.pageStyle[dsPg]; c.dirty(); vDesign(mp, c); };
+  $$('[data-pre]', mp).forEach(b => b.onclick = () => { const [r, gg] = b.dataset.pre.split('|'); d.red = r; d.gold = gg; commit(); vDesign(mp, c); });
+  $('#pRed').oninput = e => { d.red = e.target.value; commit(); }; $('#pGold').oninput = e => { d.gold = e.target.value; commit(); };
+  $('#pFont').onchange = e => { d.font = e.target.value; commit(); };
+  $('#pFs').oninput = e => { d.fontScale = +e.target.value; $('#pFsV').textContent = e.target.value + '%'; commit(); };
+}
 function vDesign(mp, c) {
+  if (dsPg !== 'all') return vDesignPage(mp, c);
   const D = c.D(); D.design = Object.assign({ logo: '', font: 'kufi', logoSize: 100, heroLogo: true, heroLogoSize: 100, fontScale: 100, red: '#E1262B', gold: '#C9A24B', glass: true, cursorGlow: true }, D.design || {});
   const d = D.design; const rng = (k, l, a, b) => `<div class="fld"><label>${l}: <b id="rv-${k}">${d[k]}%</b></label><input type="range" min="${a}" max="${b}" step="5" value="${d[k]}" data-rng="${k}"></div>`;
   const sw = (k, l) => `<label class="switch"><input type="checkbox" data-sw="${k}" ${d[k] !== false ? 'checked' : ''}><span></span> ${l}</label>`;
-  mp.innerHTML = `<h2>اللوجو والألوان والخطوط</h2><p class="desc">أي تغيير بيبان على طول في «👁 معاينة». اضغط «حفظ ونشر» علشان يوصل للناس.</p>
+  mp.innerHTML = `<h2>اللوجو والألوان والخطوط</h2><p class="desc">أي تغيير بيبان على طول في «👁 معاينة». اضغط «حفظ ونشر» علشان يوصل للناس.</p>${dsTabs(D)}
   <div class="grid2"><section class="card" style="display:grid;gap:14px" id="lg"><h3 style="font-size:17px">اللوجو</h3>${c.field('logo', d.logo || '', ['design', 'logo'])}
     <p class="hint" style="color:var(--mut);font-size:12.5px">يفضّل PNG بخلفية شفافة. لو سبته فاضي بيظهر لوجو الشركة الأصلي (المكعب المتحرك).</p>
     ${rng('logoSize', 'حجم اللوجو في الشريط اللي فوق', 60, 160)}${sw('heroLogo', 'إظهار اللوجو الكبير في أول الصفحة')}${rng('heroLogoSize', 'حجم اللوجو الكبير', 50, 180)}</section>
@@ -37,6 +59,7 @@ function vDesign(mp, c) {
     <div class="fld"><label>أيقونة الماوس نفسها</label><div class="cur-pick sm" id="curIc">${CUR_IC.map(([k, l, svg]) => `<button type="button" data-ic="${k}" class="${(d.cursorIcon || 'default') === k ? 'on' : ''}"><span class="ci">${svg}</span><b>${l}</b></button>`).join('')}</div></div>
     <p class="hint" style="color:var(--mut);font-size:12.5px">جرّبها في «👁 معاينة» على الكمبيوتر. على الفون مفيش ماوس فمش بتظهر.</p></section></div>`;
   c.bindEditor(mp);
+  $$('[data-ds]', mp).forEach(b => b.onclick = () => { dsPg = b.dataset.ds; vDesign(mp, c); });
   $$('[data-rng]', mp).forEach(r => r.oninput = () => { d[r.dataset.rng] = +r.value; $('#rv-' + r.dataset.rng).textContent = r.value + '%'; c.dirty(); });
   $$('[data-sw]', mp).forEach(r => r.onchange = () => { d[r.dataset.sw] = r.checked; c.dirty(); });
   $('#fontSel').onchange = e => { d.font = e.target.value; c.dirty(); };
@@ -119,6 +142,8 @@ function vEn(mp, c) {
 
 /* ---------- الإحصائيات ---------- */
 const CC = { SA: 'السعودية', AE: 'الإمارات', EG: 'مصر', KW: 'الكويت', QA: 'قطر', BH: 'البحرين', OM: 'عُمان', JO: 'الأردن', IQ: 'العراق', YE: 'اليمن', SD: 'السودان', SY: 'سوريا', LB: 'لبنان', PS: 'فلسطين', MA: 'المغرب', DZ: 'الجزائر', TN: 'تونس', LY: 'ليبيا', TR: 'تركيا', PK: 'باكستان', IN: 'الهند', BD: 'بنجلاديش', PH: 'الفلبين', ID: 'إندونيسيا', US: 'أمريكا', GB: 'بريطانيا', DE: 'ألمانيا', FR: 'فرنسا', NL: 'هولندا', CA: 'كندا', XX: 'غير معروف' };
+const AR_RG = (() => { try { return new Intl.DisplayNames(['ar'], { type: 'region' }); } catch (e) { return null; } })();
+const ccName = k => CC[k] || (k && k.length === 2 && k !== 'XX' && AR_RG ? (AR_RG.of(k.toUpperCase()) || k) : 'غير معروف');
 const flag = cc => cc && cc.length === 2 && cc !== 'XX' ? String.fromCodePoint(...[...cc.toUpperCase()].map(ch => 127397 + ch.charCodeAt(0))) : '🌐';
 const SRC = { direct: 'دخول مباشر / رابط', google: 'جوجل', instagram: 'إنستجرام', tiktok: 'تيك توك', snapchat: 'سناب شات', whatsapp: 'واتساب', x: 'إكس', facebook: 'فيسبوك', youtube: 'يوتيوب', search: 'محركات بحث أخرى', other: 'مواقع أخرى' };
 const DEV = { iphone: '📱 آيفون', android: '🤖 أندرويد', ipad: '📲 آيباد', desktop: '💻 كمبيوتر' };
@@ -148,7 +173,7 @@ async function vStats(mp, c, days = 30) {
   const ev = sum('ev');
   $('#sv').innerHTML = `<div class="stats4"><div class="card"><b style="color:#1f9d55">${live}</b><span>🟢 موجودين على الموقع دلوقتي</span></div><div class="card"><b>${+today.visits || 0}</b><span>زيارات النهارده</span></div><div class="card"><b>${+today.uniq || 0}</b><span>زوار جدد النهارده</span></div><div class="card"><b>${tot('visits')}</b><span>زيارات الفترة</span></div><div class="card"><b>${tot('views')}</b><span>صفحات اتشافت</span></div><div class="card"><b>${(ev.wa || 0) + (ev.call || 0)}</b><span>ضغطوا واتساب أو اتصال</span></div></div>
   <div class="card" style="margin:16px 0"><h3 style="font-size:16px;margin-bottom:12px">الزيارات باليوم</h3><div class="chart">${vis.map((v, i) => `<div class="col" title="${keys[i]}: ${v}"><i style="height:${v / mx * 100}%"></i>${days <= 31 ? `<small>${keys[i].slice(8)}</small>` : ''}</div>`).join('')}</div></div>
-  <div class="grid2"><div class="card"><h3>🌍 الدول</h3>${bars(sum('cc'), k => `${flag(k)} ${CC[k] || k}`)}</div><div class="card"><h3>🏙 المدن</h3>${bars(sum('city'), k => k)}</div>
+  <div class="grid2"><div class="card"><h3>🌍 الدول</h3>${bars(sum('cc'), k => `${flag(k)} ${ccName(k)}`)}</div><div class="card"><h3>🏙 المدن</h3>${bars(sum('city'), k => k)}</div>
   <div class="card"><h3>🔗 جايين منين</h3>${bars(sum('src'), k => SRC[k] || k)}</div><div class="card"><h3>📱 الأجهزة</h3>${bars(sum('dev'), k => DEV[k] || k)}</div>
   <div class="card"><h3>📄 أكتر الصفحات</h3>${bars(sum('page'), k => PAGES[k] || k)}</div><div class="card"><h3>🛠 أكتر الخدمات اهتماماً</h3>${bars(sum('svc'), svcName)}</div>
   <div class="card"><h3>👆 التفاعل</h3>${bars(ev, k => EVS[k] || k)}</div><div class="card"><h3>🌐 اللغة</h3>${bars(sum('lang'), k => k === 'en' ? 'English' : 'عربي')}</div></div>`;

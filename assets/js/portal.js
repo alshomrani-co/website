@@ -122,7 +122,7 @@ function paintTickets() {
 }
 function openTicket(id) {
   const t = tickets.find(x => x.id === id); if (!t) return;
-  if (!t.seen) { t.seen = true; F.updateDoc(F.doc(db, 'tickets', t.id), { seen: true, seenBy: isOwner ? 'المالك' : ((emp && emp.name) || ''), seenAt: F.serverTimestamp() }).catch(() => { }); paintTickets(); }
+  if (!t.seen) { t.seen = true; counts.tickets = tickets.filter(x => x.status === 'new' && !x.seen).length; const tb = document.querySelector('.seg a[href="#support"] .chip'); if (tb) { if (counts.tickets) tb.textContent = counts.tickets; else tb.remove(); } F.updateDoc(F.doc(db, 'tickets', t.id), { seen: true, seenBy: isOwner ? 'المالك' : ((emp && emp.name) || ''), seenAt: F.serverTimestamp() }).catch(() => { }); paintTickets(); }
   const sh = document.createElement('div'); sh.className = 'sheet';
   const wa = `https://wa.me/966${String(t.phone).replace(/^0/, '').replace(/^966/, '')}?text=${encodeURIComponent('السلام عليكم ' + t.name + '، بخصوص طلبك رقم ' + t.code + ' لدى شركة سعد الشمراني')}`;
   sh.innerHTML = `<div class="sheet-in"><div class="sheet-h"><h3>طلب ${esc(t.code)}</h3><button class="x">×</button></div>
@@ -177,26 +177,41 @@ function viewChats() {
 }
 function paintChats() {
   const el = $('#cl'); if (!el) return;
-  el.innerHTML = chats.length ? chats.map(c => { const last = (c.msgs || []).slice(-1)[0] || {}; return `<div class="li" data-id="${esc(c.id)}"><div class="main"><b>${esc(c.name)} · <span style="display:inline;color:var(--mut)" dir="ltr">${esc(c.phone)}</span></b><span>${last.from === 'c' ? '' : '↩ '}${esc((last.text || '').slice(0, 80))}</span></div>${c.unread ? `<span class="chip red">${c.unread}</span>` : '<span class="chip ok">مقروءة</span>'}</div>`; }).join('') : '<p class="empty">مفيش محادثات لسه</p>';
+  el.innerHTML = chats.length ? chats.map(c => { const last = (c.msgs || []).slice(-1)[0] || {}; return `<div class="li ${c.unread ? 'unseen' : ''}" data-id="${esc(c.id)}"><div class="main"><b>${esc(c.name)}${c.phone ? ` · <span style="display:inline;color:var(--mut)" dir="ltr">${esc(c.phone)}</span>` : ''}${c.uid ? ' <span class="chip ok" style="display:inline-flex">عميل مسجّل</span>' : ''}</b><span>${last.from === 'c' ? '' : '↩ '}${esc((last.text || '').slice(0, 80))}</span></div>${c.unread ? `<span class="chip red">${c.unread}</span>` : '<span class="chip ok">مقروءة</span>'}</div>`; }).join('') : '<p class="empty">مفيش محادثات لسه</p>';
   $$('.li', el).forEach(li => li.onclick = () => openChatSheet(li.dataset.id));
   if (openChat) renderChatSheet();
 }
 function openChatSheet(id) {
-  openChat = id; const sh = document.createElement('div'); sh.className = 'sheet'; sh.id = 'chatSheet'; document.body.appendChild(sh);
+  openChat = id; const sh = document.createElement('div'); sh.className = 'sheet wa-sheet'; sh.id = 'chatSheet'; document.body.appendChild(sh);
   sh.onclick = e => { if (e.target === sh) closeChat(); }; renderChatSheet();
+  const c0 = chats.find(x => x.id === id); if (c0) c0.unread = 0; counts.chats = chats.filter(c => c.unread > 0).length; const cb = document.querySelector('.seg a[href="#chats"] .chip'); if (cb) { if (counts.chats) cb.textContent = counts.chats; else cb.remove(); } paintChats();
   F.updateDoc(F.doc(db, 'chats', id), { unread: 0 }).catch(() => { });
 }
 function closeChat() { openChat = null; const s = $('#chatSheet'); if (s) s.remove(); }
+const QUICK = ['أهلاً بك 🌷 كيف أقدر أخدمك؟', 'ممكن رقم جوالك علشان نتواصل معاك؟', 'ممكن صورة الصك وموقع الأرض؟', 'تمام، هنرجعلك خلال ساعات الدوام.', 'تقدر تزورنا في المكتب: الرياض، حي العارض.', 'شكراً لتواصلك مع شركة سعد الشمراني 🌷'];
+const tm = ms => new Date(ms).toLocaleTimeString('ar-SA', { hour: 'numeric', minute: '2-digit' });
+const dayL = ms => { const d = new Date(ms), n = new Date(); const k = x => x.toDateString(); if (k(d) === k(n)) return 'النهارده'; const y = new Date(n.getTime() - 864e5); if (k(d) === k(y)) return 'امبارح'; return d.toLocaleDateString('ar-SA', { weekday: 'long', day: 'numeric', month: 'long' }); };
 function renderChatSheet() {
   const c = chats.find(x => x.id === openChat), sh = $('#chatSheet'); if (!c || !sh) return;
   const keep = sh.querySelector('textarea') ? sh.querySelector('textarea').value : '';
-  const waL = 'https://wa.me/966' + String(c.phone).replace(/^0/, '').replace(/^966/, '');
-  sh.innerHTML = `<div class="sheet-in"><div class="sheet-h"><h3>${esc(c.name)}</h3><button class="x">×</button></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><a class="btn btn-ghost sm" href="tel:${esc(c.phone)}" dir="ltr">${esc(c.phone)}</a><a class="btn btn-ok sm" target="_blank" rel="noopener" href="${waL}">${IC.wa} واتساب</a>${c.botLog && c.botLog.length ? `<span class="chip">سأل المساعد: ${esc(c.botLog.join(' · ').slice(0, 120))}</span>` : ''}</div>
-    <div class="thread" id="thr">${(c.msgs || []).map(m => `<div class="msg ${m.from === 'c' ? '' : 'staff'}"><b>${esc(m.from === 'c' ? c.name : (m.by || 'الفريق'))}</b><br>${nl(m.text)}<small>${m.at ? new Date(m.at).toLocaleString('ar-SA') : ''}</small></div>`).join('')}</div>
-    <form id="cf" style="display:flex;gap:8px;margin-top:12px"><textarea rows="2" style="flex:1;padding:10px;border-radius:12px;border:1.5px solid var(--line)" placeholder="اكتب ردك… بيوصل للعميل على الموقع فوراً">${esc(keep)}</textarea><button class="btn btn-red">إرسال</button></form></div>`;
-  $('.x', sh).onclick = closeChat; const thr = $('#thr', sh); thr.scrollTop = 1e6;
-  $('#cf', sh).onsubmit = async e => { e.preventDefault(); const ta = $('textarea', sh), v = ta.value.trim(); if (!v) return; ta.value = '';
+  const ph = String(c.phone || '').replace(/\D/g, ''); const waL = ph ? 'https://wa.me/966' + ph.replace(/^0/, '').replace(/^966/, '') : '';
+  const last = (c.msgs || []).filter(m => m.from === 'c').slice(-1)[0]; const online = last && Date.now() - last.at < 5 * 60e3;
+  let lastDay = '';
+  const rows = (c.msgs || []).map(m => { if (m.sys) { const dl0 = dayL(m.at || Date.now()); const sep0 = dl0 !== lastDay ? `<div class="wa-day"><span>${dl0}</span></div>` : ''; lastDay = dl0; return sep0 + `<div class="wa-day"><span>💬 ${esc(m.text)} · ${m.at ? tm(m.at) : ''}</span></div>`; } const dl = dayL(m.at || Date.now()); const sep = dl !== lastDay ? `<div class="wa-day"><span>${dl}</span></div>` : ''; lastDay = dl;
+    const mine = m.from !== 'c'; const seen = mine && (c.seenAt || 0) >= (m.at || 0);
+    return sep + `<div class="wa-m ${mine ? 'out' : 'in'}">${mine ? `<b class="wa-by">${esc(m.by || 'الفريق')}</b>` : ''}<div class="wa-t">${nl(m.text)}</div><span class="wa-meta">${m.at ? tm(m.at) : ''}${mine ? `<i class="wa-tick ${seen ? 'seen' : ''}">✓✓</i>` : ''}</span></div>`; }).join('');
+  sh.innerHTML = `<div class="wa-win"><header class="wa-h"><button class="x wa-back" aria-label="رجوع">→</button><span class="wa-av">${esc((c.name || '؟').trim().slice(0, 1))}</span><div class="wa-who"><b>${esc(c.name)}</b><small>${online ? '<i class="wa-on"></i> متصل الآن' : (last ? 'آخر رسالة ' + tm(last.at) : '')}${c.page ? ' · من صفحة ' + esc(c.page.replace(/^#\/?/, '') || 'الرئيسية') : ''}</small></div>
+    <div class="wa-acts">${ph ? `<a href="tel:${esc(c.phone)}" title="اتصال" class="wa-ic">📞</a><a href="${waL}" target="_blank" rel="noopener" title="واتساب" class="wa-ic wa-g">${IC.wa}</a>` : '<span class="chip" title="العميل مدخلش رقم">بدون رقم</span>'}</div></header>
+    ${c.botLog && c.botLog.length ? `<div class="wa-note">🤖 سأل المساعد قبل كده: ${esc(c.botLog.join(' · ').slice(0, 160))}</div>` : ''}
+    <div class="wa-body" id="thr">${rows}</div>
+    <div class="wa-quick">${QUICK.map(q => `<button type="button" data-q="${esc(q)}">${esc(q)}</button>`).join('')}</div>
+    <form id="cf" class="wa-in"><textarea rows="1" placeholder="اكتب رسالة…" title="Enter للإرسال، Shift+Enter لسطر جديد">${esc(keep)}</textarea><button class="wa-send" aria-label="إرسال"><svg viewBox="0 0 24 24"><path d="M3 20l18-8L3 4l3 8-3 8zm3-8h8"/></svg></button></form></div>`;
+  $('.wa-back', sh).onclick = closeChat; const thr = $('#thr', sh); thr.scrollTop = 1e6;
+  const ta = $('textarea', sh); const fit = () => { ta.style.height = 'auto'; ta.style.height = Math.min(140, ta.scrollHeight) + 'px'; }; ta.oninput = fit; fit();
+  ta.onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('#cf', sh).requestSubmit(); } };
+  $$('[data-q]', sh).forEach(b => b.onclick = () => { ta.value = b.dataset.q; fit(); ta.focus(); });
+  if (!matchMedia('(hover:none)').matches) ta.focus();
+  $('#cf', sh).onsubmit = async e => { e.preventDefault(); const v = ta.value.trim(); if (!v) return; ta.value = ''; fit();
     try { await F.updateDoc(F.doc(db, 'chats', c.id), { msgs: F.arrayUnion({ from: 's', text: v, by: isOwner ? 'الإدارة' : ((emp && emp.name) || 'الفريق').split(' ')[0], at: Date.now() }), upd: F.serverTimestamp(), unread: 0 }); } catch (x) { toast(F.authMsg(x), 1); ta.value = v; } };
 }
 
@@ -269,7 +284,7 @@ function startLive() {
     const b = $('.tile[data-k=support]'); if (b) { let bd = b.querySelector('.badge'); const n = counts.tickets + counts.chats; if (n) { if (!bd) { bd = document.createElement('span'); bd.className = 'badge'; b.prepend(bd); } bd.textContent = n; } else if (bd) bd.remove(); }
   }, () => { }));
   if (can('support')) unsubs.push(F.onSnapshot(F.query(F.collection(db, 'tickets'), F.orderBy('at', 'desc'), F.limit(300)), s => {
-    tickets = s.docs.map(d => ({ id: d.id, ...d.data() })); counts.tickets = tickets.filter(t => t.status === 'new').length;
+    tickets = s.docs.map(d => ({ id: d.id, ...d.data() })); counts.tickets = tickets.filter(t => t.status === 'new' && !t.seen).length; if (location.hash === '#support' || location.hash === '#chats' || location.hash === '#botlogs') { const tb = document.querySelector('.seg a[href="#support"] .chip'); if (tb) { if (counts.tickets) tb.textContent = counts.tickets; else tb.remove(); } }
     notify('طلب خدمة جديد من الموقع');
     if (location.hash === '#support') paintTickets(); else if (!location.hash || location.hash === '#') { const b = $('.tile[data-k=support]'); if (b) { let bd = b.querySelector('.badge'); if (counts.tickets) { if (!bd) { bd = document.createElement('span'); bd.className = 'badge'; b.prepend(bd); } bd.textContent = counts.tickets; } else if (bd) bd.remove(); } }
   }, () => { }));

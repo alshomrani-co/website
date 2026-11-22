@@ -173,7 +173,8 @@ F.onAuthStateChanged(auth, async u => {
   unsubs.forEach(x => x()); unsubs = [];
   if (!u) { location.replace('portal.html'); return; }
   me = u; isOwner = await F.ownerOf(u.uid);
-  if (!isOwner) { try { const s = await F.getDoc(F.doc(db, 'employees', u.uid)); emp = s.exists() ? s.data() : null; } catch (e) { emp = null; } }
+  if (isOwner) { try { localStorage.setItem('sh.staff', '1'); } catch (e) { } }
+  if (!isOwner) { try { const s = await F.getDoc(F.doc(db, 'employees', u.uid)); emp = s.exists() ? s.data() : null; } catch (e) { emp = null; } if (emp) { try { localStorage.setItem('sh.staff', '1'); } catch (e) { } } }
   if (!can('report') && !can('reports')) { frame(`${back('portal.html', 'البوابة')}<div class="card" style="text-align:center;padding:40px"><h2>مفيش صلاحية</h2><p style="color:var(--mut);margin-top:8px">الإشراف محتاج صلاحية من المالك.</p></div>`); return; }
   route();
 });

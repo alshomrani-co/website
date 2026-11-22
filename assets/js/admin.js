@@ -344,6 +344,7 @@ function paintEmps() {
 F.onAuthStateChanged(auth, async u => {
   if (!u) { location.replace('portal.html'); return; }
   me = u; isOwner = await F.ownerOf(u.uid);
+  if (isOwner) { try { localStorage.setItem('sh.staff', '1'); } catch (e) { } }
   if (!isOwner) {
     try { const s = await F.getDoc(F.doc(db, 'employees', u.uid)); emp = s.exists() ? s.data() : null; } catch (e) { emp = null; }
     if (!emp || emp.active === false || !(emp.mods || []).includes('cms')) { root.innerHTML = `<div style="min-height:100svh;display:grid;place-items:center;text-align:center;padding:20px"><div><h2>مفيش صلاحية</h2><p style="color:var(--mut);margin:8px 0 16px">لوحة التحكم محتاجة صلاحية «لوحة التحكم» من المالك.</p><a class="btn btn-red" href="portal.html">رجوع للبوابة</a></div></div>`; return; }

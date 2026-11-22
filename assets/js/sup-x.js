@@ -46,14 +46,22 @@ export async function clientExtras(host, c, ctx) {
     let linked = [], cands = [];
     try { linked = (await F.getDocs(F.query(F.collection(db, 'customers'), F.where('clientNo', '==', c.no)))).docs.map(d => ({ id: d.id, ...d.data() })); } catch (e) { $('#accs').innerHTML = `<p class="empty">${esc(F.authMsg(e))}</p>`; return; }
     try { cands = (await F.getDocs(F.query(F.collection(db, 'customers'), F.where('clientNo', '==', null)))).docs.map(d => ({ id: d.id, ...d.data() })); } catch (e) { }
+    // استبعاد حسابات المالك والموظفين (والمربوط بعميل تاني مستبعد أصلاً)
+    let staff = new Set(F.OWNER_UIDS); try { (await F.getDocs(F.collection(db, 'employees'))).docs.forEach(d => staff.add(d.id)); } catch (e) { } try { (await F.getDocs(F.collection(db, 'owners'))).docs.forEach(d => staff.add(d.id)); } catch (e) { }
+    cands = cands.filter(x => !staff.has(x.id) && !/@shamrani-basma\.app$/i.test(x.email || ''));
     const phones = String(c.phones || '').split(/[^\d٠-٩]+/).map(norm).filter(x => x.length >= 9);
     const nm = String(c.name || '').trim().split(/\s+/)[0] || '';
     cands.forEach(x => { x.score = (phones.includes(norm(x.phone)) ? 2 : 0) + (nm && (x.name || '').includes(nm) ? 1 : 0); });
     cands.sort((a, b) => b.score - a.score);
     $('#accs').innerHTML = `${linked.length ? linked.map(x => `<div class="li"><span class="cno" style="background:#1f9d55">✓</span><div class="main"><b>${esc(x.name || 'بدون اسم')}</b><span dir="ltr" style="text-align:right">${esc(x.email || '')} ${x.phone ? '· ' + esc(x.phone) : ''}</span></div><button class="btn btn-ghost sm" data-unlink="${esc(x.id)}" style="color:var(--red)">فك الربط</button></div>`).join('') : '<p class="empty" style="padding:6px">مفيش حساب مربوط بالملف ده لسه.</p>'}
-      <div class="fld"><label>ربط حساب عميل (من الحسابات المسجلة ومستنية ربط)</label><div style="display:flex;gap:8px;flex-wrap:wrap"><select id="aPick" class="in" style="flex:1;min-width:220px"><option value="">— اختار الحساب —</option>${cands.map(x => `<option value="${esc(x.id)}">${x.score ? '⭐ ' : ''}${esc(x.name || '؟')} · ${esc(x.email || '')} ${x.phone ? '· ' + esc(x.phone) : ''} · كود ${esc(x.id.slice(0, 6).toUpperCase())}</option>`).join('')}</select><button class="btn btn-ink sm" id="aLink">ربط</button></div><span class="hint" style="color:var(--mut);font-size:12px">⭐ = رقم الجوال أو الاسم شبه بيانات العميل ده. العميل بيلاقي «كود» في صفحته لو حب يبعته.</span></div>`;
+      <div class="fld"><label>🔍 ربط حساب عميل — ابحث بالاسم أو الإيميل أو الكود</label><input id="aQ" class="in" placeholder="مثلاً: محمد، أو gmail، أو كود 7F3K2A" autocomplete="off"><div class="acc-res" id="aRes"></div><span class="hint" style="color:var(--mut);font-size:12px">⭐ = رقم الجوال أو الاسم شبه بيانات العميل ده. حسابات المالك والموظفين والمربوطة بعميل تاني مش بتظهر.</span></div>`;
     $$('.in', $('#accs')).forEach(i => i.style.cssText += ';padding:10px 12px;border-radius:12px;border:1.5px solid var(--line);background:var(--paper)');
-    $('#aLink').onclick = async () => { const id = $('#aPick').value; if (!id) return toast('اختار الحساب الأول', 1); const x = cands.find(y => y.id === id);
+    const q = s => String(s || '').toLowerCase();
+    const paintRes = () => { const v = q($('#aQ').value.trim()); const L = cands.filter(x => !v ? x.score > 0 : (q(x.name) + ' ' + q(x.email) + ' ' + x.id.slice(0, 6).toLowerCase() + ' ' + norm(x.phone)).includes(v.replace(/^كود\s*/, ''))).slice(0, 12);
+      $('#aRes').innerHTML = L.length ? L.map(x => `<div class="li" data-pick="${esc(x.id)}"><span class="cno">${x.score ? '⭐' : '👤'}</span><div class="main"><b>${esc(x.name || 'بدون اسم')} <small style="color:var(--mut)">· كود ${esc(x.id.slice(0, 6).toUpperCase())}</small></b><span dir="ltr" style="text-align:right">${esc(x.email || '')} ${x.phone ? '· ' + esc(x.phone) : ''}</span></div><span class="btn btn-ink sm">ربط</span></div>`).join('') : `<p class="empty" style="padding:8px">${v ? 'مفيش حساب بالبحث ده' : (cands.length ? 'اكتب في البحث علشان تلاقي الحساب' : 'مفيش حسابات مستنية ربط')}</p>`;
+      $$('[data-pick]', $('#aRes')).forEach(r => r.onclick = () => link(r.dataset.pick)); };
+    $('#aQ').oninput = paintRes; paintRes();
+    const link = async id => { const x = cands.find(y => y.id === id);
       if (!confirm(`تربط حساب «${x.name || x.email}» بملف ${c.no} — ${c.name}؟\nالعميل هيشوف تقارير وملفات المشروع ده.`)) return;
       try { await F.updateDoc(F.doc(db, 'customers', id), { clientNo: c.no, clientName: c.name, linkedBy: me.uid, linkedAt: F.serverTimestamp() }); toast('اتربط ✓'); paintAccs(); } catch (e) { toast(F.authMsg(e), 1); } };
     $$('[data-unlink]', host).forEach(b => b.onclick = async () => { if (!confirm('فك ربط الحساب ده من الملف؟')) return; try { await F.updateDoc(F.doc(db, 'customers', b.dataset.unlink), { clientNo: null }); toast('اتفك ✓'); paintAccs(); } catch (e) { toast(F.authMsg(e), 1); } });
