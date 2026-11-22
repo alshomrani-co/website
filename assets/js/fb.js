@@ -4,13 +4,14 @@ const { firebaseConfig, OWNER_UID, EMAIL_DOMAIN } = CFG;
 export const OWNER_UIDS = [OWNER_UID, ...((CFG.OWNER_UIDS || []).filter(Boolean))];
 export const isOwnerUid = uid => !!uid && OWNER_UIDS.includes(uid);
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, setPersistence, indexedDBLocalPersistence, browserSessionPersistence, updatePassword } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, setPersistence, indexedDBLocalPersistence, browserSessionPersistence, updatePassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, sendPasswordResetEmail, updateProfile } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { initializeFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, collection, getDocs, query, where, orderBy, limit, onSnapshot, serverTimestamp, arrayUnion, Timestamp, increment, runTransaction, writeBatch, deleteField } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 // الاتصال بيتحوّل لوحده لطريقة بديلة لو المتصفح (زي متصفح واتساب الداخلي) قاطع الاتصال المباشر
 export const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
+export { GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, sendPasswordResetEmail, updateProfile };
 export { OWNER_UID, EMAIL_DOMAIN, onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, setPersistence, indexedDBLocalPersistence, browserSessionPersistence, updatePassword,
   doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, collection, getDocs, query, where, orderBy, limit, onSnapshot, serverTimestamp, arrayUnion, Timestamp, increment, runTransaction, writeBatch, deleteField };
 
@@ -35,7 +36,10 @@ export function authMsg(e) {
   if (c.includes('too-many-requests')) return 'محاولات كثيرة، انتظر دقائق ثم حاول مرة أخرى';
   if (c.includes('network')) return 'لا يوجد اتصال بالإنترنت';
   if (c.includes('weak-password')) return 'كلمة السر لازم تكون ٦ حروف أو أرقام على الأقل';
-  if (c.includes('email-already-in-use')) return 'اسم المستخدم مستخدم بالفعل';
+  if (c.includes('email-already-in-use')) return 'الحساب ده مسجّل قبل كده — جرّب تسجيل الدخول';
+  if (c.includes('popup-closed') || c.includes('cancelled-popup')) return 'اتقفلت نافذة جوجل قبل ما التسجيل يخلص';
+  if (c.includes('unauthorized-domain')) return 'الدومين ده مش متضاف في Firebase ← Authentication ← Authorized domains';
+  if (c.includes('operation-not-allowed')) return 'طريقة التسجيل دي مش متفعّلة في Firebase ← Authentication ← Sign-in method';
   if (c.includes('permission-denied')) return 'مفيش صلاحية — اتأكد إن قواعد الحماية اتحدّثت في Firebase';
   if (c.includes('invalid-argument')) return 'البيانات فيها حاجة مش مقبولة (' + ((e && e.message) || c).slice(0, 120) + ')';
   if (c.includes('unavailable')) return 'الاتصال بقاعدة البيانات ضعيف — حاول تاني';
@@ -64,3 +68,11 @@ export const MODULES = {
   support: { t: 'الدعم والمحادثات', d: 'طلبات العملاء والشات المباشر', href: 'portal.html#support', ic: 'chat' },
   cms: { t: 'لوحة التحكم', d: 'تعديل الموقع والإحصائيات', href: 'admin.html', ic: 'gear' }
 };
+
+/* المُلّاك: الأساسيين في config.js + اللي اتضافوا من لوحة التحكم (owners/{uid})، والأساسي ممكن يتوقف (ownersOff/{uid}) */
+export async function ownerOf(uid) {
+  if (!uid) return false;
+  try { const s = await getDoc(doc(db, 'owners', uid)); if (s.exists()) return true; } catch (e) { }
+  if (!OWNER_UIDS.includes(uid)) return false;
+  try { const o = await getDoc(doc(db, 'ownersOff', uid)); return !o.exists(); } catch (e) { return true; }
+}

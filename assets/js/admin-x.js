@@ -12,6 +12,8 @@ export function emptyWarnings(D) {
 }
 
 const SEC_NAMES = { offer: 'العرض الحالي', gallery: 'معرض صور الأعمال', strip: 'شريط الخدمات المتحرك', stats: 'الأرقام (العدّاد)', services: 'كروت الخدمات', steps: 'آلية العمل', packages: 'الباقات', social: 'السوشيال ميديا', why: 'ليش الشمراني + كلمة المدير', partners: 'الشركاء', faq: 'الأسئلة الشائعة', cta: 'صندوق دعوة التواصل' };
+const CUR_ST = [['glow', 'توهّج', 'هالة ناعمة بلون الشركة'], ['ring', 'حلقة', 'دايرة بتلحق الماوس وتكبر على الأزرار'], ['magnet', 'مغناطيس', 'الحلقة بتلزق حوالين الزرار'], ['cross', 'مسطرة هندسية', 'خطوط إحداثيات X/Y زي الأوتوكاد'], ['blueprint', 'بلو برينت', 'شبكة مخطط بتظهر حوالين الماوس'], ['trail', 'شرار', 'نقط أحمر ودهبي ورا الماوس'], ['ripple', 'موجة', 'توهّج + موجة مع كل ضغطة'], ['none', 'بدون', 'من غير أي تأثير']];
+const CUR_IC = [['default', 'العادي', '<svg viewBox="0 0 24 24"><path d="M5 3l14 7-6 2-2 6z" fill="#fff" stroke="#111" stroke-width="1.6"/></svg>'], ['pen', 'قلم هندسي', '<svg viewBox="0 0 32 32"><path d="M3 29l3-9L22 4l6 6-16 16z" fill="#fff" stroke="#16171A" stroke-width="2"/><path d="M19 7l6 6" stroke="#E1262B" stroke-width="3"/><path d="M3 29l3-9 3 6z" fill="#E1262B"/></svg>'], ['cross', 'نيشان', '<svg viewBox="0 0 32 32"><g stroke="#E1262B" stroke-width="2"><path d="M16 2v10M16 20v10M2 16h10M20 16h10"/></g><circle cx="16" cy="16" r="3" fill="none" stroke="#16171A" stroke-width="2"/></svg>'], ['arrow', 'سهم أحمر', '<svg viewBox="0 0 28 28"><path d="M3 2l20 9-8.5 2.5L11 22z" fill="#E1262B" stroke="#fff" stroke-width="2"/></svg>'], ['compass', 'برجل', '<svg viewBox="0 0 32 32"><circle cx="16" cy="6" r="3" fill="#16171A"/><path d="M15 8L6 29M17 8l9 21" stroke="#16171A" stroke-width="2.4" stroke-linecap="round"/><path d="M9 22h14" stroke="#E1262B" stroke-width="2"/></svg>'], ['dot', 'نقطة', '<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="5" fill="#E1262B" stroke="#fff" stroke-width="2"/></svg>']];
 const FONTS = { kufi: 'نوتو كوفي + بلكس (الحالي)', cairo: 'Cairo', tajawal: 'Tajawal', almarai: 'Almarai', readex: 'Readex Pro', rubik: 'Rubik' };
 const PRESETS = [['#E1262B', '#C9A24B', 'أحمر الشركة'], ['#B91D22', '#D4AF37', 'أحمر غامق'], ['#0F766E', '#C9A24B', 'أخضر'], ['#1D4ED8', '#E0B04B', 'أزرق'], ['#111827', '#C9A24B', 'أسود ودهبي']];
 
@@ -30,11 +32,16 @@ function vDesign(mp, c) {
     <p class="hint" style="color:var(--mut);font-size:12.5px">الأول = اللون الأساسي للأزرار والعناوين. التاني = اللون الدهبي للباقة المميزة والعروض.</p></section>
   <section class="card" style="display:grid;gap:14px"><h3 style="font-size:17px">الخط</h3><div class="fld"><label>نوع الخط</label><select id="fontSel">${Object.keys(FONTS).map(k => `<option value="${k}" ${d.font === k ? 'selected' : ''}>${FONTS[k]}</option>`).join('')}</select></div>
     ${rng('fontScale', 'حجم الكلام في الموقع', 85, 125)}</section>
-  <section class="card" style="display:grid;gap:14px"><h3 style="font-size:17px">تأثيرات</h3>${sw('glass', 'الكروت الزجاجية')}${sw('cursorGlow', 'توهّج الماوس على الكمبيوتر')}</section></div>`;
+  <section class="card" style="display:grid;gap:14px"><h3 style="font-size:17px">تأثيرات</h3>${sw('glass', 'الكروت الزجاجية')}${sw('cursorGlow', 'تأثير الماوس على الكمبيوتر')}
+    <div class="fld"><label>شكل التأثير اللي ماشي مع الماوس</label><div class="cur-pick" id="curSt">${CUR_ST.map(([k, l, d2]) => `<button type="button" data-cur="${k}" class="${(d.cursor || 'glow') === k ? 'on' : ''}"><i class="cp cp-${k}"></i><b>${l}</b><small>${d2}</small></button>`).join('')}</div></div>
+    <div class="fld"><label>أيقونة الماوس نفسها</label><div class="cur-pick sm" id="curIc">${CUR_IC.map(([k, l, svg]) => `<button type="button" data-ic="${k}" class="${(d.cursorIcon || 'default') === k ? 'on' : ''}"><span class="ci">${svg}</span><b>${l}</b></button>`).join('')}</div></div>
+    <p class="hint" style="color:var(--mut);font-size:12.5px">جرّبها في «👁 معاينة» على الكمبيوتر. على الفون مفيش ماوس فمش بتظهر.</p></section></div>`;
   c.bindEditor(mp);
   $$('[data-rng]', mp).forEach(r => r.oninput = () => { d[r.dataset.rng] = +r.value; $('#rv-' + r.dataset.rng).textContent = r.value + '%'; c.dirty(); });
   $$('[data-sw]', mp).forEach(r => r.onchange = () => { d[r.dataset.sw] = r.checked; c.dirty(); });
   $('#fontSel').onchange = e => { d.font = e.target.value; c.dirty(); };
+  $$('[data-cur]', mp).forEach(b => b.onclick = () => { d.cursor = b.dataset.cur; $$('[data-cur]', mp).forEach(x => x.classList.toggle('on', x === b)); c.dirty(); });
+  $$('[data-ic]', mp).forEach(b => b.onclick = () => { d.cursorIcon = b.dataset.ic; $$('[data-ic]', mp).forEach(x => x.classList.toggle('on', x === b)); c.dirty(); });
   $$('[data-pre]', mp).forEach(b => b.onclick = () => { const [r, g] = b.dataset.pre.split('|'); d.red = r; d.gold = g; c.dirty(); c.rerender(); });
 }
 
@@ -61,7 +68,7 @@ function vVideo(mp, c) {
     <p style="color:var(--mut);font-size:13.5px;line-height:1.9">الفيديو أكبر من اللي قاعدة البيانات بتشيله، فبيترفع على ريبو الموقع نفسه.<br>
     ١- افتح <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener" style="color:var(--red);font-weight:700">github.com/settings/personal-access-tokens/new</a><br>
     ٢- Repository access ← Only select repositories ← اختار ريبو الموقع.<br>٣- Permissions ← Contents ← <b>Read and write</b> ← Generate token.<br>٤- انسخ المفتاح وحطه هنا. بيتحفظ على الجهاز ده بس، ومحدش غيرك يشوفه.</p>
-    <div class="row2"><input id="ghRepo" class="in" dir="ltr" placeholder="alshomrani-co/alshomrani" value="${c.esc(g.repo || '')}"><input id="ghBranch" class="in" dir="ltr" placeholder="main" value="${c.esc(g.branch || 'main')}"></div>
+    <div class="row2"><input id="ghRepo" class="in" dir="ltr" placeholder="alshomrani-co/website" value="${c.esc(g.repo || 'alshomrani-co/website')}"><input id="ghBranch" class="in" dir="ltr" placeholder="main" value="${c.esc(g.branch || 'main')}"></div>
     <input id="ghTok" class="in" dir="ltr" type="password" placeholder="github_pat_…" value="${c.esc(g.token || '')}"><div style="display:flex;gap:8px"><button class="btn btn-ink sm" id="ghSave">حفظ الربط</button><span class="hint" id="ghSt" style="align-self:center;font-weight:700"></span></div></section>
   <div class="grid2">${slot('videoSrc', '🖥 فيديو الكمبيوتر (عرضي 16:9)', 'assets/video/hero.mp4', 'video/mp4', 'ده اللي بيظهر على الكمبيوتر، وعلى الفون لو مفيش فيديو طولي.')}${slot('videoMobile', '📱 فيديو الفون (طولي 9:16)', 'assets/video/hero-mobile.mp4', 'video/mp4', 'اختياري: 1080×1920. لو موجود بيظهر على الفون بدل العرضي.')}${slot('poster', '🖼 صورة الغلاف', 'assets/video/hero-poster.jpg', 'image/jpeg', 'بتظهر لحد ما الفيديو يحمّل. JPG أقل من 300KB.')}</div>
   <label class="switch" style="margin-top:14px"><input type="checkbox" id="vOn" ${h.video ? 'checked' : ''}><span></span> تشغيل الفيديو في الواجهة (لو مقفول بتظهر صورة الغلاف بس)</label>`;
@@ -123,7 +130,12 @@ async function vStats(mp, c, days = 30) {
   mp.innerHTML = `<h2>الإحصائيات والزوار</h2><p class="desc">الزوار مجهولين الهوية: بنعرف الدولة والمدينة والجهاز والمصدر بس. زيارات الموظفين مش بتتحسب.</p>
   <div class="seg" id="per" style="margin-bottom:16px">${[[1, 'النهارده'], [7, '٧ أيام'], [30, '٣٠ يوم'], [90, '٣ شهور']].map(([n, l]) => `<button data-n="${n}" class="${n === days ? 'on' : ''}">${l}</button>`).join('')}</div><div id="sv"><p class="empty">جارٍ التحميل…</p></div>`;
   $('#per').onclick = e => { const b = e.target.closest('button'); if (b) vStats(mp, c, +b.dataset.n); };
-  const now = new Date(), keys = []; for (let i = days - 1; i >= 0; i--) keys.push(dk(new Date(now.getTime() - i * 864e5)));
+  // تصفير العدّاد: الأرقام بتبدأ من تاريخ معيّن، والقديمة بتستخبى من غير ما تتمسح
+  let from = ''; try { const s = await F.getDoc(F.doc(c.db, 'site', 'stats')); from = s.exists() ? (s.data().from || '') : ''; } catch (e) { }
+  $('#per').insertAdjacentHTML('afterend', `<div style="display:flex;gap:8px;flex-wrap:wrap;margin:-6px 0 14px;align-items:center">${from ? `<span class="chip warn">العدّاد متصفّر من ${c.esc(from)}</span><button class="btn btn-ghost sm" id="stUndo">↩ إظهار الأرقام القديمة</button>` : ''}<button class="btn btn-ghost sm" id="stReset" style="color:var(--red)">🔄 تصفير عدّاد الزوار</button></div>`);
+  $('#stReset').onclick = async () => { if (!confirm('تصفّر عدّاد الزوار وتبدأ العدّ من النهارده؟\n\nالأرقام القديمة مش هتتمسح — تقدر ترجّعها بزرار «إظهار الأرقام القديمة».')) return; try { await F.setDoc(F.doc(c.db, 'site', 'stats'), { from: dk(new Date()), at: F.serverTimestamp() }); c.toast('اتصفّر ✓'); vStats(mp, c, days); } catch (e) { c.toast(F.authMsg(e), 1); } };
+  const su = $('#stUndo'); if (su) su.onclick = async () => { try { await F.setDoc(F.doc(c.db, 'site', 'stats'), { from: '', at: F.serverTimestamp() }); c.toast('رجعت ✓'); vStats(mp, c, days); } catch (e) { c.toast(F.authMsg(e), 1); } };
+  const now = new Date(), keys = []; for (let i = days - 1; i >= 0; i--) { const k = dk(new Date(now.getTime() - i * 864e5)); if (!from || k >= from) keys.push(k); }
   let docs;
   try { docs = await Promise.all(keys.map(k => F.getDoc(F.doc(c.db, 'stats', k)).then(s => s.exists() ? s.data() : {}).catch(() => ({})))); } catch (e) { $('#sv').innerHTML = `<p class="empty">${c.esc(F.authMsg(e))}</p>`; return; }
   let live = '—'; try { const s = await F.getDocs(F.query(F.collection(c.db, 'presence'), F.where('at', '>', F.Timestamp.fromMillis(Date.now() - 150000)))); live = s.size; } catch (e) { }

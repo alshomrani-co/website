@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /admin.html
+Disallow: /portal.html
+Disallow: /supervision.html
+Disallow: /report/
+Disallow: /basma/
+Sitemap: https://alshomrani-co.github.io/website/sitemap.xml

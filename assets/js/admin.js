@@ -1,6 +1,7 @@
 // لوحة التحكم الكاملة: كل محتوى الموقع + الصور + الموظفين + كود الدعوة + النسخ الاحتياطي
 import * as F from './fb.js';
-import { DEFAULT } from './data.js';
+import { DEFAULT, migrate } from './data.js';
+import * as V5 from './admin-v5.js';
 import { EN } from './data-en.js';
 import * as X from './admin-x.js';
 const { auth, db, MODULES } = F;
@@ -26,7 +27,7 @@ const L = {
   story: 'قصة الشركة (فقرات)', quotes: 'اقتباسات', ceo: 'المدير التنفيذي', role: 'المنصب', quote: 'الاقتباس', why: 'ليش نحن', steps: 'خطوات العمل', licenses: 'التراخيص', isic: 'الأنشطة (ISIC)', code: 'الرمز', num: 'الرقم', t: 'العنوان', d: 'الوصف',
   addr: 'العنوان', auth: 'الجهة', q: 'السؤال', a: 'الإجابة', depts: 'الأقسام في نموذج الدعم', label: 'التسمية', href: 'الرابط', url: 'الرابط',
   until: 'ينتهي العرض في (تاريخ)', youtubeKey: 'مفتاح YouTube API (اختياري — يجيب كل فيديوهات القناة لوحده)', videoMobile: 'فيديو الفون (طولي 9:16 — اختياري)',
-  replyNote: 'ملاحظة وقت الرد', videoSrc: 'ملف الفيديو', video: 'تشغيل فيديو الخلفية', scope: 'نطاق العمل', quote2: 'اقتباس ثاني', ceoTitle: 'مسمى المدير', fields: 'المجالات'
+  replyNote: 'ملاحظة وقت الرد', cap: 'تعليق على الصورة', gallery: 'صور المشروع (أكتر من صورة)', keywords: 'الكلمات المفتاحية — افصل بينها بفاصلة (،)', videoSrc: 'ملف الفيديو', video: 'تشغيل فيديو الخلفية', scope: 'نطاق العمل', quote2: 'اقتباس ثاني', ceoTitle: 'مسمى المدير', fields: 'المجالات'
 };
 const lab = k => L[k] || KEYT[k] || k;
 const IMGK = /^(img|poster|logo|image|photo|cover)$/i;
@@ -39,12 +40,13 @@ const SECTIONS = [
   { id: 'stats', t: 'الإحصائيات والزوار', ic: '📈' },
   { id: 'leads', t: 'العملاء المحتملين', ic: '☎' },
   { id: 'team', t: 'الموظفين والصلاحيات', ic: '☺', own: 1 },
+  { id: 'owners', t: 'المُلّاك', ic: '♛', own: 1 },
   { id: 'tickets', t: 'الدعم والمحادثات', ic: '✉', href: 'portal.html#support' },
   { id: 'sup', t: 'الإشراف والعملاء', ic: '▤', href: 'supervision.html' },
   { h: 'الشكل' },
   { id: 'design', t: 'اللوجو والألوان والخطوط', ic: '🎨' },
   { id: 'video', t: 'فيديو الواجهة', ic: '▶' },
-  { id: 'layout', t: 'ترتيب الصفحة الرئيسية', ic: '☰' },
+  { id: 'pages', t: 'الصفحات (ترتيب وأحجام)', ic: '☰' },
   { h: 'المحتوى' },
   { id: 'hero', t: 'الواجهة والأرقام', keys: ['hero', 'stats'], ic: '◧', d: 'العنوان الكبير والأزرار والأرقام اللي تحت الفيديو.' },
   { id: 'offer', t: 'العروض', keys: ['offer', 'announce', 'popup'], ic: '🎁', d: 'عرض يظهر للناس بشكل واضح في الرئيسية بعدّاد تنازلي، وشريط أعلى الموقع، ونافذة منبثقة.' },
@@ -58,7 +60,7 @@ const SECTIONS = [
   { id: 'faq', t: 'الأسئلة والمساعد', keys: ['faq', 'prepare', 'support'], ic: '?', d: 'الأسئلة الشائعة (يستخدمها المساعد الآلي) + أقسام الدعم.' },
   { id: 'cta', t: 'دعوة التواصل', keys: ['cta'], ic: '➜', d: 'الصندوق الأحمر آخر الصفحات.' },
   { id: 'en', t: 'النسخة الإنجليزية', ic: 'EN', d: 'نصوص الموقع لما الزائر يحوّل للإنجليزي. أي خانة فاضية بتظهر بالعربي.' },
-  { id: 'seo', t: 'محركات البحث', keys: ['seo'], ic: '⌕', d: 'عنوان الموقع ووصفه في جوجل.' },
+  { id: 'seo', t: 'محركات البحث', keys: ['seo'], ic: '⌕', d: 'عنوان الموقع ووصفه في جوجل، والكلمات اللي الناس بتدوّر بيها عليكم. ✔ بعد النشر: سجّل الموقع في Google Search Console وابعت ملف sitemap.xml.' },
   { id: 'json', t: 'النسخ الاحتياطي', ic: '⇩', d: 'تصدير واستيراد واسترجاع المحتوى.' }
 ];
 const KEYT = { offer: 'عرض الصفحة الرئيسية', media: 'فيديوهات السوشيال', design: 'التصميم', brand: 'الهوية', contact: 'التواصل', socials: 'السوشيال ميديا', hero: 'الواجهة', stats: 'الأرقام', announce: 'شريط الإعلان', popup: 'نافذة العروض المنبثقة', services: 'الخدمات', cats: 'تصنيفات الأعمال', projects: 'المشاريع', confidential: 'نص سرية الأعمال', gallery: 'معرض الصور', packages: 'الباقات', about: 'من نحن', partners: 'الشركاء والجهات', branches: 'الفروع', faq: 'الأسئلة الشائعة', prepare: 'جهّز قبل التواصل', support: 'إعدادات الدعم الفني', cta: 'دعوة التواصل', seo: 'SEO' };
@@ -78,6 +80,7 @@ addEventListener('beforeunload', e => { if (JSON.stringify(D) !== saved) { e.pre
 async function loadContent() {
   try { const s = await F.getDoc(F.doc(db, 'site', 'content')); const d = s.exists() ? s.data() : null; const r = d && d.json ? JSON.parse(d.json) : d && d.data; if (r) D = deepMerge(clone(DEFAULT), r); } catch (e) { toast('تعذّر تحميل المحتوى: ' + F.authMsg(e), 1); }
   D.en = deepMerge(clone(EN), D.en || {});
+  migrate(D, EN);
   saved = JSON.stringify(D);
 }
 async function save() {
@@ -111,7 +114,17 @@ async function upload(file) {
 let uid = 0;
 const P = p => esc(JSON.stringify(p));
 function isLong(k, v) { return LONGK.test(k) || (typeof v === 'string' && v.length > 70); }
+// 👁 إخفاء أي خانة من الموقع من غير ما تتمسح
+const offKey = p => p.join('.');
+const isOff = p => !!(D._off && D._off[offKey(p)]);
+const EYE_SKIP = /^(id|no|on|featured|plain|video|until|delay|youtubeKey|red|gold|font|logoSize|heroLogo|heroLogoSize|fontScale|glass|cursorGlow|cursor|cursorIcon|keywords|title|desc)$/;
+function eyeBtn(k, p) { if (p[0] === 'en' || p[0] === 'design' || p[0] === 'seo' || EYE_SKIP.test(k) || typeof k !== 'string') return ''; const o = isOff(p); return `<button type="button" class="eye ${o ? 'off' : ''}" data-eye="${P(p)}" title="${o ? 'مخفية من الموقع — اضغط لإظهارها' : 'إخفاء من الموقع (من غير مسح)'}">${o ? '🙈' : '👁'}</button>`; }
 function field(k, v, p) {
+  if (typeof k === 'string' && k.startsWith('_')) return '';
+  const html = field0(k, v, p), e = eyeBtn(k, p);
+  return e ? `<div class="eyewrap ${isOff(p) ? 'is-off' : ''}">${e}${html}</div>` : html;
+}
+function field0(k, v, p) {
   const id = 'f' + (++uid);
   if (typeof v === 'boolean') return `<label class="switch"><input type="checkbox" data-p="${P(p)}" data-t="b" ${v ? 'checked' : ''}><span></span> ${esc(lab(k))}</label>`;
   if (typeof v === 'number') return `<div class="fld"><label for="${id}">${esc(lab(k))}</label><input id="${id}" type="number" data-p="${P(p)}" data-t="n" value="${v}"></div>`;
@@ -123,11 +136,11 @@ function field(k, v, p) {
     ? `<div class="fld"><label for="${id}">${esc(lab(k))}</label><textarea id="${id}" rows="${Math.min(8, Math.max(2, Math.ceil(v.length / 70)))}" data-p="${P(p)}">${esc(v)}</textarea></div>`
     : `<div class="fld"><label for="${id}">${esc(lab(k))}</label><input id="${id}" data-p="${P(p)}" value="${esc(v)}" ${/phone|whatsapp|email|link|map|href|url|instagram|tiktok|snapchat|^x$|youtube/.test(k) ? 'dir="ltr"' : ''}></div>`;
   if (Array.isArray(v)) return arrField(k, v, p);
-  if (v && typeof v === 'object') return `<fieldset class="card" style="display:grid;gap:12px;padding:16px"><legend style="font-weight:800;padding:0 6px">${esc(lab(k))}</legend>${Object.keys(v).map(kk => field(kk, v[kk], [...p, kk])).join('')}</fieldset>`;
+  if (v && typeof v === 'object') return `<fieldset class="card" style="display:grid;gap:12px;padding:16px"><legend style="font-weight:800;padding:0 6px">${esc(lab(k))}</legend>${Object.keys(v).filter(kk => !kk.startsWith('_')).map(kk => field(kk, v[kk], [...p, kk])).join('')}</fieldset>`;
   return '';
 }
 function imgField(k, v, p) {
-  return `<div class="fld"><label>${esc(lab(k))}</label><div class="imgf" data-img="${P(p)}"><div class="pv"></div><div class="acts"><input data-p="${P(p)}" dir="ltr" value="${esc(v)}" placeholder="مسار أو رابط صورة"><div style="display:flex;gap:6px;flex-wrap:wrap"><label class="btn btn-ghost sm" style="cursor:pointer">رفع صورة<input type="file" accept="image/*" hidden data-up="${P(p)}"></label><button type="button" class="btn btn-ghost sm" data-clr="${P(p)}">إزالة</button></div></div></div></div>`;
+  return `<div class="fld"><label>${esc(lab(k))} <small class="hint" style="font-weight:500">— ${esc(V5.aspectFor(p)[2])}</small></label><div class="imgf" data-img="${P(p)}"><div class="pv"></div><div class="acts"><input data-p="${P(p)}" dir="ltr" value="${esc(v)}" placeholder="مسار أو رابط صورة"><div style="display:flex;gap:6px;flex-wrap:wrap"><label class="btn btn-ghost sm" style="cursor:pointer">⬆ رفع صورة<input type="file" accept="image/*" hidden data-up="${P(p)}"></label><button type="button" class="btn btn-ghost sm" data-crop="${P(p)}">✂ قص / تحريك</button><button type="button" class="btn btn-ghost sm" data-clr="${P(p)}">إزالة</button></div></div></div></div>`;
 }
 function itemTitle(v, i) {
   if (typeof v === 'string') return v;
@@ -139,12 +152,12 @@ function blank(v) {
 }
 const TPL = {};
 function arrField(k, v, p) {
-  const key = p.join('.'); if (v.length) TPL[key] = blank(v[0]);
+  const key = p.join('.'); if (v.length) TPL[key] = blank(v[0]); else if (k === 'gallery' && p[0] === 'projects') TPL[key] = { img: '', cap: '' };
   const prim = v.every(x => typeof x !== 'object') && (!v.length || typeof v[0] === 'string') && !(TPL[key] && typeof TPL[key] === 'object');
   if (prim) {
     return `<div class="fld"><label>${esc(lab(k))} <span class="hint" style="font-weight:500">— كل سطر بند</span></label><textarea rows="${Math.min(12, Math.max(3, v.length + 1))}" data-p="${P(p)}" data-t="lines">${esc(v.join('\n'))}</textarea></div>`;
   }
-  return `<div class="fld"><label>${esc(lab(k))} <span class="chip">${v.length}</span></label><div class="arr" data-arr="${P(p)}">${v.map((x, i) => `<details class="item"><summary><span class="n">${i + 1}</span><span class="t">${esc(itemTitle(x, i))}</span><span class="ops"><button type="button" title="لأعلى" data-mv="-1" data-i="${i}">↑</button><button type="button" title="لأسفل" data-mv="1" data-i="${i}">↓</button><button type="button" title="نسخ" data-dup="${i}">⧉</button><button type="button" class="del" title="حذف" data-del="${i}">✕</button></span></summary><div class="body">${typeof x === 'object' ? Object.keys(x).map(kk => field(kk, x[kk], [...p, i, kk])).join('') : field('text', x, [...p, i])}</div></details>`).join('')}</div><button type="button" class="btn btn-ghost sm" data-add="${P(p)}" style="justify-self:start">+ إضافة</button></div>`;
+  return `<div class="fld"><label>${esc(lab(k))} <span class="chip">${v.length}</span></label><div class="arr" data-arr="${P(p)}">${v.map((x, i) => `<details class="item ${x && x._off ? 'is-off' : ''}"><summary><span class="n">${i + 1}</span><span class="t">${esc(itemTitle(x, i))}</span><span class="ops">${typeof x === 'object' && p[0] !== 'en' ? `<button type="button" class="eye ${x._off ? 'off' : ''}" title="${x._off ? 'مخفي — اضغط لإظهاره' : 'إخفاء من الموقع'}" data-ioff="${i}">${x._off ? '🙈' : '👁'}</button>` : ''}<button type="button" title="لأعلى" data-mv="-1" data-i="${i}">↑</button><button type="button" title="لأسفل" data-mv="1" data-i="${i}">↓</button><button type="button" title="نسخ" data-dup="${i}">⧉</button><button type="button" class="del" title="حذف" data-del="${i}">✕</button></span></summary><div class="body">${typeof x === 'object' ? Object.keys(x).filter(kk => !kk.startsWith('_')).map(kk => field(kk, x[kk], [...p, i, kk])).join('') : field('text', x, [...p, i])}</div></details>`).join('')}</div><button type="button" class="btn btn-ghost sm" data-add="${P(p)}" style="justify-self:start">+ إضافة</button></div>`;
 }
 function bindEditor(box) {
   box.addEventListener('input', e => {
@@ -157,17 +170,22 @@ function bindEditor(box) {
   });
   box.addEventListener('change', async e => {
     const el = e.target; if (!el.dataset.up || !el.files[0]) return; const p = JSON.parse(el.dataset.up);
-    const f = el.closest('.imgf'); $('.pv', f).classList.add('ld'); toast('جارٍ ضغط ورفع الصورة…');
-    try { const v = await upload(el.files[0]); set(p, v); $('input[data-p]', f).value = v; paintImg(f); toast('الصورة اترفعت ✓ — اضغط حفظ ونشر'); } catch (x) { toast('فشل الرفع: ' + F.authMsg(x), 1); }
+    const f = el.closest('.imgf'); const raw = el.files[0]; el.value = '';
+    const url = URL.createObjectURL(raw); const cut = await V5.cropper(url, V5.aspectFor(p)); URL.revokeObjectURL(url); if (!cut) return;
+    $('.pv', f).classList.add('ld'); toast('جارٍ ضغط ورفع الصورة…');
+    try { const v = await upload(cut); set(p, v); $('input[data-p]', f).value = v; paintImg(f); toast('الصورة اترفعت ✓ — اضغط حفظ ونشر'); } catch (x) { toast('فشل الرفع: ' + F.authMsg(x), 1); }
     $('.pv', f).classList.remove('ld'); el.value = '';
   });
   box.addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.crop) { (async () => { const p = JSON.parse(b.dataset.crop), f = b.closest('.imgf'); const cur = await mediaURL(get(p) || ''); if (!cur) return toast('ارفع صورة الأول', 1); const cut = await V5.cropper(cur, V5.aspectFor(p)); if (!cut) return; $('.pv', f).classList.add('ld'); try { const v = await upload(cut); set(p, v); $('input[data-p]', f).value = v; paintImg(f); toast('اتظبطت ✓ — اضغط حفظ ونشر'); } catch (x) { toast('فشل: ' + F.authMsg(x), 1); } $('.pv', f).classList.remove('ld'); })(); return; }
+    if (b.dataset.eye) { const p = JSON.parse(b.dataset.eye), k = offKey(p); D._off = D._off || {}; if (D._off[k]) delete D._off[k]; else D._off[k] = true; dirty(); const w = b.closest('.eyewrap'); const o = !!D._off[k]; b.classList.toggle('off', o); b.textContent = o ? '🙈' : '👁'; if (w) w.classList.toggle('is-off', o); toast(o ? 'اتخفت من الموقع (لسه موجودة هنا)' : 'رجعت تظهر'); return; }
     if (b.dataset.clr) { const p = JSON.parse(b.dataset.clr); set(p, ''); const f = b.closest('.imgf'); $('input[data-p]', f).value = ''; paintImg(f); return; }
     if (b.dataset.add) { const p = JSON.parse(b.dataset.add); const a = get(p); a.push(clone(TPL[p.join('.')] ?? '')); dirty(); rerender(); setTimeout(() => { const last = $$(`[data-arr='${CSS.escape(b.dataset.add)}'] > details`).pop(); if (last) { last.open = true; last.scrollIntoView({ block: 'center', behavior: 'smooth' }); } }, 30); return; }
     const host = b.closest('[data-arr]'); if (!host) return; e.preventDefault(); e.stopPropagation();
     const p = JSON.parse(host.dataset.arr), a = get(p);
-    if (b.dataset.del != null) { const i = +b.dataset.del; if (!confirm(`حذف «${itemTitle(a[i], i)}»؟`)) return; a.splice(i, 1); }
+    if (b.dataset.ioff != null) { const i = +b.dataset.ioff; if (a[i]._off) delete a[i]._off; else a[i]._off = true; toast(a[i]._off ? 'اتخفى من الموقع (لسه موجود هنا)' : 'رجع يظهر'); }
+    else if (b.dataset.del != null) { const i = +b.dataset.del; if (!confirm(`حذف «${itemTitle(a[i], i)}»؟\n\n💡 لو عايز تخفيه بس من غير مسح، استخدم 👁`)) return; if (a[i] && a[i].id) { D._del = [...new Set([...(D._del || []), a[i].id])]; } a.splice(i, 1); }
     else if (b.dataset.dup != null) { const i = +b.dataset.dup; a.splice(i + 1, 0, clone(a[i])); }
     else if (b.dataset.mv) { const i = +b.dataset.i, j = i + (+b.dataset.mv); if (j < 0 || j >= a.length) return; [a[i], a[j]] = [a[j], a[i]]; }
     dirty(); rerender();
@@ -202,7 +220,7 @@ function paintBack() {
   const a = $('#admBk'); if (a) a.onclick = e => { e.preventDefault(); hist.pop(); const to = hist.pop() || 'dash'; location.hash = to === 'dash' && !location.hash.slice(1) ? '#dash' : to; if (location.hash.slice(1) === cur) go(); };
 }
 function go() {
-  const h = location.hash.slice(1) || 'dash'; cur = SECTIONS.some(s => s.id === h && !s.href) ? h : 'dash';
+  let h = location.hash.slice(1) || 'dash'; if (h === 'layout') h = 'pages'; cur = SECTIONS.some(s => s.id === h && !s.href) ? h : 'dash';
   if (hist[hist.length - 1] !== cur) hist.push(cur); if (cur === 'dash') hist.splice(0, hist.length - 1);
   paintBack();
   $$('#side a').forEach(a => a.classList.toggle('on', a.dataset.s === cur)); $('#side').classList.remove('on');
@@ -215,11 +233,13 @@ function rerender() {
   if (cur === 'team') return viewTeam(mp);
   if (cur === 'json') return viewJson(mp);
   const ctx = { F, db, D: () => D, setD: v => { D = v; }, dirty, rerender, toast, esc, me: () => me, isOwner: () => isOwner, upload, mediaURL, bindEditor, field, EN, DEFAULT, clone, deepMerge };
+  if (cur === 'owners') return V5.vOwners(mp, ctx);
+  if (cur === 'pages' || cur === 'layout') return V5.vPages(mp, ctx);
   if (X.VIEWS[cur]) return X.VIEWS[cur](mp, ctx);
   const open = $$('details.item[open]', mp).map(d => [...d.parentElement.children].indexOf(d) + '|' + d.parentElement.dataset.arr);
   const y = scrollY;
   mp.innerHTML = `<h2>${esc(s.t)}</h2><p class="desc">${esc(s.d || '')}</p><div class="form-grid" id="ed">${s.keys.map(k => {
-    const v = D[k]; const inner = (v && typeof v === 'object' && !Array.isArray(v)) ? Object.keys(v).map(kk => field(kk, v[kk], [k, kk])).join('') : field(k, v, [k]);
+    const v = D[k]; const inner = (v && typeof v === 'object' && !Array.isArray(v)) ? Object.keys(v).filter(kk => !kk.startsWith('_')).map(kk => field(kk, v[kk], [k, kk])).join('') : field(k, v, [k]);
     return `<section class="card" style="display:grid;gap:14px"><h3 style="font-size:17px;display:flex;gap:8px;align-items:center">${esc(KEYT[k] || k)}<button type="button" class="btn btn-ghost sm" data-reset="${k}" style="margin-inline-start:auto">استرجاع الافتراضي</button></h3>${inner}</section>`;
   }).join('')}</div>`;
   const ed = $('#ed'); bindEditor(ed);
@@ -234,10 +254,12 @@ async function viewDash(mp) {
   <div class="grid2"><div class="card"><h3 style="font-size:16px;margin-bottom:10px">تعديل سريع</h3><div style="display:flex;flex-wrap:wrap;gap:8px">${SECTIONS.filter(s => s.keys).map(s => `<a class="btn btn-ghost sm" href="#${s.id}">${s.ic} ${esc(s.t)}</a>`).join('')}</div></div>
   <div class="card" style="display:grid;gap:10px"><h3 style="font-size:16px">مفاتيح سريعة</h3>
   <label class="switch"><input type="checkbox" id="qa" ${D.announce.on ? 'checked' : ''}><span></span> شريط الإعلان</label>
+  <input id="qaT" value="${esc(D.announce.text || '')}" placeholder="اكتب نص الإعلان هنا…" style="padding:9px 12px;border-radius:12px;border:1.5px solid var(--line);margin-top:-4px">
   <label class="switch"><input type="checkbox" id="qp" ${D.popup.on ? 'checked' : ''}><span></span> نافذة العروض</label>
   <label class="switch"><input type="checkbox" id="qk" ${D.packages.on ? 'checked' : ''}><span></span> صفحة الباقات</label>
   <label class="switch"><input type="checkbox" id="qs" ${D.support.on ? 'checked' : ''}><span></span> استقبال طلبات الدعم</label>
   <p class="hint" style="color:var(--mut);font-size:12.5px">بعد أي تغيير اضغط «حفظ ونشر» تحت.</p></div></div>`;
+  $('#qaT').oninput = e => { D.announce.text = e.target.value; if (e.target.value.trim()) { D.announce.on = true; $('#qa').checked = true; } dirty(); };
   [['qa', 'announce'], ['qp', 'popup'], ['qk', 'packages'], ['qs', 'support']].forEach(([i, k]) => $('#' + i).onchange = e => { D[k].on = e.target.checked; dirty(); });
   const cnt = async q => { try { return (await F.getDocs(q)).size; } catch (e) { return '—'; } };
   const v = await Promise.all([
@@ -321,7 +343,7 @@ function paintEmps() {
 /* ---------- boot ---------- */
 F.onAuthStateChanged(auth, async u => {
   if (!u) { location.replace('portal.html'); return; }
-  me = u; isOwner = F.isOwnerUid(u.uid);
+  me = u; isOwner = await F.ownerOf(u.uid);
   if (!isOwner) {
     try { const s = await F.getDoc(F.doc(db, 'employees', u.uid)); emp = s.exists() ? s.data() : null; } catch (e) { emp = null; }
     if (!emp || emp.active === false || !(emp.mods || []).includes('cms')) { root.innerHTML = `<div style="min-height:100svh;display:grid;place-items:center;text-align:center;padding:20px"><div><h2>مفيش صلاحية</h2><p style="color:var(--mut);margin:8px 0 16px">لوحة التحكم محتاجة صلاحية «لوحة التحكم» من المالك.</p><a class="btn btn-red" href="portal.html">رجوع للبوابة</a></div></div>`; return; }

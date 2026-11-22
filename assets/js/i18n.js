@@ -1,6 +1,7 @@
 // نصوص الواجهة الثابتة بالعربي والإنجليزي
 export const UI = {
   ar: {
+    myAccount: 'حسابي / تسجيل', myProject: 'تابع مشروعك', account: 'حسابي', my: 'تابع مشروعك',
     home: 'الرئيسية', services: 'خدماتنا', projects: 'أعمالنا', packages: 'الباقات', about: 'من نحن', support: 'الدعم الفني', contact: 'تواصل معنا', track: 'تتبع طلبك', request: 'اطلب خدمة', staff: 'بوابة الموظفين', media: 'السوشيال ميديا', more: 'المزيد', menu: 'كل الصفحات',
     langBtn: 'EN', langName: 'English', switchLang: 'View in English', company: 'للاستشارات الهندسية',
     ourServices: 'خدماتنا', svcTitle: 'كل اللي يحتاجه مشروعك <em>تحت سقف واحد</em>', svcSub: 'كل خدمة تقدر تطلبها لوحدها، أو ضمن حزمة واحدة نتولّى فيها مشروعك من الفكرة حتى الإشغال.',
@@ -37,6 +38,7 @@ export const UI = {
     quick: ['السلام عليكم', 'أبغى رخصة بناء', 'كم سعر الإشراف؟', 'وين موقعكم؟', 'أوقات الدوام']
   },
   en: {
+    myAccount: 'My account', myProject: 'Follow your project', account: 'My account', my: 'My project',
     home: 'Home', services: 'Services', projects: 'Projects', packages: 'Packages', about: 'About', support: 'Support', contact: 'Contact', track: 'Track request', request: 'Request a service', staff: 'Staff portal', media: 'Social media', more: 'More', menu: 'All pages',
     langBtn: 'ع', langName: 'العربية', switchLang: 'عرض بالعربي', company: 'Engineering Consultancy',
     ourServices: 'Our services', svcTitle: 'Everything your project needs <em>under one roof</em>', svcSub: 'Order any service on its own, or as one package where we take your project from idea to occupancy.',

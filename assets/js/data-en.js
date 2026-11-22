@@ -35,6 +35,10 @@ export const EN = {
       desc: 'Fire-safety system design to international standards and its approval by Civil Defence — a prerequisite for operating any facility.',
       items: ['Design of all engineering safety systems to international standards', 'Early-warning alarm and fire-fighting design', 'Escape routes and evacuation plans per Civil Defence', 'Hydraulic calculations for fire-fighting systems', 'Supervising installation and conformity to drawings', 'Construction-material review against Civil Defence codes', 'Drawing approval by the competent authorities'],
       fit: 'Commercial, educational, healthcare and hospitality facilities, warehouses, fuel stations, high-occupancy buildings' },
+    { title: 'Electromechanical (MEP) Works', short: 'Electrical, HVAC, plumbing and low-current design and approvals.',
+      desc: 'Design and review of the building\'s MEP systems — electrical, HVAC, plumbing & drainage and low-current — compliant with the Saudi Building Code and authority requirements.',
+      items: ['Electrical, lighting and distribution-board design', 'HVAC design and cooling-load calculations', 'Plumbing, drainage and storm-water design', 'Low-current, CCTV and network design', 'Energy-efficiency and thermal-insulation calculations', 'Supervision and handover of MEP works'],
+      fit: 'Villas and residential buildings, commercial & office buildings, educational, healthcare and hospitality facilities' },
     { title: 'Project Management', short: 'Engineering, technical and financial studies, owner representation and progress tracking.',
       desc: 'Engineering, technical and financial consulting for projects, and full owner representation throughout delivery.',
       items: ['Engineering & technical consulting', 'Financial studies & cost estimation', 'Owner representation before contractors and authorities', 'Schedule & progress tracking', 'Contract, payment and change-order review', 'Periodic management reports'],
@@ -136,5 +140,5 @@ export const EN = {
   cta: { title: 'Ready to start your project or transaction?', text: 'Send us the deed and plot location and our engineering team will reply with a clear technical path, timeline and written price — free and without obligation.' },
   offer: { title: 'Limited-time offer', text: 'A discount on supervision packages for contracts signed this month.', badge: 'Offer', btn: 'Claim the offer' },
   media: { title: 'Follow us on social media', sub: 'Our daily field work — videos and photos from project sites.' },
-  seo: { title: 'Al-Shamrani Engineering Consultancy | Design, Permits, Surveying, Supervision, Safety', desc: 'Licensed engineering consultancy in Riyadh since 2016: architectural & structural design, building permits, surveying, engineering supervision and fire-safety systems — under one roof.' }
+  seo: { keywords: 'engineering consultancy Riyadh, building permit, villa design, engineering supervision, land surveying, civil defence, MEP design, Al-Shamrani', title: 'Al-Shamrani Engineering Consultancy | Design, Permits, Surveying, Supervision, Safety', desc: 'Licensed engineering consultancy in Riyadh since 2016: architectural & structural design, building permits, surveying, engineering supervision and fire-safety systems — under one roof.' }
 };

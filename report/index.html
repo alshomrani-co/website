@@ -404,6 +404,17 @@ input[type="radio"].hidden-radio{display:none;}
 .fi-phone .wv{animation:fiWave 2.6s ease-in-out infinite;opacity:0}.fi-phone .w2{animation-delay:.12s}
 @keyframes fiWave{0%,50%,80%,100%{opacity:0}58%,72%{opacity:1}}
 @media print{.arch-save,.no-print{display:none!important}.fi,.fi *{animation:none!important}.fi-phone .wv{opacity:1}}
+
+/* v5: وضع العميل */
+.client-view .tb-save,.client-view #reset-btn,.client-view .client-chip{display:none!important}
+.cv-cm{max-width:820px;margin:18px auto 30px;padding:18px;background:#fff;border-radius:18px;box-shadow:0 10px 30px -18px rgba(0,0,0,.3);font-family:inherit;display:grid;gap:12px}
+.cv-cm h3{font-size:18px}
+.cv-l{display:grid;gap:8px}
+.cv-m{background:#f3f4f6;border-radius:14px;padding:10px 12px;max-width:88%;display:grid;gap:3px;font-size:14px}
+.cv-m.s{justify-self:end;background:#fde8e8}
+.cv-cm form{display:flex;gap:8px}.cv-cm textarea{flex:1;border-radius:12px;border:1.5px solid #d1d5db;padding:10px;font:inherit}
+.cv-cm button{background:#e02828;color:#fff;border:0;border-radius:12px;padding:0 18px;font-weight:700;font-family:inherit;cursor:pointer}
+@media print{.cv-cm{display:none!important}}
 </style>
 <style>
 /* ===== شركة سعد الشمراني — الشعار المتحرك + الحركات + الأرشيف السحابي ===== */
@@ -1705,6 +1716,26 @@ async function save() {
   btn.disabled = false; btn.classList.remove('saving');
 }
 
+let cust = null;
+async function clientView(u) {
+  document.documentElement.classList.add('client-view');
+  btn.hidden = true; if (big) big.hidden = true; who.textContent = (cust.name || 'ع').trim().slice(0, 1); who.title = cust.name || '';
+  $('#tbBack').onclick = e => { e.preventDefault(); location.href = '../#/my'; };
+  document.querySelectorAll('[onclick*="resetForm"]').forEach(b => b.hidden = true);
+  await loadCloud(window.CLOUD_ID);
+  document.querySelectorAll('.ro-banner').forEach(b => b.textContent = 'تقرير مشروعك — عرض فقط. تقدر تطبعه أو تحفظه PDF، وتكتب تعليقك للمهندس تحت.');
+  const pw = document.querySelector('.page-wrap'); if (pw) pw.inert = true;
+  const id = window.CLOUD_ID, ref = 'report:' + id, ms = x => (x && x.toMillis ? x.toMillis() : (+x || 0)), esc = x => String(x ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const box = document.createElement('section'); box.className = 'cv-cm no-print'; (document.getElementById('archWrap') || pw).after(box);
+  const paint = async () => {
+    let L = []; try { L = (await F.getDocs(F.query(F.collection(db, 'ccomments'), F.where('clientNo', '==', cust.clientNo)))).docs.map(d => ({ id: d.id, ...d.data() })).filter(x => x.ref === ref).sort((a, b) => ms(a.at) - ms(b.at)); } catch (e) { }
+    box.innerHTML = `<h3>💬 تعليقك على التقرير</h3><div class="cv-l">${L.map(m => `<div class="cv-m ${m.from === 's' ? 's' : ''}"><b>${esc(m.from === 's' ? (m.byName || 'المهندس') : 'أنت')}</b><div>${esc(m.text).replace(/\n/g, '<br>')}</div></div>`).join('') || '<p style="color:#6b7280">اكتب ملاحظتك أو سؤالك والمهندس هيرد عليك هنا وفي صفحة «تابع مشروعك».</p>'}</div><form><textarea rows="3" maxlength="1500" placeholder="اكتب تعليقك…"></textarea><button>إرسال</button></form>`;
+    L.filter(m => m.from === 's' && !m.seenC).forEach(m => F.updateDoc(F.doc(db, 'ccomments', m.id), { seenC: true }).catch(() => { }));
+    box.querySelector('form').onsubmit = async e => { e.preventDefault(); const ta = box.querySelector('textarea'), v = ta.value.trim(); if (!v) return;
+      try { await F.addDoc(F.collection(db, 'ccomments'), { clientNo: cust.clientNo, uid: u.uid, ref, refTitle: ((meta && meta.irNo) || '') + ' ' + ((meta && meta.type) || ''), from: 'c', text: v.slice(0, 1500), byName: (cust.name || '').slice(0, 60), at: F.serverTimestamp(), seen: false }); paint(); } catch (x) { alert('ماتبعتش: ' + F.authMsg(x)); } };
+  };
+  paint();
+}
 async function loadCloud(id) {
   veil(true);
   try {
@@ -1716,18 +1747,21 @@ async function loadCloud(id) {
     window.restoreState(s);
     if (!document.querySelectorAll('#photos-grid .photo-slot').length) { window.addPhotoSlot(); window.addPhotoSlot(); }
     $('#tb-ir').textContent = meta.irNo || '';
-    if (meta.clientNo) { const chip = document.createElement('div'); chip.className = 'client-chip'; chip.innerHTML = `<b>${meta.clientNo}</b><span>${String(meta.clientName || '').replace(/[<>&]/g, '')}</span><a href="../supervision.html#c/${meta.clientNo}">ملف العميل ←</a>`; document.querySelector('.page-wrap').prepend(chip); }
+    if (meta.clientNo && !cust) { const chip = document.createElement('div'); chip.className = 'client-chip'; chip.innerHTML = `<b>${meta.clientNo}</b><span>${String(meta.clientName || '').replace(/[<>&]/g, '')}</span><a href="../supervision.html#c/${meta.clientNo}">ملف العميل ←</a>`; document.querySelector('.page-wrap').prepend(chip); }
     readOnly = !(isOwner || meta.by === me.uid);
     if (readOnly) { btn.hidden = true; if (big) big.hidden = true; const b = document.createElement('div'); b.className = 'ro-banner'; b.textContent = 'عرض فقط — التقرير ده بتاع ' + (meta.byName || 'موظف آخر') + '. تقدر تطبعه أو تحفظه PDF.'; document.querySelector('.page-wrap').prepend(b); }
-  } catch (e) { console.error(e); alert(e.message === 'not-found' ? 'التقرير مش موجود في الأرشيف.' : 'تعذّر فتح التقرير: ' + F.authMsg(e)); location.href = '../supervision.html'; return; }
+  } catch (e) { console.error(e); alert(e.message === 'not-found' ? 'التقرير مش موجود في الأرشيف.' : 'تعذّر فتح التقرير: ' + F.authMsg(e)); location.href = cust ? '../#/my' : '../supervision.html'; return; }
   veil(false);
 }
 
 F.onAuthStateChanged(auth, async u => {
-  if (!u) { location.replace('../portal.html'); return; }
-  me = u; isOwner = F.isOwnerUid(u.uid);
+  if (!u) { let c = null; try { c = localStorage.getItem('sh.cust'); } catch (e) { } location.replace(c ? '../#/account' : '../portal.html'); return; }
+  me = u; isOwner = await F.ownerOf(u.uid);
   if (!isOwner) { try { const s = await F.getDoc(F.doc(db, 'employees', u.uid)); emp = s.exists() ? s.data() : null; } catch (e) { emp = null; } }
   if (!canMod('report') && !canMod('reports')) {
+    // العميل: يشوف تقرير مشروعه بس (قراءة فقط) ويكتب تعليق
+    try { const cs = await F.getDoc(F.doc(db, 'customers', u.uid)); cust = cs.exists() ? cs.data() : null; } catch (e) { cust = null; }
+    if (cust && cust.clientNo != null && window.CLOUD_ID) { await clientView(u); return; }
     document.body.innerHTML = '<div style="min-height:100vh;display:grid;place-items:center;text-align:center;font-family:Cairo,Tahoma,sans-serif;padding:20px"><div><h2>مفيش صلاحية</h2><p style="margin:8px 0 16px;color:#5a6a7e">تقرير الإشراف محتاج صلاحية من المالك.</p><a href="../portal.html" style="background:#e02828;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:700">رجوع للبوابة</a></div></div>';
     return;
   }

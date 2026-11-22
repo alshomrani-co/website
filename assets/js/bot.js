@@ -8,6 +8,7 @@ const SVC_KW = {
   permits: /رخص|ترخيص|تصريح|اشغال|هدم|ترميم|تسوير|ملحق|بلدي|اتمام بناء|نقل ملكيه|صك|صكوك|بير|permit|licen[cs]e|occupancy|demoli|deed/,
   survey: /مساح|رفع مساحي|تجزي|فرز|حدود|اقرار|طبوغراف|تحديد|survey|subdivi|boundar|topograph/,
   supervision: /اشراف|مشرف|اشرف|خارطه|متابعه تنفيذ|استلام|مقاول|supervis|off.?plan|site engineer/,
+  mep: /كهروميكانيك|الكتروميكانيك|تكييف|تهويه|سباك|صرف صحي|تيار خفيف|mep|hvac|plumb|electromech/,
   safety: /سلامه|دفاع مدني|الدفاع|حريق|انذار|اطفا|هروب|safety|fire|civil defen|alarm/,
   pm: /اداره مشاريع|اداره المشروع|دراسه جدوي|مستخلص|عقود|تمثيل المالك|project manag|cost estim/,
   '3d': /3d|ثري دي|ثلاثي|ريندر|مجسم|تصور|render|visuali/

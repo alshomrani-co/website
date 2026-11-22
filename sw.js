@@ -1,5 +1,5 @@
 // كاش خفيف للموقع: الشبكة أولاً (التحديثات توصل فوراً) والكاش وقت انقطاع النت
-const CACHE = 'shamrani-site-v4';
+const CACHE = 'shamrani-site-v5';
 const SHELL = ['./', './index.html', './assets/css/site.css?v=3', './assets/js/site.js?v=3', './assets/js/data.js', './assets/js/data-en.js', './assets/js/i18n.js', './assets/js/bot.js', './config.js', './manifest.json', './assets/img/mark.png', './assets/img/icon-192.png', './assets/video/hero-poster.jpg'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).catch(() => {}).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(k => Promise.all(k.filter(x => x.startsWith('shamrani-site-') && x !== CACHE).map(x => caches.delete(x)))).then(() => self.clients.claim())); });

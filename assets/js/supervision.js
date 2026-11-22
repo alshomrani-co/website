@@ -2,6 +2,7 @@
 import * as F from './fb.js';
 import { xlsx } from './xlsx-lite.js';
 const { auth, db } = F;
+import * as SX from './sup-x.js';
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -47,6 +48,7 @@ async function vHome() {
   <div class="row-acts"><a class="btn btn-ghost" href="#add">➕ عميل جديد</a>${seeAll() ? '<button class="btn btn-ghost" id="xl">⬇ تنزيل Excel بآخر وضع</button>' : ''}${isOwner ? '<button class="btn btn-ghost" id="seed" hidden>⬆ تحميل عملاء الإكسل</button>' : ''}</div>
   <h3 class="sec-t">آخر التقارير</h3><div class="list" id="rl"><p class="empty">جارٍ التحميل…</p></div>`);
   const xl = $('#xl'); if (xl) xl.onclick = exportExcel;
+  SX.homeExtras($('main.shell'), toast);
   try {
     const cl = await loadClients();
     if (isOwner && !cl.length) { const b = $('#seed'); b.hidden = false; b.onclick = seedClients; toast('قاعدة العملاء فاضية — اضغط «تحميل عملاء الإكسل»'); }
@@ -97,6 +99,7 @@ async function vClient(no) {
     const s = await F.getDocs(q); const L = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.seq || 0) - (a.seq || 0) || ((b.at && b.at.seconds) || 0) - ((a.at && a.at.seconds) || 0));
     $('#rc').textContent = L.length; $('#rl').innerHTML = L.length ? L.map(repRow).join('') : '<p class="empty">مفيش تقارير للعميل ده لسه — اضغط «تقرير جديد» فوق.</p>';
   } catch (e) { $('#rl').innerHTML = `<p class="empty">${esc(F.authMsg(e))}</p>`; }
+  SX.clientExtras($('main.shell'), c, { me, isOwner, emp, toast });
 }
 
 /* ---------- عميل جديد (رقم مسلسل) ---------- */
@@ -169,7 +172,7 @@ addEventListener('hashchange', () => { route(); scrollTo(0, 0); });
 F.onAuthStateChanged(auth, async u => {
   unsubs.forEach(x => x()); unsubs = [];
   if (!u) { location.replace('portal.html'); return; }
-  me = u; isOwner = F.isOwnerUid(u.uid);
+  me = u; isOwner = await F.ownerOf(u.uid);
   if (!isOwner) { try { const s = await F.getDoc(F.doc(db, 'employees', u.uid)); emp = s.exists() ? s.data() : null; } catch (e) { emp = null; } }
   if (!can('report') && !can('reports')) { frame(`${back('portal.html', 'البوابة')}<div class="card" style="text-align:center;padding:40px"><h2>مفيش صلاحية</h2><p style="color:var(--mut);margin-top:8px">الإشراف محتاج صلاحية من المالك.</p></div>`); return; }
   route();

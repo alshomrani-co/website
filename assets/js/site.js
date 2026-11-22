@@ -1,8 +1,9 @@
 // شركة سعد الشمراني — الموقع العام (صفحة واحدة بروابط #) — عربي / English
-import { DEFAULT } from './data.js';
+import { DEFAULT, migrate, PAGE_BLOCKS } from './data.js';
 import { EN } from './data-en.js';
 import { UI } from './i18n.js';
 import { makeBot } from './bot.js';
+import * as ACC from './site-acc.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const store = (k, area = 'local') => { try { return (area === 'local' ? localStorage : sessionStorage).getItem(k); } catch (e) { return null; } };
@@ -23,16 +24,22 @@ function overlay(a, b) {
 /* ---------- state ---------- */
 let C = DEFAULT;
 const PREVIEW = /[?&]preview=1/.test(location.search);
-try { const c = JSON.parse(localStorage.getItem(PREVIEW ? 'sh.preview' : 'sh.site') || 'null'); if (c) C = deepMerge(DEFAULT, c); } catch (e) { }
+try { const c = JSON.parse(localStorage.getItem(PREVIEW ? 'sh.preview' : 'sh.site') || 'null'); if (c) C = migrate(deepMerge(DEFAULT, c), EN); } catch (e) { }
 let LANG = 'ar';
 try { LANG = localStorage.getItem('sh.lang') || (/^en/.test(new URLSearchParams(location.search).get('lang') || '') ? 'en' : 'ar'); } catch (e) { }
 let VV = null;
-const V = () => VV || (VV = LANG === 'en' ? overlay(C, deepMerge(EN, C.en || {})) : C);
+// الإخفاء بالعين 👁: أي عنصر عليه _off أو أي خانة في _off بتختفي من الموقع من غير ما تتمسح
+function prune(o, off, path = '') {
+  if (Array.isArray(o)) return o.map((x, i) => (x && typeof x === 'object' && x._off) ? undefined : prune(x, off, path + '.' + i)).filter(x => x !== undefined);
+  if (o && typeof o === 'object') { const r = {}; for (const k in o) { const pp = path ? path + '.' + k : k; if (off[pp]) { const v = o[k]; r[k] = typeof v === 'string' ? '' : Array.isArray(v) ? [] : (typeof v === 'boolean' ? false : v); } else r[k] = prune(o[k], off, pp); } return r; }
+  return o;
+}
+const V = () => VV || (VV = prune(LANG === 'en' ? overlay(C, deepMerge(EN, C.en || {})) : C, (C._off || {})));
 const t = (k, rep) => { let s = (UI[LANG] && UI[LANG][k] !== undefined) ? UI[LANG][k] : UI.ar[k]; if (rep && typeof s === 'string') for (const r in rep) s = s.replace('{' + r + '}', rep[r]); return s; };
 const em = s => String(s).replace(/<em>/g, '<span class="hl">').replace(/<\/em>/g, '</span>');
-const setC = next => { C = next; VV = null; };
+const setC = next => { C = migrate(next, EN); VV = null; };
 
-if (PREVIEW) { try { const bc = new BroadcastChannel('sh-preview'); bc.onmessage = e => { setC(deepMerge(DEFAULT, e.data)); chrome(); render(true); }; } catch (e) { } addEventListener('DOMContentLoaded', () => { const b = document.createElement('div'); b.className = 'preview-flag'; b.textContent = t('preview'); document.body.appendChild(b); }); }
+if (PREVIEW) { try { const bc = new BroadcastChannel('sh-preview'); bc.onmessage = e => { setC(deepMerge(DEFAULT, e.data)); chrome(); render(true); initGlow(); }; } catch (e) { } addEventListener('DOMContentLoaded', () => { const b = document.createElement('div'); b.className = 'preview-flag'; b.textContent = t('preview'); document.body.appendChild(b); }); }
 
 let FB = null;
 const fb = () => FB || (FB = import('./fb.js'));
@@ -57,8 +64,8 @@ async function loadRemote() {
     const dd = d.exists() ? d.data() : null; let remote = null;
     if (dd && dd.json) { try { remote = JSON.parse(dd.json); } catch (e) { } } else if (dd && dd.data) remote = dd.data;
     if (remote) { storeSet('sh.site', JSON.stringify(remote));
-      const next = deepMerge(DEFAULT, remote);
-      if (JSON.stringify(next) !== JSON.stringify(C)) { setC(next); chrome(); render(true); }
+      const next = migrate(deepMerge(DEFAULT, remote), EN);
+      if (JSON.stringify(next) !== JSON.stringify(C)) { setC(next); chrome(); render(true); initGlow(); }
     }
   } catch (e) { }
 }
@@ -115,12 +122,13 @@ const NAV_ALL = ['', 'services', 'projects', 'packages', 'about', 'support', 'tr
 function chrome() {
   const v = V();
   document.documentElement.lang = LANG; document.documentElement.dir = LANG === 'en' ? 'ltr' : 'rtl';
-  document.title = v.seo.title; applyDesign();
+  document.title = v.seo.title; applyDesign(); seoMeta(v);
   $('#bShort').textContent = v.brand.short; $('#bSub').textContent = t('company');
   $('#langBtn').textContent = t('langBtn'); $('#langBtn').title = t('langName');
   $('#reqBtn').textContent = t('request');
+  { const ab = $('#accBtn'); if (ab) { ab.href = '#/' + (ACC.signedIn() ? 'my' : 'account'); ab.title = ACC.signedIn() ? t('myProject') : t('myAccount'); ab.classList.toggle('on', ACC.signedIn()); } }
   $('#nav').innerHTML = NAV_MAIN.filter(r => r !== 'packages' || v.packages.on).map(r => `<a href="#/${r}" data-r="${r}">${t(r)}</a>`).join('') + `<button class="more-btn" id="moreBtn" aria-label="${t('more')}" aria-expanded="false"><i></i><i></i><i></i></button>`;
-  $('#moreList').innerHTML = NAV_ALL.filter(r => r !== 'packages' || v.packages.on).map((r, i) => `<a href="#/${r}" data-r="${r}" style="--i:${i}"><span>${t(r || 'home')}</span>${I.prev}</a>`).join('') + (store('sh.staff') ? `<a href="portal.html" class="staff-link" style="--i:11"><span>${t('staff')}</span>${I.prev}</a>` : '') +
+  $('#moreList').innerHTML = NAV_ALL.filter(r => r !== 'packages' || v.packages.on).map((r, i) => `<a href="#/${r}" data-r="${r}" style="--i:${i}"><span>${t(r || 'home')}</span>${I.prev}</a>`).join('') + `<a href="#/${ACC.signedIn() ? 'my' : 'account'}" data-r="${ACC.signedIn() ? 'my' : 'account'}" class="acc-link" style="--i:10"><span>${ACC.signedIn() ? t('myProject') : t('myAccount')}</span>${I.prev}</a>` + (store('sh.staff') ? `<a href="portal.html" class="staff-link" style="--i:11"><span>${t('staff')}</span>${I.prev}</a>` : '') +
     `<div class="more-foot"><a class="btn btn-red" href="${wa()}" target="_blank" rel="noopener">${I.wa} ${t('waNow')}</a><a class="btn btn-ghost" href="${tel()}" dir="ltr">${I.phone} ${esc(v.contact.phone)}</a><button class="btn btn-ghost" data-lang>${t('switchLang')}</button></div>`;
   $('#moreBtn').onclick = () => toggleMore();
   $('#waFab').href = wa();
@@ -137,6 +145,12 @@ function chrome() {
   $('#holdHint').textContent = t('staffHint');
   $$('[data-lang]').forEach(b => b.onclick = switchLang);
   applyDesign();
+}
+function seoMeta(v) {
+  let k = document.querySelector('meta[name=keywords]'); if (!k) { k = document.createElement('meta'); k.name = 'keywords'; document.head.appendChild(k); } k.content = v.seo.keywords || '';
+  let j = document.getElementById('ld-org'); if (!j) { j = document.createElement('script'); j.type = 'application/ld+json'; j.id = 'ld-org'; document.head.appendChild(j); }
+  const c = v.contact, url = location.origin + location.pathname;
+  j.textContent = JSON.stringify({ '@context': 'https://schema.org', '@type': 'ProfessionalService', additionalType: 'https://schema.org/EngineeringService', name: v.brand.name, alternateName: v.brand.short, url, logo: url.replace(/[^/]*$/, '') + 'assets/img/icon-512.png', image: url.replace(/[^/]*$/, '') + 'assets/video/hero-poster.jpg', description: v.seo.desc, telephone: '+966' + String(c.phone || '').replace(/\D/g, '').replace(/^0/, ''), email: c.email, foundingDate: String(v.brand.founded || ''), address: { '@type': 'PostalAddress', streetAddress: c.address, addressLocality: 'Riyadh', addressCountry: 'SA' }, areaServed: 'SA', keywords: v.seo.keywords, sameAs: Object.values(v.socials || {}).filter(x => /^https?:/.test(x)), makesOffer: v.services.map(x => ({ '@type': 'Offer', itemOffered: { '@type': 'Service', name: x.title, description: x.short } })) });
 }
 function toggleMore(on) {
   const m = $('#more'), open = on === undefined ? m.hidden : on;
@@ -202,14 +216,14 @@ P[''] = () => {
   const order = (d.sections && d.sections.length ? d.sections.slice() : DEFAULT.design.sections.slice());
   if (!order.includes('stats') && !(d.hidden || []).includes('stats')) { const gi = order.indexOf('gallery'); order.splice(gi >= 0 ? gi + 1 : 0, 0, 'stats'); }
   const vsrc = (h.videoMobile && matchMedia('(max-width:700px) and (orientation:portrait)').matches) ? h.videoMobile : h.videoSrc;
-  return `<section class="hero">${h.video && vsrc ? `<video autoplay muted loop playsinline preload="auto" poster="${esc(src(h.poster))}"><source src="${esc(vsrc)}" type="video/mp4"></video>` : `<img class="poster" src="${esc(src(h.poster))}" alt="">`}
+  return `<section class="hero" data-blk="hero">${h.video && vsrc ? `<video autoplay muted loop playsinline preload="auto" poster="${esc(src(h.poster))}"><source src="${esc(vsrc)}" type="video/mp4"></video>` : `<img class="poster" src="${esc(src(h.poster))}" alt="">`}
     <div class="hero-in"><div>
       ${d.heroLogo !== false ? `<div class="hero-logo">${d.logo ? `<span class="hl-cube custom">${img(d.logo, '')}</span>` : `<span class="hl-cube"><img class="g" src="assets/img/cube-gray.png" alt=""><img class="r" src="assets/img/cube-red.png" alt=""></span>`}<span class="hl-t"><b>${esc(v.brand.short)}</b><small>${t('company')}</small></span></div>` : ''}
       <span class="eyebrow">${esc(h.eyebrow)}</span><h1><span class="l"><span>${esc(h.title)}</span></span><span class="l"><span>${esc(h.highlight)}</span></span></h1><p class="lead">${esc(h.lead)}</p>
       <div class="ctas"><a class="btn btn-red" href="#/request">${esc(h.cta1)} ${I.arrow}</a><a class="btn btn-ghost" href="#/services">${esc(h.cta2)}</a></div>
 </div>
-      <div class="hero-card glass"><h4>${t('needToday')} <span class="live"><i></i> ${t('liveNow')}</span></h4><ul>${v.services.slice(0, 5).map(x => `<li><a href="#/service/${esc(x.id)}">${esc(x.title)} <span>${esc(x.no)}</span></a></li>`).join('')}</ul></div></div><span class="scroll-cue"></span></section>
-  ${order.map(k => S[k] ? S[k]() : '').join('')}`;
+      <div class="hero-card glass"><h4>${t('needToday')} <span class="live"><i></i> ${t('liveNow')}</span></h4><ul>${v.services.slice(0, 6).map(x => `<li><a href="#/service/${esc(x.id)}">${esc(x.title)} <span>${esc(x.no)}</span></a></li>`).join('')}</ul></div></div><span class="scroll-cue"></span></section>
+  ${order.map(k => S[k] ? S[k]().replace(/^\s*<section/, `<section data-blk="${k}"`) : '').join('')}`;
 };
 
 P.services = () => { const v = V(); return `<section class="phead"><div class="grid-bg"></div><div class="wrap">${crumbs(t('services'))}<h1>${em(t('svcPageTitle'))}</h1><p class="lead">${t('svcPageLead')}</p></div></section>
@@ -232,7 +246,7 @@ P.projects = () => { const v = V(); return `<section class="phead"><div class="w
   <section class="sec tight"><div class="wrap"><div class="filters" id="filters">${[t('all'), ...v.cats].map((c, i) => `<button class="${i - 1 === prjCat ? 'on' : ''}" data-c="${i - 1}">${esc(c)}</button>`).join('')}</div><div class="prj-grid" id="prjGrid">${prjCards()}</div>
   <div class="note-box glass rv" style="margin-top:34px"><div><h4>${t('whyNo')}</h4><p>${esc(v.confidential)}</p></div><a class="btn btn-ink" href="${wa(t('portfolioWa'))}" target="_blank" rel="noopener">${t('portfolio')}</a></div></div></section>
   ${galleryBlock()}${ctaBox()}`; };
-const prjCards = () => { const v = V(), cat = prjCat >= 0 ? C.cats[prjCat] : null; return v.projects.filter((p, i) => !cat || C.projects[i].cat === cat).map((p, i) => `<article class="prj glass" style="animation-delay:${i * 40}ms"><div class="ph">${p.img ? img(p.img, p.title) : `<img class="ph-ic" src="assets/img/mark.png" alt="">`}</div><div class="bd"><span class="chip" style="align-self:flex-start">${esc(p.tag || p.cat)}</span><h3>${esc(p.title)}</h3><p>${esc(p.desc)}</p><div class="meta"><span>${t('loc')} <b>${esc(p.loc)}</b></span><span>·</span><span>${t('scope')} <b>${esc(p.scope)}</b></span></div></div></article>`).join(''); };
+const prjCards = () => { const v = V(), cat = prjCat >= 0 ? v.cats[prjCat] : null; return v.projects.map((p, k) => [p, k]).filter(([p]) => !cat || p.cat === cat).map(([p, k], i) => `<article class="prj glass ${p.img || (p.gallery || []).length ? 'has-img' : ''}" data-prj="${k}" style="animation-delay:${i * 40}ms">${(p.gallery || []).filter(g => g.img).length ? `<span class="prj-n">${I.play.replace('M8 5v14l11-7z', 'M4 5h16v14H4zM4 15l5-5 4 4 3-3 4 4')} ${(p.gallery || []).filter(g => g.img).length + (p.img ? 1 : 0)}</span>` : ''}<div class="ph">${p.img ? img(p.img, p.title) : `<img class="ph-ic" src="assets/img/mark.png" alt="">`}</div><div class="bd"><span class="chip" style="align-self:flex-start">${esc(p.tag || p.cat)}</span><h3>${esc(p.title)}</h3><p>${esc(p.desc)}</p><div class="meta"><span>${t('loc')} <b>${esc(p.loc)}</b></span><span>·</span><span>${t('scope')} <b>${esc(p.scope)}</b></span></div></div></article>`).join(''); };
 
 P.packages = () => { const v = V(); return `<section class="phead"><div class="wrap">${crumbs(t('packages'))}<h1>${esc(v.packages.title)}</h1><p class="lead">${esc(v.packages.sub)}</p></div></section>
   <section class="sec tight"><div class="wrap"><div class="pk-grid">${pkCards()}</div></div></section>${ctaBox()}`; };
@@ -306,6 +320,8 @@ async function paintFeed() {
   }
 }
 
+/* حساب العميل + تابع مشروعك */
+P.account = q => ACC.pageAccount(q); P.my = () => ACC.pageMy();
 /* request wizard */
 let wiz = { step: 0, s: '', type: '', city: '', name: '', phone: '', msg: '', img: '' };
 P.request = (q) => {
@@ -397,16 +413,18 @@ function render(soft) {
   wire(r); pageView();
 }
 function wire(r) {
-  reveal(); counters(); countdown(); initStrip();
+  applyBlocks(r); reveal(); counters(); countdown(); initStrip();
   $$('[data-copy]').forEach(b => b.onclick = () => copy(b.dataset.copy));
   $$('[data-lang]').forEach(b => b.onclick = switchLang);
-  $$('[data-lb]').forEach(f => f.onclick = () => { if (f.closest('.strip') && f.closest('.strip')._dragged) return; $('#lbImg').src = f.querySelector('img').src; $('#lbCap').textContent = f.dataset.cap; $('#lb').hidden = false; });
+  $$('[data-lb]').forEach(f => f.onclick = () => { if (f.closest('.strip') && f.closest('.strip')._dragged) return; lbOpen([{ src: f.querySelector('img').src, cap: f.dataset.cap }], 0); });
   const gal = $('#gal'); if (gal) $$('[data-g]').forEach(b => b.onclick = () => { gal._pause && gal._pause(2500); gal.scrollBy({ left: (LANG === 'en' ? 1 : -1) * (+b.dataset.g) * 260, behavior: 'smooth' }); });
+  $$('[data-prj]').forEach(a => a.onclick = () => { const p = V().projects[+a.dataset.prj]; if (!p) return; const L = [p.img, ...(p.gallery || []).map(g => g.img)].filter(Boolean).map((x, i) => ({ src: src(x), cap: i ? ((p.gallery || []).filter(g => g.img)[i - (p.img ? 1 : 0)] || {}).cap || p.title : p.title })); if (L.length) lbOpen(L, 0); });
   const fl = $('#filters'); if (fl) fl.onclick = e => { const b = e.target.closest('button'); if (!b) return; prjCat = +b.dataset.c; $$('button', fl).forEach(x => x.classList.toggle('on', x === b)); $('#prjGrid').innerHTML = prjCards(); };
   if (r === 'support') { const q = $('#faqQ'), cats = $('#faqCats'); let cat = ''; const F = V().faq; const run = () => { const v = q.value.trim().toLowerCase(); let n = 0; $$('#faqList details').forEach((d, i) => { const f = F[i]; const ok = (!cat || f.cat === cat) && (!v || (f.q + f.a).toLowerCase().includes(v)); d.hidden = !ok; d.classList.add('in'); if (ok) n++; if (v && ok) d.open = f.a.toLowerCase().includes(v); }); $('#faqNone').hidden = n > 0; }; q.oninput = run; cats.onclick = e => { const b = e.target.closest('button'); if (!b) return; cat = b.dataset.c; $$('button', cats).forEach(x => x.classList.toggle('on', x === b)); run(); }; }
   if (r === 'request') paintWiz();
   if (r === 'track') { $('#trForm').onsubmit = doTrack; if ($('#trCode').value && new URLSearchParams(location.hash.split('?')[1] || '').get('c')) doTrack(); }
   if (r === 'media') paintFeed();
+  if (r === 'account') ACC.wireAccount(); if (r === 'my') ACC.wireMy();
   const v = $('.hero video'); if (v) { v.play().catch(() => { }); }
 }
 let io = null;
@@ -455,6 +473,22 @@ function initStrip() {
   });
 }
 function dragScroll(el) { let d = false, x = 0, s = 0; el.onpointerdown = e => { if (e.pointerType !== 'mouse') return; d = true; x = e.clientX; s = el.scrollLeft; el.style.scrollSnapType = 'none'; }; addEventListener('pointerup', () => { d = false; el.style.scrollSnapType = ''; }); el.onpointermove = e => { if (d) el.scrollLeft = s - (e.clientX - x); }; }
+/* لايت بوكس بأكتر من صورة */
+let lbL = [], lbI = 0;
+function lbOpen(L, i) { lbL = L; lbI = i; lbShow(); $('#lb').hidden = false; $('#lb').classList.toggle('multi', L.length > 1); }
+function lbShow() { const x = lbL[lbI]; if (!x) return; $('#lbImg').src = x.src; $('#lbCap').textContent = (x.cap || '') + (lbL.length > 1 ? `  (${lbI + 1}/${lbL.length})` : ''); }
+function lbStep(d) { if (lbL.length < 2) return; lbI = (lbI + d + lbL.length) % lbL.length; lbShow(); }
+/* بلوكات الصفحات: ترتيب وإخفاء وحجم خط وأيقونات من لوحة التحكم */
+const POS = { services: ['head', 'strip', 'grid', 'cta'], service: ['head', 'body', 'strip', 'cta'], projects: ['head', 'stats', 'list', 'gallery', 'cta'], packages: ['head', 'list', 'cta'], about: ['head', 'story', 'licenses', 'branches', 'isic', 'quote', 'cta'], contact: ['head', 'cards', 'branches'], support: ['hero', 'faq'], request: ['head', 'form'], track: ['head', 'form'], account: ['head', 'form'], my: ['head', 'body'] };
+function applyBlocks(r) {
+  const pg = r || 'home', app = $('#app'), kids = [...app.children], cfg = ((C.design || {}).pages || {})[pg] || {};
+  if (pg !== 'home' && POS[pg]) kids.forEach((el, i) => { if (!el.dataset.blk && POS[pg][i]) el.dataset.blk = POS[pg][i]; });
+  if (pg !== 'home' && Array.isArray(cfg.order) && cfg.order.length) { const m = {}; kids.forEach(el => { if (el.dataset.blk) m[el.dataset.blk] = el; }); cfg.order.forEach(k => { if (m[k]) app.appendChild(m[k]); }); }
+  const hid = new Set(cfg.hidden || []);
+  $$(':scope > [data-blk]', app).forEach(el => { const k = el.dataset.blk; if (pg !== 'home' && hid.has(k)) el.hidden = true; if (pg === 'home' && k === 'hero' && hid.has('hero')) el.hidden = true;
+    const fs = (cfg.fs || {})[k], ic = (cfg.ic || {})[k];
+    if (fs && fs !== 100) el.style.setProperty('--bfs', fs / 100); if (ic && ic !== 100) el.style.setProperty('--bic', ic / 100); });
+}
 function toast(x) { const el = $('#toast'); el.textContent = x; el.classList.add('on'); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('on'), 2200); }
 function copy(x) { navigator.clipboard ? navigator.clipboard.writeText(x).then(() => toast(t('copied'))) : toast(x); }
 
@@ -469,6 +503,17 @@ function botAsk(q) {
   botSay(esc(q), true); const ty = document.createElement('div'); ty.className = 'bm bt typing'; ty.innerHTML = '<i></i><i></i><i></i>'; $('#botMsgs').appendChild(ty); $('#botMsgs').scrollTop = 1e6;
   const a = bot.answer(q); setTimeout(() => { ty.remove(); botSay(a.text, false, a.chips); }, 500 + Math.min(900, a.text.length * 6));
   try { const h = JSON.parse(sessionStorage.getItem('sh.botlog') || '[]'); h.push({ q, at: Date.now() }); sessionStorage.setItem('sh.botlog', JSON.stringify(h.slice(-50))); } catch (e) { }
+  logBot(q, a);
+}
+// أسئلة الزوار للمساعد بتتحفظ (من غير اسم) علشان الفريق يشوفها في «الدعم والمحادثات»
+async function logBot(q, a) {
+  if (PREVIEW || store('sh.staff')) return;
+  try { const F = await fb(); const ref = F.doc(F.db, 'botlogs', SID); const n = +(store('sh.bln', 'session') || 0);
+    if (n >= 60) return; storeSet('sh.bln', String(n + 1), 'session');
+    const item = { q: String(q).slice(0, 300), a: String(a.text || '').replace(/<[^>]+>/g, '').slice(0, 300), at: Date.now() };
+    if (!n) await F.setDoc(ref, { id: SID, at: F.serverTimestamp(), upd: F.serverTimestamp(), dev: DEV, lang: LANG, page: location.hash.slice(0, 60), qs: [item], n: 1 });
+    else await F.updateDoc(ref, { qs: F.arrayUnion(item), upd: F.serverTimestamp(), n: F.increment(1) });
+  } catch (e) { console.warn('botlog', e); }
 }
 function resetBot() { $('#botMsgs').innerHTML = ''; $('#botQuick').innerHTML = ''; if (!$('#bot').hidden) openBot(); }
 function openBot() {
@@ -479,6 +524,7 @@ function openBot() {
 }
 function initBot() {
   $('#botFab').onclick = openBot;
+  const hb = document.createElement('a'); hb.href = '#chat'; hb.className = 'bot-human'; hb.textContent = LANG === 'en' ? 'Talk to staff' : '🧑‍💼 كلّم موظف'; $('#bot header').insertBefore(hb, $('#botX'));
   $('#botX').onclick = () => { $('#bot').hidden = true; $('#botFab').classList.remove('hide'); };
   $('#botQuick').onclick = e => { const b = e.target.closest('button'); if (b && !b.dataset.botBack) botAsk(b.textContent); };
   $('#botForm').onsubmit = e => { e.preventDefault(); const v = $('#botIn').value.trim(); if (!v) return; $('#botIn').value = ''; if (chatMode) chatSend(v); else botAsk(v); };
@@ -526,15 +572,45 @@ function initWa() {
   }, true);
   document.addEventListener('click', e => { const s = e.target.closest && e.target.closest('[data-ev]'); if (s) track(s.dataset.ev); });
 }
+/* الماوس: شكل الدايرة اللي بتمشي ورا الماوس + أيقونة الماوس نفسها (بتتغير من لوحة التحكم) */
+const CUR_ICONS = {
+  pen: ['<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><path d="M3 29l3-9L22 4l6 6-16 16z" fill="#fff" stroke="#16171A" stroke-width="2" stroke-linejoin="round"/><path d="M19 7l6 6" stroke="#E1262B" stroke-width="3"/><path d="M3 29l3-9 3 6z" fill="#E1262B"/></svg>', 3, 29],
+  cross: ['<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><g stroke="#E1262B" stroke-width="2"><path d="M16 2v10M16 20v10M2 16h10M20 16h10"/></g><circle cx="16" cy="16" r="3" fill="none" stroke="#16171A" stroke-width="2"/></svg>', 16, 16],
+  arrow: ['<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28"><path d="M3 2l20 9-8.5 2.5L11 22z" fill="#E1262B" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>', 3, 2],
+  compass: ['<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="6" r="3" fill="#16171A"/><path d="M15 8L6 29M17 8l9 21" stroke="#16171A" stroke-width="2.4" stroke-linecap="round"/><path d="M9 22h14" stroke="#E1262B" stroke-width="2"/><circle cx="6" cy="29" r="1.8" fill="#E1262B"/></svg>', 6, 29],
+  dot: ['<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><circle cx="10" cy="10" r="5" fill="#E1262B" stroke="#fff" stroke-width="2"/></svg>', 10, 10]
+};
+let CS = 'glow', curInit = false;
 function initGlow() {
-  if (!matchMedia('(hover:hover) and (pointer:fine)').matches || (C.design && C.design.cursorGlow === false)) return;
+  if (!matchMedia('(hover:hover) and (pointer:fine)').matches) return;
+  const d = C.design || {}; CS = d.cursorGlow === false ? 'none' : (d.cursor || 'glow'); const icon = d.cursorIcon || 'default';
+  let st = document.getElementById('cur-ic'); if (!st) { st = document.createElement('style'); st.id = 'cur-ic'; document.head.appendChild(st); }
+  if (CUR_ICONS[icon]) { const [svg, x, y] = CUR_ICONS[icon]; const u = `url("data:image/svg+xml,${encodeURIComponent(svg)}") ${x} ${y}`; st.textContent = `html,body{cursor:${u},auto}a,button,summary,label,[data-lb],[data-prj],.st-item,.opt{cursor:${u},pointer}input,textarea{cursor:text}`; } else st.textContent = '';
+  document.documentElement.dataset.cur = CS;
+  if (curInit) { const ex = $('.cursor-x'); if (ex) ex.innerHTML = CS === 'cross' ? '<i class="h"></i><i class="v"></i><b></b>' : ''; return; }
+  curInit = true;
   const g = document.createElement('div'); g.className = 'cursor-glow'; const dot = document.createElement('div'); dot.className = 'cursor-dot';
-  document.body.append(g, dot);
-  let x = innerWidth / 2, y = innerHeight / 2, gx = x, gy = y, shown = false;
-  addEventListener('pointermove', e => { x = e.clientX; y = e.clientY; if (!shown) { shown = true; document.body.classList.add('glow-on'); } dot.style.transform = `translate(${x}px,${y}px)`; const hot = e.target.closest && e.target.closest('a,button,summary,.opt,[data-lb],.st-item,input,textarea,select'); dot.classList.toggle('hot', !!hot); }, { passive: true });
-  addEventListener('pointerdown', () => dot.classList.add('press')); addEventListener('pointerup', () => dot.classList.remove('press'));
+  const extra = document.createElement('div'); extra.className = 'cursor-x'; if (CS === 'cross') extra.innerHTML = '<i class="h"></i><i class="v"></i><b></b>';
+  document.body.append(g, dot, extra);
+  let x = innerWidth / 2, y = innerHeight / 2, gx = x, gy = y, shown = false, hotEl = null, last = 0;
+  addEventListener('pointermove', e => {
+    if (CS === 'none') return;
+    x = e.clientX; y = e.clientY; if (!shown) { shown = true; document.body.classList.add('glow-on'); }
+    dot.style.transform = `translate(${x}px,${y}px)`;
+    hotEl = e.target.closest && e.target.closest('a,button,summary,.opt,[data-lb],[data-prj],.st-item,input,textarea,select');
+    dot.classList.toggle('hot', !!hotEl); g.classList.toggle('hot', !!hotEl);
+    if (CS === 'cross') { extra.style.setProperty('--x', x + 'px'); extra.style.setProperty('--y', y + 'px'); const bb = $('b', extra); if (bb) bb.textContent = `X ${String(Math.round(x)).padStart(4, '0')}  Y ${String(Math.round(y + scrollY)).padStart(4, '0')}`; }
+    if (CS === 'trail' && performance.now() - last > 28) { last = performance.now(); const p = document.createElement('i'); p.className = 'cur-p'; p.style.left = x + 'px'; p.style.top = y + 'px'; p.style.setProperty('--dx', (Math.random() * 30 - 15) + 'px'); document.body.appendChild(p); setTimeout(() => p.remove(), 700); }
+  }, { passive: true });
+  addEventListener('pointerdown', () => { dot.classList.add('press'); g.classList.add('press'); if (CS === 'ripple' || CS === 'ring') { const r = document.createElement('i'); r.className = 'cur-rip'; r.style.left = x + 'px'; r.style.top = y + 'px'; document.body.appendChild(r); setTimeout(() => r.remove(), 650); } });
+  addEventListener('pointerup', () => { dot.classList.remove('press'); g.classList.remove('press'); });
   document.addEventListener('mouseleave', () => { shown = false; document.body.classList.remove('glow-on'); });
-  const loop = () => { gx += (x - gx) * .14; gy += (y - gy) * .14; g.style.transform = `translate(${gx}px,${gy}px)`; requestAnimationFrame(loop); }; loop();
+  const loop = () => {
+    const k = CS === 'ring' || CS === 'magnet' ? .2 : .14; let tx = x, ty = y;
+    if (CS === 'magnet' && hotEl) { const r = hotEl.getBoundingClientRect(); tx = r.left + r.width / 2; ty = r.top + r.height / 2; g.style.width = (r.width + 18) + 'px'; g.style.height = (r.height + 14) + 'px'; const br = getComputedStyle(hotEl).borderRadius; g.style.borderRadius = br === '0px' ? '12px' : br; }
+    else { g.style.width = g.style.height = g.style.borderRadius = ''; }
+    gx += (tx - gx) * k; gy += (ty - gy) * k; g.style.transform = `translate(${gx}px,${gy}px)`; requestAnimationFrame(loop);
+  }; loop();
 }
 
 /* ---------- الإحصائيات (مجهولة الهوية: دولة، مدينة، جهاز، مصدر، صفحات) ---------- */
@@ -599,7 +675,7 @@ function chatForm() {
       let log = []; try { log = JSON.parse(sessionStorage.getItem('sh.botlog') || '[]').slice(-8).map(x => x.q); } catch (e) { }
       await F.setDoc(F.doc(F.db, 'chats', id), { id, name: n.slice(0, 60), phone: ph.slice(0, 15), at: F.serverTimestamp(), upd: F.serverTimestamp(), open: true, unread: 1, lang: LANG, page: location.hash.slice(0, 60), botLog: log, msgs: [{ from: 'c', text: LANG === 'en' ? 'Started a chat' : 'بدأ محادثة جديدة', at: Date.now() }] });
       chatId = id; storeSet('sh.chat', id); f.remove(); track('chat'); startChat();
-    } catch (e) { $('#cErr').textContent = t('connErr'); $('#cGo').disabled = false; }
+    } catch (e) { console.warn('chat', e); $('#cErr').innerHTML = `${t('connErr')} <a href="${wa()}" target="_blank" rel="noopener" style="color:var(--red);font-weight:700">${LANG === 'en' ? 'WhatsApp' : 'واتساب'}</a>`; $('#cGo').disabled = false; }
   };
 }
 async function startChat() {
@@ -612,11 +688,11 @@ async function startChat() {
     m.forEach(x => { const el = document.createElement('div'); el.className = 'bm ' + (x.from === 'c' ? 'me' : 'bt staff'); el.innerHTML = (x.from !== 'c' ? `<b class="who">${esc(x.by || t('team'))}</b>` : '') + nl(x.text); box.appendChild(el); });
     if (m.length < 2) { const el = document.createElement('div'); el.className = 'bm bt'; el.textContent = LANG === 'en' ? 'Thanks! A team member will reply here shortly. You can keep writing.' : 'شكراً لك 🌷 موظف من الفريق هيرد عليك هنا خلال دقايق في وقت الدوام. تقدر تكتب سؤالك.'; box.appendChild(el); }
     box.scrollTop = 1e6;
-  }, () => { });
+  }, e => { const box = $('#botMsgs'); const el = document.createElement('div'); el.className = 'bm bt err'; el.innerHTML = (LANG === 'en' ? 'The chat could not connect. ' : 'المحادثة مش قادرة تتصل دلوقتي. ') + `<a href="${wa()}" target="_blank" rel="noopener">${LANG === 'en' ? 'Message us on WhatsApp' : 'كلّمنا واتساب'}</a>`; box.appendChild(el); console.warn('chat', e); });
 }
 function stopChat() { chatMode = false; if (chatUnsub) { chatUnsub(); chatUnsub = null; } $('#bot').classList.remove('live'); $('#botSubT').textContent = t('botSub'); $('#botMsgs').innerHTML = ''; $('#botQuick').innerHTML = ''; openBot(); }
 async function chatSend(text) {
-  try { const F = await fb(); await F.updateDoc(F.doc(F.db, 'chats', chatId), { msgs: F.arrayUnion({ from: 'c', text: text.slice(0, 1500), at: Date.now() }), upd: F.serverTimestamp(), unread: F.increment(1) }); } catch (e) { toast(t('connErr')); }
+  try { const F = await fb(); await F.updateDoc(F.doc(F.db, 'chats', chatId), { msgs: F.arrayUnion({ from: 'c', text: text.slice(0, 1500), at: Date.now() }), upd: F.serverTimestamp(), unread: F.increment(1) }); } catch (e) { console.warn('chat', e); toast(t('connErr')); const box = $('#botMsgs'); const el = document.createElement('div'); el.className = 'bm bt err'; el.textContent = (LANG === 'en' ? 'Not sent: ' : 'الرسالة متبعتتش: ') + text.slice(0, 80); box.appendChild(el); box.scrollTop = 1e6; }
 }
 
 /* ---------- boot ---------- */
@@ -631,7 +707,9 @@ function boot() {
   $('#topBtn').onclick = () => scrollTo({ top: 0, behavior: 'smooth' });
   addEventListener('scroll', () => { const y = scrollY, h = document.documentElement.scrollHeight - innerHeight; $('#hdr').classList.toggle('scrolled', y > 30); $('#progress').style.width = (h > 0 ? y / h * 100 : 0) + '%'; $('#topBtn').classList.toggle('on', y > 900); }, { passive: true });
   addEventListener('hashchange', () => render());
-  addEventListener('keydown', e => { if (e.key === 'Escape') { $('#popup').hidden = true; $('#lb').hidden = true; toggleMore(false); } });
+  addEventListener('keydown', e => { if (e.key === 'Escape') { $('#popup').hidden = true; $('#lb').hidden = true; toggleMore(false); } if (!$('#lb').hidden && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) lbStep((e.key === 'ArrowLeft') === (LANG === 'en') ? -1 : 1); });
+  $('#lb').insertAdjacentHTML('beforeend', `<button class="lb-nav p" aria-label="prev">${I.prev}</button><button class="lb-nav n" aria-label="next">${I.next}</button>`); $('#lb .lb-nav.p').onclick = () => lbStep(LANG === 'en' ? -1 : 1); $('#lb .lb-nav.n').onclick = () => lbStep(LANG === 'en' ? 1 : -1);
+  { let sx = 0; $('#lb').addEventListener('touchstart', e => { sx = e.touches[0].clientX; }, { passive: true }); $('#lb').addEventListener('touchend', e => { const dx = e.changedTouches[0].clientX - sx; if (Math.abs(dx) > 50) lbStep(dx > 0 ? 1 : -1); }); }
   document.addEventListener('touchstart', () => { }, { passive: true }); // يفعّل تأثير الضغط :active على الآيفون
   chrome(); render(); initBot(); initHold(); popup(); initGlow(); initWa(); initStats();
   loadRemote();

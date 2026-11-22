@@ -117,11 +117,12 @@ function viewSupport() {
 function paintTickets() {
   const el = $('#tl'); if (!el) return; const q = ($('#q') || {}).value || '';
   const L = tickets.filter(t => (tFilter === 'all' || (tFilter === 'active' ? t.status !== 'done' : t.status === tFilter)) && (!q || (t.name + t.phone + t.code + t.msg).includes(q)));
-  el.innerHTML = L.length ? L.map(t => `<div class="li" data-id="${esc(t.id)}"><div class="main"><b>${esc(t.name)} · <span style="display:inline;color:var(--red)">${esc(t.code)}</span></b><span>${esc(t.dept)} — ${esc(t.msg || '')}</span></div><span class="chip ${STS[t.status] ? STS[t.status][1] : ''}">${STS[t.status] ? STS[t.status][0] : t.status}</span></div>`).join('') : '<p class="empty">مفيش طلبات هنا 🎉</p>';
+  el.innerHTML = L.length ? L.map(t => `<div class="li ${!t.seen && t.status === 'new' ? 'unseen' : ''}" data-id="${esc(t.id)}"><div class="main"><b>${esc(t.name)} · <span style="display:inline;color:var(--red)">${esc(t.code)}</span></b><span>${esc(t.dept)} — ${esc(t.msg || '')}</span></div><span class="chip ${STS[t.status] ? STS[t.status][1] : ''}">${STS[t.status] ? STS[t.status][0] : t.status}</span></div>`).join('') : '<p class="empty">مفيش طلبات هنا 🎉</p>';
   $$('.li', el).forEach(li => li.onclick = () => openTicket(li.dataset.id));
 }
 function openTicket(id) {
   const t = tickets.find(x => x.id === id); if (!t) return;
+  if (!t.seen) { t.seen = true; F.updateDoc(F.doc(db, 'tickets', t.id), { seen: true, seenBy: isOwner ? 'المالك' : ((emp && emp.name) || ''), seenAt: F.serverTimestamp() }).catch(() => { }); paintTickets(); }
   const sh = document.createElement('div'); sh.className = 'sheet';
   const wa = `https://wa.me/966${String(t.phone).replace(/^0/, '').replace(/^966/, '')}?text=${encodeURIComponent('السلام عليكم ' + t.name + '، بخصوص طلبك رقم ' + t.code + ' لدى شركة سعد الشمراني')}`;
   sh.innerHTML = `<div class="sheet-in"><div class="sheet-h"><h3>طلب ${esc(t.code)}</h3><button class="x">×</button></div>
@@ -143,7 +144,32 @@ function openTicket(id) {
 
 /* المحادثات المباشرة من الموقع */
 let chats = [], openChat = null;
-const supTabs = cur => `<div class="seg" style="margin-bottom:14px"><a href="#support" class="${cur === 'support' ? 'on' : ''}" style="padding:7px 14px;border-radius:999px;font-weight:700">طلبات الخدمة ${counts.tickets ? `<span class="chip red">${counts.tickets}</span>` : ''}</a><a href="#chats" class="${cur === 'chats' ? 'on' : ''}" style="padding:7px 14px;border-radius:999px;font-weight:700">المحادثات المباشرة ${counts.chats ? `<span class="chip red">${counts.chats}</span>` : ''}</a></div>`;
+const supTabs = cur => `<div class="seg" style="margin-bottom:14px"><a href="#support" class="${cur === 'support' ? 'on' : ''}" style="padding:7px 14px;border-radius:999px;font-weight:700">طلبات الخدمة ${counts.tickets ? `<span class="chip red">${counts.tickets}</span>` : ''}</a><a href="#chats" class="${cur === 'chats' ? 'on' : ''}" style="padding:7px 14px;border-radius:999px;font-weight:700">المحادثات المباشرة ${counts.chats ? `<span class="chip red">${counts.chats}</span>` : ''}</a><a href="#botlogs" class="${cur === 'botlogs' ? 'on' : ''}" style="padding:7px 14px;border-radius:999px;font-weight:700">أسئلة المساعد</a></div>${notifBtn()}`;
+/* أسئلة الزوار للمساعد الآلي (من غير أسماء) */
+async function viewBotlogs() {
+  if (!can('support')) return viewHome();
+  root.innerHTML = top() + `<main class="shell"><div class="hello"><div><a class="back glass-back" href="#">→ رجوع</a><h1>أسئلة المساعد</h1><p>اللي الزوار سألوه للمساعد الآلي — من غير أسماء. لو حد عايز يكلّم موظف بيظهر في «المحادثات المباشرة».</p></div></div>${supTabs('botlogs')}<div class="list" id="bl"><p class="empty">جارٍ التحميل…</p></div></main>`;
+  $('#lo').onclick = () => F.signOut(auth);
+  try {
+    const s = await F.getDocs(F.query(F.collection(db, 'botlogs'), F.orderBy('upd', 'desc'), F.limit(120)));
+    const DV = { iphone: '📱', android: '🤖', ipad: '📲', desktop: '💻' };
+    $('#bl').innerHTML = s.size ? s.docs.map(d => { const x = d.data(); return `<details class="li" style="display:block"><summary style="cursor:pointer;display:flex;gap:10px;align-items:center"><span>${DV[x.dev] || '🌐'}</span><b style="flex:1">${esc(((x.qs || [])[0] || {}).q || '')}</b><span class="chip">${(x.qs || []).length} سؤال</span><small style="color:var(--mut)">${x.upd && x.upd.toDate ? x.upd.toDate().toLocaleString('ar-SA') : ''}</small></summary><div class="thread" style="margin-top:10px">${(x.qs || []).map(m => `<div class="msg"><b>الزائر</b><br>${esc(m.q)}</div><div class="msg staff"><b>المساعد</b><br>${esc(m.a)}</div>`).join('')}</div></details>`; }).join('') : '<p class="empty">لسه محدش سأل المساعد</p>';
+  } catch (e) { $('#bl').innerHTML = `<p class="empty">${esc(F.authMsg(e))}</p>`; }
+}
+/* التنبيهات: صوت + اهتزاز + رقم في عنوان الصفحة + إشعار المتصفح */
+const baseTitle = document.title; let lastN = -1, blink = null;
+function notifBtn() { return ('Notification' in window) && Notification.permission === 'default' ? `<button class="btn btn-ghost sm" id="nfOn" style="margin-bottom:12px">🔔 فعّل التنبيهات على الجهاز ده</button>` : ''; }
+document.addEventListener('click', e => { if (e.target.id === 'nfOn') Notification.requestPermission().then(() => e.target.remove()); });
+function beep() { try { const a = new (window.AudioContext || window.webkitAudioContext)(); [[880, 0], [1320, .16]].forEach(([f, t]) => { const o = a.createOscillator(), g = a.createGain(); o.type = 'sine'; o.frequency.value = f; g.gain.setValueAtTime(.0001, a.currentTime + t); g.gain.exponentialRampToValueAtTime(.25, a.currentTime + t + .02); g.gain.exponentialRampToValueAtTime(.0001, a.currentTime + t + .22); o.connect(g).connect(a.destination); o.start(a.currentTime + t); o.stop(a.currentTime + t + .25); }); } catch (e) { } }
+function notify(what) {
+  const n = tickets.filter(t => !t.seen && t.status === 'new').length + counts.chats;
+  if (lastN >= 0 && n > lastN) {
+    beep(); try { navigator.vibrate && navigator.vibrate([60, 40, 60]); } catch (e) { }
+    if ('Notification' in window && Notification.permission === 'granted' && document.hidden) { try { new Notification('شركة سعد الشمراني', { body: what, icon: 'assets/img/icon-192.png', tag: 'sh-support' }); } catch (e) { } }
+  }
+  lastN = n; clearInterval(blink);
+  if (n) { let on = false; document.title = `(${n}) ${baseTitle}`; blink = setInterval(() => { on = !on; document.title = on ? `🔴 ${n} جديد` : `(${n}) ${baseTitle}`; }, 1500); } else document.title = baseTitle;
+}
 function viewChats() {
   if (!can('support')) return viewHome();
   root.innerHTML = top() + `<main class="shell"><div class="hello"><div><a class="back glass-back" href="#">→ رجوع</a><h1>المحادثات المباشرة</h1><p>العملاء اللي طلبوا يكلّموا موظف من المساعد في الموقع</p></div></div>${supTabs('chats')}<div class="list" id="cl"></div></main>`;
@@ -202,15 +228,24 @@ function route() {
   const h = location.hash.slice(1);
   if (h === 'support') return viewSupport();
   if (h === 'chats') return viewChats();
+  if (h === 'botlogs') return viewBotlogs();
   if (h === 'reports') return viewReports();
   viewHome();
 }
-addEventListener('hashchange', route);
+addEventListener('hashchange', () => { navDepth++; route(); });
+// زرار الرجوع: خطوة واحدة لورا (مش للبوابة علطول)
+let navDepth = 0;
+document.addEventListener('click', e => {
+  const a = e.target.closest && e.target.closest('a.glass-back[href="#"]'); if (!a) return; e.preventDefault();
+  if (navDepth > 0) { navDepth -= 2; history.back(); return; }
+  const r = document.referrer; if (r && r.startsWith(location.origin) && !/portal\.html(#|$)/.test(r.replace(location.origin, ''))) { location.href = r; return; }
+  location.hash = '';
+});
 
 F.onAuthStateChanged(auth, async u => {
   clearSubs(); me = u; emp = null; isOwner = false;
   if (!u) { if (location.hash === '#register') viewRegister(); else viewLogin(); return; }
-  isOwner = F.isOwnerUid(u.uid);
+  isOwner = await F.ownerOf(u.uid);
   try { localStorage.setItem('sh.staff', '1'); } catch (e) { }
   if (isOwner) { startLive(); return route(); }
   unsubs.push(F.onSnapshot(F.doc(db, 'employees', u.uid), async s => {
@@ -230,10 +265,12 @@ function startLive() {
     const before = counts.chats; chats = s.docs.map(d => ({ id: d.id, ...d.data() })); counts.chats = chats.filter(c => c.unread > 0).length;
     if (counts.chats > before && document.hidden === false) { try { navigator.vibrate && navigator.vibrate(60); } catch (e) { } }
     if (location.hash === '#chats') paintChats(); else if (openChat) renderChatSheet();
+    notify('رسالة جديدة في المحادثات المباشرة');
     const b = $('.tile[data-k=support]'); if (b) { let bd = b.querySelector('.badge'); const n = counts.tickets + counts.chats; if (n) { if (!bd) { bd = document.createElement('span'); bd.className = 'badge'; b.prepend(bd); } bd.textContent = n; } else if (bd) bd.remove(); }
   }, () => { }));
   if (can('support')) unsubs.push(F.onSnapshot(F.query(F.collection(db, 'tickets'), F.orderBy('at', 'desc'), F.limit(300)), s => {
     tickets = s.docs.map(d => ({ id: d.id, ...d.data() })); counts.tickets = tickets.filter(t => t.status === 'new').length;
+    notify('طلب خدمة جديد من الموقع');
     if (location.hash === '#support') paintTickets(); else if (!location.hash || location.hash === '#') { const b = $('.tile[data-k=support]'); if (b) { let bd = b.querySelector('.badge'); if (counts.tickets) { if (!bd) { bd = document.createElement('span'); bd.className = 'badge'; b.prepend(bd); } bd.textContent = counts.tickets; } else if (bd) bd.remove(); } }
   }, () => { }));
 }
