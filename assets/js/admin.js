@@ -183,7 +183,7 @@ async function paintImg(f) {
 function shell() {
   const links = SECTIONS.map(s => s.h ? `<h6>${s.h}</h6>` : (s.own && !isOwner ? '' : `<a href="${s.href || '#' + s.id}" data-s="${s.id}" ${s.href ? '' : ''}><span style="width:20px;text-align:center">${s.ic}</span>${esc(s.t)}${s.id === 'team' ? '<span class="bdg" id="reqB" hidden></span>' : ''}</a>`)).join('');
   root.innerHTML = `<header class="top"><div class="top-in"><button class="burger2" id="bg" aria-label="القائمة">☰</button><a class="brand" href="portal.html"><img src="assets/img/mark.png" alt="">لوحة التحكم</a><div class="who"><a class="btn btn-ghost sm" href="index.html?preview=1" target="_blank" rel="noopener" title="معاينة مباشرة للتعديلات قبل النشر">👁 معاينة</a><a class="btn btn-ghost sm" href="portal.html">البوابة</a><button class="btn btn-ghost sm" id="lo">خروج</button></div></div></header>
-  <div class="adm"><nav class="side" id="side">${links}</nav><main class="main-p" id="mp"></main></div>
+  <div class="adm"><nav class="side" id="side">${links}</nav><main class="main-p"><div class="adm-back" id="admBack"></div><div id="mp"></div></main></div>
   <div class="savebar" id="savebar"><span>عندك تعديلات لسه متنشرتش</span><button class="btn btn-ghost sm" id="undoBtn" style="background:transparent;color:#fff;border-color:#555">تراجع عن الكل</button><button class="btn btn-red" id="saveBtn">حفظ ونشر</button></div>`;
   $('#lo').onclick = async () => { if (JSON.stringify(D) !== saved && !confirm('في تعديلات متنشرتش. تخرج؟')) return; await F.signOut(auth); location.href = 'portal.html'; };
   $('#bg').onclick = () => $('#side').classList.toggle('on');
@@ -191,8 +191,20 @@ function shell() {
   $('#undoBtn').onclick = () => { if (!confirm('ترجع لآخر نسخة منشورة؟')) return; D = JSON.parse(saved); dirty(); rerender(); };
   addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); if (JSON.stringify(D) !== saved) save(); } });
 }
+// زرار الرجوع: يرجع للقسم اللي قبله، أو لنظرة عامة، ومن نظرة عامة للبوابة
+const hist = [];
+function paintBack() {
+  const el = $('#admBack'); if (!el) return;
+  const tp = document.querySelector('header.top'); if (tp) el.style.top = tp.offsetHeight + 'px';
+  const prev = hist.length > 1 ? hist[hist.length - 2] : (cur !== 'dash' ? 'dash' : null);
+  const ps = prev && SECTIONS.find(x => x.id === prev);
+  el.innerHTML = prev ? `<a class="glass-back" href="#${prev}" id="admBk">→ رجوع <small>${esc(ps ? ps.t : 'نظرة عامة')}</small></a>` : `<a class="glass-back" href="portal.html">→ البوابة</a>`;
+  const a = $('#admBk'); if (a) a.onclick = e => { e.preventDefault(); hist.pop(); const to = hist.pop() || 'dash'; location.hash = to === 'dash' && !location.hash.slice(1) ? '#dash' : to; if (location.hash.slice(1) === cur) go(); };
+}
 function go() {
   const h = location.hash.slice(1) || 'dash'; cur = SECTIONS.some(s => s.id === h && !s.href) ? h : 'dash';
+  if (hist[hist.length - 1] !== cur) hist.push(cur); if (cur === 'dash') hist.splice(0, hist.length - 1);
+  paintBack();
   $$('#side a').forEach(a => a.classList.toggle('on', a.dataset.s === cur)); $('#side').classList.remove('on');
   rerender(); scrollTo(0, 0);
 }

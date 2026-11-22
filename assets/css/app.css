@@ -204,3 +204,10 @@ input[type=range]{width:100%;accent-color:var(--red)}
 .ph{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
 .stg{width:100%;border-collapse:collapse;font-size:13.5px}.stg td{padding:7px 6px;border-bottom:1px dashed var(--line)}.stg td:last-child{font-weight:800;direction:ltr;text-align:end;font-family:'Inter',sans-serif}
 @media (max-width:700px){.big2{grid-template-columns:1fr}.s3{grid-template-columns:1fr}.bigbtn{padding:20px}.client-hero .btn.lg{width:100%}}
+/* v4: زرار رجوع ثابت أعلى كل أقسام لوحة التحكم */
+.adm-back{position:sticky;top:64px;z-index:20;padding:6px 0 2px;margin-bottom:6px}
+.adm-back .glass-back{margin:0}
+.adm-back .glass-back small{font-weight:600;opacity:.7;font-size:12.5px}
+@media (max-width:860px){.adm-back{top:58px}}
+.adm-back .glass-back{background:rgba(255,255,255,.86)}
+[data-theme=dark] .adm-back .glass-back{background:rgba(30,31,35,.88)}

@@ -11,7 +11,7 @@ export function emptyWarnings(D) {
   return w.length ? 'تنبيه:\n' + w.join('\n') : '';
 }
 
-const SEC_NAMES = { offer: 'العرض الحالي', gallery: 'معرض صور الأعمال', strip: 'شريط الخدمات المتحرك', services: 'كروت الخدمات', steps: 'آلية العمل', packages: 'الباقات', social: 'السوشيال ميديا', why: 'ليش الشمراني + كلمة المدير', partners: 'الشركاء', faq: 'الأسئلة الشائعة', cta: 'صندوق دعوة التواصل' };
+const SEC_NAMES = { offer: 'العرض الحالي', gallery: 'معرض صور الأعمال', strip: 'شريط الخدمات المتحرك', stats: 'الأرقام (العدّاد)', services: 'كروت الخدمات', steps: 'آلية العمل', packages: 'الباقات', social: 'السوشيال ميديا', why: 'ليش الشمراني + كلمة المدير', partners: 'الشركاء', faq: 'الأسئلة الشائعة', cta: 'صندوق دعوة التواصل' };
 const FONTS = { kufi: 'نوتو كوفي + بلكس (الحالي)', cairo: 'Cairo', tajawal: 'Tajawal', almarai: 'Almarai', readex: 'Readex Pro', rubik: 'Rubik' };
 const PRESETS = [['#E1262B', '#C9A24B', 'أحمر الشركة'], ['#B91D22', '#D4AF37', 'أحمر غامق'], ['#0F766E', '#C9A24B', 'أخضر'], ['#1D4ED8', '#E0B04B', 'أزرق'], ['#111827', '#C9A24B', 'أسود ودهبي']];
 
@@ -91,13 +91,14 @@ function vVideo(mp, c) {
 /* ---------- ترتيب الصفحة الرئيسية ---------- */
 function vLayout(mp, c) {
   const D = c.D(); const all = Object.keys(SEC_NAMES); let on = (D.design.sections || c.DEFAULT.design.sections).filter(k => SEC_NAMES[k]);
+  if (!on.includes('stats') && !(D.design.hidden || []).includes('stats')) { const gi = on.indexOf('gallery'); on.splice(gi >= 0 ? gi + 1 : 0, 0, 'stats'); }
   const paint = () => {
     const off = all.filter(k => !on.includes(k));
-    mp.innerHTML = `<h2>ترتيب الصفحة الرئيسية</h2><p class="desc">رتّب الأقسام بالأسهم، وشيل علامة أي قسم علشان يختفي. الفيديو والأرقام دايماً أول حاجة.</p>
+    mp.innerHTML = `<h2>ترتيب الصفحة الرئيسية</h2><p class="desc">رتّب الأقسام بالأسهم، وشيل علامة أي قسم علشان يختفي. الفيديو دايماً أول حاجة.</p>
     <div class="list" id="lay">${on.map((k, i) => `<div class="li" style="cursor:default"><label class="switch" style="flex:1"><input type="checkbox" checked data-k="${k}"><span></span> <b>${i + 1}.</b> ${SEC_NAMES[k]}</label><span class="ops" style="display:flex;gap:4px"><button class="btn btn-ghost sm" data-mv="-1" data-i="${i}" ${i ? '' : 'disabled'}>↑</button><button class="btn btn-ghost sm" data-mv="1" data-i="${i}" ${i < on.length - 1 ? '' : 'disabled'}>↓</button></span></div>`).join('')}
     ${off.map(k => `<div class="li" style="opacity:.55;cursor:default"><label class="switch" style="flex:1"><input type="checkbox" data-k="${k}"><span></span> ${SEC_NAMES[k]} <small>(مخفي)</small></label></div>`).join('')}</div>`;
     $$('[data-mv]', mp).forEach(b => b.onclick = () => { const i = +b.dataset.i, j = i + (+b.dataset.mv); [on[i], on[j]] = [on[j], on[i]]; D.design.sections = [...on]; c.dirty(); paint(); });
-    $$('input[data-k]', mp).forEach(x => x.onchange = () => { const k = x.dataset.k; on = x.checked ? [...on, k] : on.filter(y => y !== k); D.design.sections = [...on]; c.dirty(); paint(); });
+    $$('input[data-k]', mp).forEach(x => x.onchange = () => { const k = x.dataset.k; on = x.checked ? [...on, k] : on.filter(y => y !== k); D.design.sections = [...on]; const hd = new Set(D.design.hidden || []); x.checked ? hd.delete(k) : hd.add(k); D.design.hidden = [...hd]; c.dirty(); paint(); });
   };
   paint();
 }

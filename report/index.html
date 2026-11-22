@@ -363,6 +363,47 @@ input[type="radio"].hidden-radio{display:none;}
   #district-custom{margin-top:4px!important;}
   .sec-hdr-en{font-size:10px!important;font-weight:500!important;color:#a04040!important;opacity:.8;}
 }
+
+/* v4: زرار الحفظ الأخضر + أيقونات الفوتر المتحركة */
+.arch-save{display:flex;justify-content:center;padding:18px 16px 22px;background:transparent}
+.arch-btn{position:relative;display:flex;align-items:center;gap:14px;width:min(520px,100%);padding:14px 22px;border:0;border-radius:16px;cursor:pointer;font-family:inherit;color:#fff;text-align:start;
+  background:linear-gradient(135deg,#1fa463,#0f7a45);box-shadow:0 10px 26px rgba(16,122,69,.35),inset 0 1px 0 rgba(255,255,255,.25);transition:transform .15s,box-shadow .2s,background .3s;overflow:hidden}
+.arch-btn:hover{transform:translateY(-2px);box-shadow:0 14px 32px rgba(16,122,69,.45)}
+.arch-btn:active{transform:scale(.98)}
+.arch-btn::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.28) 50%,transparent 70%);transform:translateX(-120%);animation:abShine 3.2s ease-in-out infinite}
+@keyframes abShine{60%,100%{transform:translateX(120%)}}
+.ab-ic{position:relative;width:46px;height:46px;flex:none;border-radius:50%;background:rgba(255,255,255,.16);display:grid;place-items:center}
+.ab-ic svg{position:absolute;width:28px;height:28px;fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:opacity .2s,transform .3s}
+.ab-ok,.ab-err{opacity:0;transform:scale(.4)}
+.ab-spin{position:absolute;inset:7px;border-radius:50%;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;opacity:0;animation:abRot .8s linear infinite}
+@keyframes abRot{to{transform:rotate(360deg)}}
+.ab-t{display:flex;flex-direction:column;line-height:1.35}
+.ab-t b{font-size:17px;font-weight:800}
+.ab-t small{font-size:12px;opacity:.85}
+.arch-btn.saving{pointer-events:none;background:linear-gradient(135deg,#25935d,#156b42)}
+.arch-btn.saving .ab-cloud{opacity:0}.arch-btn.saving .ab-spin{opacity:1}
+.arch-btn.done{background:linear-gradient(135deg,#16b36a,#0b8a4c)}
+.arch-btn.done .ab-cloud{opacity:0}.arch-btn.done .ab-ok{opacity:1;transform:scale(1)}
+.arch-btn.done .ab-ok circle{stroke-dasharray:63;stroke-dashoffset:63;animation:abDraw .5s ease forwards}
+.arch-btn.done .ab-ok path{stroke-dasharray:16;stroke-dashoffset:16;animation:abDraw .35s .45s ease forwards}
+.arch-btn.done .ab-ic{animation:abPop .5s .2s cubic-bezier(.2,.9,.3,1.5)}
+@keyframes abDraw{to{stroke-dashoffset:0}}
+@keyframes abPop{50%{transform:scale(1.18)}}
+.arch-btn.err{background:linear-gradient(135deg,#e0453f,#b3241f);box-shadow:0 10px 26px rgba(179,36,31,.35)}
+.arch-btn.err .ab-cloud{opacity:0}.arch-btn.err .ab-err{opacity:1;transform:scale(1)}
+.arch-btn.err .ab-ic{animation:abShake .4s}
+@keyframes abShake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+.fi-a{display:inline-flex;align-items:center;gap:6px}
+.fi{width:16px;height:16px;fill:none;stroke:#fff;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:none;overflow:visible}
+.fi-pin{animation:fiBounce 1.8s ease-in-out infinite;transform-origin:50% 100%}
+@keyframes fiBounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-4px)}45%{transform:translateY(0) scaleY(.88)}}
+.fi-mail .flap{animation:fiFlap 2.4s ease-in-out infinite;transform-origin:50% 25%}
+@keyframes fiFlap{0%,55%,100%{transform:scaleY(1)}70%,85%{transform:scaleY(-1)}}
+.fi-phone{animation:fiRing 2.6s ease-in-out infinite;transform-origin:50% 50%}
+@keyframes fiRing{0%,50%,100%{transform:rotate(0)}54%{transform:rotate(-14deg)}58%{transform:rotate(12deg)}62%{transform:rotate(-10deg)}66%{transform:rotate(8deg)}70%{transform:rotate(0)}}
+.fi-phone .wv{animation:fiWave 2.6s ease-in-out infinite;opacity:0}.fi-phone .w2{animation-delay:.12s}
+@keyframes fiWave{0%,50%,80%,100%{opacity:0}58%,72%{opacity:1}}
+@media print{.arch-save,.no-print{display:none!important}.fi,.fi *{animation:none!important}.fi-phone .wv{opacity:1}}
 </style>
 <style>
 /* ===== شركة سعد الشمراني — الشعار المتحرك + الحركات + الأرشيف السحابي ===== */
@@ -623,7 +664,7 @@ html.cloud-loading #cloud-veil{display:grid}
       </div>
       <div class="field-group">
         <label>رقم الزيارة / Visit No.</label>
-        <select>
+        <select id="visit-no">
           <option>01</option><option>02</option><option>03</option>
           <option>04</option><option>05</option><option>06</option>
           <option>07</option><option>08</option><option>09</option>
@@ -854,15 +895,22 @@ html.cloud-loading #cloud-veil{display:grid}
   </div>
 </div>
 
+<div class="arch-save no-print" id="archWrap">
+  <button type="button" class="arch-btn" id="cloudBtn2" hidden>
+    <span class="ab-ic"><svg viewBox="0 0 24 24" class="ab-cloud"><path d="M7 18h10.5a4.5 4.5 0 0 0 .6-8.96A6 6 0 0 0 6.3 10.1 4 4 0 0 0 7 18z"/><path d="M12 15V10m0 0-2.2 2.2M12 10l2.2 2.2"/></svg><i class="ab-spin"></i><svg viewBox="0 0 24 24" class="ab-ok"><circle cx="12" cy="12" r="10"/><path d="M7 12.5l3.2 3.2L17.2 9"/></svg><svg viewBox="0 0 24 24" class="ab-err"><circle cx="12" cy="12" r="10"/><path d="M12 7v6M12 16.5v.5"/></svg></span>
+    <span class="ab-t"><b id="abT">حفظ في الأرشيف</b><small id="abS">يتحفظ في ملف العميل ويتشاف من أي جهاز</small></span>
+  </button>
+</div>
+
 <div class="form-footer">
   <div class="footer-company-name">شركة سعد مفرح الشمراني للاستشارات الهندسية</div>
   <div class="footer-contact">
-    <span>📍 الرياض، حي العارض، شارع ريحانة بنت زيد</span>
+    <span><a class="footer-link fi-a" href="https://maps.google.com/?q=%D8%AD%D9%8A+%D8%A7%D9%84%D8%B9%D8%A7%D8%B1%D8%B6+%D8%A7%D9%84%D8%B1%D9%8A%D8%A7%D8%B6" target="_blank" rel="noopener"><svg class="fi fi-pin" viewBox="0 0 24 24"><path d="M12 22s7-6.2 7-12a7 7 0 0 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.6"/></svg> الرياض، حي العارض، شارع ريحانة بنت زيد</a></span>
     <span class="footer-sep">|</span>
-    <span>✉️ s3adalshomrani2022@gmail.com</span>
+    <span><a class="footer-link fi-a" href="mailto:s3adalshomrani2022@gmail.com"><svg class="fi fi-mail" viewBox="0 0 24 24"><rect x="3" y="5.5" width="18" height="13" rx="2"/><path class="flap" d="M3.5 7l8.5 6 8.5-6"/></svg> s3adalshomrani2022@gmail.com</a></span>
     <span class="footer-sep">|</span>
     <span>
-      <a href="https://wa.me/966570086833" target="_blank" class="footer-link" title="فتح واتساب">📱 واتساب: <span dir="ltr">0570086833</span></a>
+      <a href="https://wa.me/966570086833" class="footer-link fi-a" title="فتح واتساب"><svg class="fi fi-phone" viewBox="0 0 24 24"><path d="M6.6 3.5l2.6 0 1.4 4-2 1.4a12 12 0 0 0 6.5 6.5l1.4-2 4 1.4v2.6a2 2 0 0 1-2.2 2A17 17 0 0 1 4.6 5.7a2 2 0 0 1 2-2.2z"/><path class="wv w1" d="M15 3.5a5.5 5.5 0 0 1 5.5 5.5"/><path class="wv w2" d="M15 7a2 2 0 0 1 2 2"/></svg> واتساب: <span dir="ltr">0570086833</span></a>
     </span>
   </div>
 </div>
@@ -1390,7 +1438,7 @@ function restoreState(given) {
   var i = 0;
   document.querySelectorAll('input[type=text],input[type=date],input[type=time],select,textarea').forEach(function(el) {
     if (el.closest('#checklist-container') || el.closest('.photo-caption')) return;
-    if (s.fields[i] !== undefined && s.fields[i] !== '') el.value = s.fields[i];
+    if (s.fields[i] !== undefined && s.fields[i] !== '') { if (el.tagName === 'SELECT' && el.id === 'visit-no' && ![].some.call(el.options, function(o){ return o.value === s.fields[i]; })) el.add(new Option(s.fields[i], s.fields[i])); el.value = s.fields[i]; }
     i++;
   });
   // District "other" state
@@ -1562,9 +1610,25 @@ const canMod = m => isOwner || (emp && emp.active !== false && Array.isArray(emp
 const pad2 = n => String(n).padStart(2, '0');
 
 function veil(on) { document.documentElement.classList.toggle('cloud-loading', !!on); }
-function say(t, ok) {
+const big = $('#cloudBtn2'), abT = $('#abT'), abS = $('#abS'), AB_S = abS ? abS.textContent : '';
+let sayT = null;
+function say(t, ok, state, sub) {
   const s = btn.querySelector('span'); s.textContent = t; btn.classList.toggle('done', !!ok);
-  if (ok) setTimeout(() => { btn.classList.remove('done'); s.textContent = 'حفظ'; }, 2400);
+  if (big) {
+    big.classList.remove('saving', 'done', 'err'); if (state) big.classList.add(state);
+    abT.textContent = state === 'saving' ? 'جارٍ الحفظ…' : state === 'done' ? 'تم الحفظ في الأرشيف' : state === 'err' ? 'تعذّر الحفظ' : 'حفظ في الأرشيف';
+    abS.textContent = sub || AB_S;
+  }
+  clearTimeout(sayT);
+  if (ok || state === 'err') sayT = setTimeout(() => { btn.classList.remove('done'); s.textContent = 'حفظ'; if (big) { big.classList.remove('done', 'err'); abT.textContent = 'حفظ في الأرشيف'; abS.textContent = AB_S; } }, state === 'err' ? 6000 : 3200);
+}
+// رقم الزيارة = مسلسل تقارير العميل (01، 02، 03…) — ويفضل قابل للتعديل يدوي
+let autoVisit = '01';
+function setVisit(n) {
+  const sel = $('#visit-no'); if (!sel || !n) return; const v = pad2(n);
+  if (sel.value !== autoVisit && sel.value !== '01') return; // المستخدم غيّره بإيده
+  if (![...sel.options].some(o => o.value === v)) sel.add(new Option(v, v));
+  sel.value = v; autoVisit = v; sel.dispatchEvent(new Event('change', { bubbles: true })); sel.dispatchEvent(new Event('input', { bubbles: true }));
 }
 // زرار الرجوع: يرجع للصفحة اللي قبلها، أو لصفحة العميل
 const backBtn = $('#tbBack');
@@ -1599,12 +1663,13 @@ function prefill(c, seq) {
   if (c.district) { const sel = $('#district-select'); if (sel && !sel.value) { const o = [...sel.options].find(o => o.text.trim() === c.district.trim()); if (o) { sel.value = o.value; sel.dispatchEvent(new Event('change', { bubbles: true })); } else { const cu = $('#district-custom'); if (cu) { const oth = [...sel.options].find(o => /أخرى|اخرى|other/i.test(o.text + o.value)); if (oth) { sel.value = oth.value; sel.dispatchEvent(new Event('change', { bubbles: true })); } cu.style.display = ''; setVal(cu, c.district); } } } }
   const ir = $('#ir-number'); if (ir && (!ir.value || ir.value === 'IR-001')) { ir.value = `${c.no}-${pad2(seq)}`; ir.dispatchEvent(new Event('input', { bubbles: true })); }
   $('#tb-ir').textContent = `${c.no}-${pad2(seq)}`;
+  setVisit(seq);
   const chip = document.createElement('div'); chip.className = 'client-chip'; chip.innerHTML = `<b>${c.no}</b><span>${c.name.replace(/[<>&]/g, '')}</span><a href="../supervision.html#c/${c.no}">ملف العميل ←</a>`; document.querySelector('.page-wrap').prepend(chip);
 }
 
 async function save() {
   if (readOnly) return;
-  btn.disabled = true; btn.classList.add('saving'); say('جارٍ الحفظ');
+  btn.disabled = true; btn.classList.add('saving'); say('جارٍ الحفظ', false, 'saving');
   try {
     const s = window.collectState();
     const media = [];
@@ -1620,7 +1685,7 @@ async function save() {
     let seq = meta && meta.seq;
     if (fresh && cNo) {
       seq = await F.runTransaction(db, async tx => { const ref = F.doc(db, 'clients', String(cNo)); const c = await tx.get(ref); const n = ((c.exists() && c.data().reportsCount) || 0) + 1; tx.update(ref, { reportsCount: n, lastReport: F.serverTimestamp() }); return n; });
-      const ir = $('#ir-number'); ir.value = `${cNo}-${pad2(seq)}`; ir.dispatchEvent(new Event('input', { bubbles: true })); $('#tb-ir').textContent = ir.value; s.fields && window.collectState && Object.assign(s, window.collectState());
+      const ir = $('#ir-number'); ir.value = `${cNo}-${pad2(seq)}`; ir.dispatchEvent(new Event('input', { bubbles: true })); $('#tb-ir').textContent = ir.value; setVisit(seq); s.fields && window.collectState && Object.assign(s, window.collectState());
     }
     for (let i = 0; i < media.length; i++) { const src = await shrink(media[i].src); await F.setDoc(F.doc(db, 'rmedia', id + '_' + i), { rid: id, by: owner, i, kind: media[i].kind, src, cap: media[i].cap }); }
     const oldN = meta ? (meta.mediaCount || 0) : 0;
@@ -1635,8 +1700,8 @@ async function save() {
       try { const raw = localStorage.getItem(window.LS_KEY); localStorage.removeItem(window.LS_KEY); window.LS_KEY = 'ir_form_v19_c_' + id; if (raw) localStorage.setItem(window.LS_KEY, raw); } catch (e) { }
       window.CLOUD_ID = id; history.replaceState(null, '', '?id=' + id);
     }
-    say('اتحفظ ✓', true);
-  } catch (e) { console.error(e); say('فشل'); alert('تعذّر الحفظ في الأرشيف: ' + F.authMsg(e) + '\nالتقرير محفوظ على الجهاز ده تلقائياً.'); }
+    say('اتحفظ ✓', true, 'done', data.irNo ? 'رقم التقرير ' + data.irNo : 'محفوظ في الأرشيف'); if (navigator.vibrate) navigator.vibrate([30, 60, 40]);
+  } catch (e) { console.error(e); say('فشل', false, 'err', F.authMsg(e) + ' — التقرير محفوظ على الجهاز ده'); if (navigator.vibrate) navigator.vibrate(120); }
   btn.disabled = false; btn.classList.remove('saving');
 }
 
@@ -1653,7 +1718,7 @@ async function loadCloud(id) {
     $('#tb-ir').textContent = meta.irNo || '';
     if (meta.clientNo) { const chip = document.createElement('div'); chip.className = 'client-chip'; chip.innerHTML = `<b>${meta.clientNo}</b><span>${String(meta.clientName || '').replace(/[<>&]/g, '')}</span><a href="../supervision.html#c/${meta.clientNo}">ملف العميل ←</a>`; document.querySelector('.page-wrap').prepend(chip); }
     readOnly = !(isOwner || meta.by === me.uid);
-    if (readOnly) { btn.hidden = true; const b = document.createElement('div'); b.className = 'ro-banner'; b.textContent = 'عرض فقط — التقرير ده بتاع ' + (meta.byName || 'موظف آخر') + '. تقدر تطبعه أو تحفظه PDF.'; document.querySelector('.page-wrap').prepend(b); }
+    if (readOnly) { btn.hidden = true; if (big) big.hidden = true; const b = document.createElement('div'); b.className = 'ro-banner'; b.textContent = 'عرض فقط — التقرير ده بتاع ' + (meta.byName || 'موظف آخر') + '. تقدر تطبعه أو تحفظه PDF.'; document.querySelector('.page-wrap').prepend(b); }
   } catch (e) { console.error(e); alert(e.message === 'not-found' ? 'التقرير مش موجود في الأرشيف.' : 'تعذّر فتح التقرير: ' + F.authMsg(e)); location.href = '../supervision.html'; return; }
   veil(false);
 }
@@ -1667,7 +1732,7 @@ F.onAuthStateChanged(auth, async u => {
     return;
   }
   const nm = isOwner ? 'المالك' : (emp && emp.name) || ''; who.textContent = nm.trim().slice(0, 1); who.title = nm; who.onclick = () => alert(nm);
-  btn.hidden = !canMod('report') && !isOwner; btn.onclick = save;
+  btn.hidden = !canMod('report') && !isOwner; btn.onclick = save; if (big) { big.hidden = btn.hidden; big.onclick = save; }
   if (window.CLOUD_ID) await loadCloud(window.CLOUD_ID);
   else if (!canMod('report')) { location.replace('../supervision.html'); return; }
   else {

@@ -166,10 +166,11 @@ const ctaBox = () => { const v = V(); return `<section class="sec tight"><div cl
 const crumbs = (x) => `<div class="crumbs"><a href="#/">${t('home')}</a><span>/</span><span>${esc(x)}</span></div>`;
 const stats = () => `<div class="stats rv">${V().stats.map((s, i) => `<div class="stat d${i}"><b>${s.pre ? `<em>${esc(s.pre)}</em>` : ''}<span data-count="${+s.n || 0}" data-from="${s.plain ? Math.max(0, (+s.n || 0) - 26) : 0}">${s.plain ? esc(s.n) : 0}</span>${s.suf ? `<em>${esc(s.suf)}</em>` : ''}</b><span>${esc(s.l)}</span></div>`).join('')}</div>`;
 const pkCards = () => { const v = V(); return v.packages.list.map((p, i) => `<div class="pk glass rv d${i} ${p.featured ? 'feat' : ''}">${p.featured ? `<span class="badge">★ ${t('mostWanted')}</span>` : ''}<h3>${esc(p.name)}</h3><div class="price">${esc(p.price)}<small>${esc(p.unit)}</small></div><div class="note">${esc(p.note)}</div><ul>${(p.features || []).map(f => `<li>${esc(f)}</li>`).join('')}</ul><a class="btn ${p.featured ? 'btn-gold' : 'btn-ghost'}" href="${wa(t('pkgWa') + p.name)}" target="_blank" rel="noopener">${t('orderPkg')}</a></div>`).join(''); };
-const galleryBlock = () => `<section class="sec dark"><div class="grid-bg"></div><div class="wrap">${head(t('gallery'), t('galleryTitle'), '', `<div class="gal-nav"><button data-g="1" aria-label="${t('prev')}">${I.prev}</button><button data-g="-1" aria-label="${t('next')}">${I.next}</button></div>`)}</div>
-  <div class="gal" id="gal">${V().gallery.map(g => `<figure data-lb="${esc(src(g.img))}" data-cap="${esc(g.title)}">${img(g.img, g.title)}<figcaption><b>${esc(g.title)}</b><span>${esc(g.sub)}</span></figcaption></figure>`).join('')}</div></section>`;
+const galleryBlock = () => { const it = V().gallery.map(g => `<figure data-lb="${esc(src(g.img))}" data-cap="${esc(g.title)}">${img(g.img, g.title)}<figcaption><b>${esc(g.title)}</b><span>${esc(g.sub)}</span></figcaption></figure>`).join('');
+  return `<section class="sec dark gal-sec"><div class="grid-bg"></div><div class="wrap">${head(t('gallery'), t('galleryTitle'), '', `<div class="gal-nav"><button data-g="1" aria-label="${t('prev')}">${I.prev}</button><button data-g="-1" aria-label="${t('next')}">${I.next}</button></div>`)}</div>
+  <div class="gal strip" id="gal" dir="ltr" data-dir="left"><div class="strip-tr">${it}${it}${it}</div></div></section>`; };
 const strip = () => { const v = V(); const items = v.services.map(x => `<a class="st-item" href="#/service/${esc(x.id)}" draggable="false"><span class="st-ph">${img(x.img, '')}</span><span class="st-t"><b>${esc(x.title)}</b><small>${esc(x.short)}</small></span><span class="st-go">${I.arrow}</span></a>`).join('');
-  return `<section class="strip-sec"><div class="wrap strip-h"><span class="eyebrow">${t('stripTitle')}</span><small class="swipe">${t('stripHint')} <i>⇆</i></small></div><div class="strip" id="strip" dir="ltr"><div class="strip-tr">${items}${items}${items}</div></div></section>`; };
+  return `<section class="strip-sec"><div class="wrap strip-h"><span class="eyebrow">${t('stripTitle')}</span><small class="swipe">${t('stripHint')} <i>⇆</i></small></div><div class="strip" id="strip" dir="ltr" data-dir="right"><div class="strip-tr">${items}${items}${items}</div></div></section>`; };
 function offerBlock() {
   const o = V().offer; if (!o || !o.on || !o.title) return '';
   const end = o.until ? new Date(o.until).getTime() : 0; if (end && end < Date.now()) return '';
@@ -195,18 +196,19 @@ P[''] = () => {
       <div class="quote rv" style="margin-top:56px"><div class="avatar"><img src="assets/img/mark.png" alt=""></div><div><blockquote>${esc(v.about.quote)}</blockquote><div class="who"><b>${esc(v.about.ceo)}</b>${esc(v.about.ceoTitle)}</div></div></div></div></section>`,
     partners: () => `<section class="sec tight"><div class="wrap">${head(t('partners'), t('partnersTitle'), '')}</div><div class="marq"><div class="tr">${[...v.partners, ...v.partners].map(p => `<span class="glass">${esc(p)}</span>`).join('')}</div></div></section>`,
     faq: () => `<section class="sec tight"><div class="wrap">${head(t('faqEy'), t('faqTitle'), '', `<a class="btn btn-ghost sm" href="#/support">${t('faqAll')}</a>`)}<div class="faq">${v.faq.slice(0, 4).map(faqItem).join('')}</div></div></section>`,
-    cta: ctaBox
+    cta: ctaBox,
+    stats: () => `<section class="stats-sec"><div class="wrap">${stats()}</div></section>`
   };
-  const order = (d.sections && d.sections.length ? d.sections : DEFAULT.design.sections);
+  const order = (d.sections && d.sections.length ? d.sections.slice() : DEFAULT.design.sections.slice());
+  if (!order.includes('stats') && !(d.hidden || []).includes('stats')) { const gi = order.indexOf('gallery'); order.splice(gi >= 0 ? gi + 1 : 0, 0, 'stats'); }
   const vsrc = (h.videoMobile && matchMedia('(max-width:700px) and (orientation:portrait)').matches) ? h.videoMobile : h.videoSrc;
   return `<section class="hero">${h.video && vsrc ? `<video autoplay muted loop playsinline preload="auto" poster="${esc(src(h.poster))}"><source src="${esc(vsrc)}" type="video/mp4"></video>` : `<img class="poster" src="${esc(src(h.poster))}" alt="">`}
     <div class="hero-in"><div>
       ${d.heroLogo !== false ? `<div class="hero-logo">${d.logo ? `<span class="hl-cube custom">${img(d.logo, '')}</span>` : `<span class="hl-cube"><img class="g" src="assets/img/cube-gray.png" alt=""><img class="r" src="assets/img/cube-red.png" alt=""></span>`}<span class="hl-t"><b>${esc(v.brand.short)}</b><small>${t('company')}</small></span></div>` : ''}
       <span class="eyebrow">${esc(h.eyebrow)}</span><h1><span class="l"><span>${esc(h.title)}</span></span><span class="l"><span>${esc(h.highlight)}</span></span></h1><p class="lead">${esc(h.lead)}</p>
       <div class="ctas"><a class="btn btn-red" href="#/request">${esc(h.cta1)} ${I.arrow}</a><a class="btn btn-ghost" href="#/services">${esc(h.cta2)}</a></div>
-      <button class="lang-pill" data-lang><span>${LANG === 'en' ? 'ع' : 'EN'}</span>${t('switchLang')}</button></div>
+</div>
       <div class="hero-card glass"><h4>${t('needToday')} <span class="live"><i></i> ${t('liveNow')}</span></h4><ul>${v.services.slice(0, 5).map(x => `<li><a href="#/service/${esc(x.id)}">${esc(x.title)} <span>${esc(x.no)}</span></a></li>`).join('')}</ul></div></div><span class="scroll-cue"></span></section>
-  <div class="wrap">${stats()}</div>
   ${order.map(k => S[k] ? S[k]() : '').join('')}`;
 };
 
@@ -398,8 +400,8 @@ function wire(r) {
   reveal(); counters(); countdown(); initStrip();
   $$('[data-copy]').forEach(b => b.onclick = () => copy(b.dataset.copy));
   $$('[data-lang]').forEach(b => b.onclick = switchLang);
-  $$('[data-lb]').forEach(f => f.onclick = () => { $('#lbImg').src = f.querySelector('img').src; $('#lbCap').textContent = f.dataset.cap; $('#lb').hidden = false; });
-  const gal = $('#gal'); if (gal) { $$('[data-g]').forEach(b => b.onclick = () => gal.scrollBy({ left: (LANG === 'en' ? 1 : -1) * (+b.dataset.g) * 400, behavior: 'smooth' })); dragScroll(gal); }
+  $$('[data-lb]').forEach(f => f.onclick = () => { if (f.closest('.strip') && f.closest('.strip')._dragged) return; $('#lbImg').src = f.querySelector('img').src; $('#lbCap').textContent = f.dataset.cap; $('#lb').hidden = false; });
+  const gal = $('#gal'); if (gal) $$('[data-g]').forEach(b => b.onclick = () => { gal._pause && gal._pause(2500); gal.scrollBy({ left: (LANG === 'en' ? 1 : -1) * (+b.dataset.g) * 260, behavior: 'smooth' }); });
   const fl = $('#filters'); if (fl) fl.onclick = e => { const b = e.target.closest('button'); if (!b) return; prjCat = +b.dataset.c; $$('button', fl).forEach(x => x.classList.toggle('on', x === b)); $('#prjGrid').innerHTML = prjCards(); };
   if (r === 'support') { const q = $('#faqQ'), cats = $('#faqCats'); let cat = ''; const F = V().faq; const run = () => { const v = q.value.trim().toLowerCase(); let n = 0; $$('#faqList details').forEach((d, i) => { const f = F[i]; const ok = (!cat || f.cat === cat) && (!v || (f.q + f.a).toLowerCase().includes(v)); d.hidden = !ok; d.classList.add('in'); if (ok) n++; if (v && ok) d.open = f.a.toLowerCase().includes(v); }); $('#faqNone').hidden = n > 0; }; q.oninput = run; cats.onclick = e => { const b = e.target.closest('button'); if (!b) return; cat = b.dataset.c; $$('button', cats).forEach(x => x.classList.toggle('on', x === b)); run(); }; }
   if (r === 'request') paintWiz();
@@ -429,8 +431,17 @@ function initStrip() {
   $$('.strip').forEach((el, idx) => {
     const tr = $('.strip-tr', el); const setW = () => tr.scrollWidth / 3;
     let w = setW(); el.scrollLeft = w; let pause = 0, held = false, moved = 0, sx = 0, sl = 0;
-    const speed = () => (matchMedia('(max-width:700px)').matches ? .45 : .6) * (LANG === 'en' ? 1 : -1);
-    const loop = () => { if (!document.body.contains(el)) return; w = setW(); if (!held && Date.now() > pause) el.scrollLeft += speed(); if (el.scrollLeft >= w * 2) el.scrollLeft -= w; else if (el.scrollLeft <= 1) el.scrollLeft += w; requestAnimationFrame(loop); };
+    const left = el.dataset.dir === 'left', base = left ? .32 : .45;
+    // right = المحتوى يتحرك يمين (scrollLeft يقل) — left = يتحرك شمال (scrollLeft يزيد)
+    const speed = () => (matchMedia('(max-width:700px)').matches ? base : base * 1.35) * (left ? 1 : -1);
+    el._pause = ms => { pause = Date.now() + ms; };
+    let pos = el.scrollLeft;
+    // pos عدد عشري: المتصفح بيقرّب scrollLeft لأقرب بكسل، فالحركة البطيئة كانت بتقف
+    const loop = () => { if (!document.body.contains(el)) return; w = setW();
+      if (Math.abs(el.scrollLeft - pos) > 1.5) pos = el.scrollLeft; // المستخدم سحب
+      if (!held && Date.now() > pause) pos += speed();
+      if (pos >= w * 2) pos -= w; else if (pos <= 1) pos += w;
+      if (Math.round(pos) !== el.scrollLeft) el.scrollLeft = pos; requestAnimationFrame(loop); };
     if (idx === 0) stripRaf = requestAnimationFrame(loop); else requestAnimationFrame(loop);
     const hold = () => { held = true; }; const release = () => { held = false; pause = Date.now() + 1400; };
     el.addEventListener('touchstart', hold, { passive: true }); el.addEventListener('touchend', release); el.addEventListener('touchcancel', release);
@@ -439,7 +450,8 @@ function initStrip() {
     el.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse') return; held = true; moved = 0; sx = e.clientX; sl = el.scrollLeft; el.classList.add('drag'); });
     addEventListener('pointermove', e => { if (!held || e.pointerType !== 'mouse') return; moved = Math.abs(e.clientX - sx); el.scrollLeft = sl - (e.clientX - sx); });
     addEventListener('pointerup', e => { if (e.pointerType !== 'mouse' || !el.classList.contains('drag')) return; el.classList.remove('drag'); release(); });
-    el.addEventListener('click', e => { if (moved > 6) { e.preventDefault(); moved = 0; } }, true);
+    el.addEventListener('touchmove', () => { el._dragged = true; }, { passive: true }); el.addEventListener('touchstart', () => { el._dragged = false; }, { passive: true });
+    el.addEventListener('click', e => { if (moved > 6) { e.preventDefault(); e.stopPropagation(); moved = 0; el._dragged = true; setTimeout(() => { el._dragged = false; }, 50); } }, true);
   });
 }
 function dragScroll(el) { let d = false, x = 0, s = 0; el.onpointerdown = e => { if (e.pointerType !== 'mouse') return; d = true; x = e.clientX; s = el.scrollLeft; el.style.scrollSnapType = 'none'; }; addEventListener('pointerup', () => { d = false; el.style.scrollSnapType = ''; }); el.onpointermove = e => { if (d) el.scrollLeft = s - (e.clientX - x); }; }
@@ -476,30 +488,43 @@ function initBot() {
 
 /* ---------- long-press logo → staff portal ---------- */
 function initHold() {
-  const b = $('#brand'); let tm = null, raf = null, t0 = 0, fired = false; const HOLD = 1400;
-  const stop = () => { clearTimeout(tm); cancelAnimationFrame(raf); b.classList.remove('holding'); b.style.setProperty('--p', '0%'); $('#holdHint').classList.remove('on'); };
-  const start = e => { if (e.button > 0) return; fired = false; t0 = performance.now(); b.classList.add('holding');
-    const tick = () => { const p = Math.min(1, (performance.now() - t0) / HOLD); b.style.setProperty('--p', (p * 100) + '%'); if (p > .35) $('#holdHint').classList.add('on'); if (p < 1) raf = requestAnimationFrame(tick); }; raf = requestAnimationFrame(tick);
-    tm = setTimeout(() => { fired = true; stop(); if (navigator.vibrate) navigator.vibrate(30); location.href = 'portal.html'; }, HOLD); };
-  b.addEventListener('pointerdown', start); ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => b.addEventListener(ev, stop));
-  b.addEventListener('click', e => { if (fired) { e.preventDefault(); fired = false; } });
+  const b = $('#brand'); const HOLD = 1000, TOL = 12;
+  let tm = null, raf = null, t0 = 0, fired = false, sx = 0, sy = 0, on = false, taps = [];
+  const hint = $('#holdHint');
+  const go = () => { fired = true; stop(); if (navigator.vibrate) navigator.vibrate([20, 40, 30]); location.href = 'portal.html'; };
+  const stop = () => { on = false; clearTimeout(tm); cancelAnimationFrame(raf); b.classList.remove('holding'); b.style.setProperty('--p', '0%'); hint.classList.remove('on'); };
+  const start = e => { if (e.button > 0) return; fired = false; on = true; sx = e.clientX; sy = e.clientY; t0 = performance.now(); b.classList.add('holding');
+    const tick = () => { const p = Math.min(1, (performance.now() - t0) / HOLD); b.style.setProperty('--p', (p * 100) + '%'); if (p > .3) hint.classList.add('on'); if (p < 1 && on) raf = requestAnimationFrame(tick); }; raf = requestAnimationFrame(tick);
+    tm = setTimeout(go, HOLD); };
+  b.addEventListener('pointerdown', start);
+  b.addEventListener('pointermove', e => { if (on && Math.hypot(e.clientX - sx, e.clientY - sy) > TOL) stop(); });
+  ['pointerup', 'pointercancel'].forEach(ev => b.addEventListener(ev, stop));
+  b.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') stop(); });
+  // احتياطي: ٥ ضغطات سريعة على اللوجو خلال ٢.٥ ثانية
+  b.addEventListener('click', e => {
+    if (fired) { e.preventDefault(); fired = false; return; }
+    const n = Date.now(); taps = taps.filter(x => n - x < 2500); taps.push(n);
+    if (taps.length >= 5) { e.preventDefault(); taps = []; go(); return; }
+    if (taps.length >= 3) { hint.classList.add('on'); clearTimeout(b._ht); b._ht = setTimeout(() => hint.classList.remove('on'), 900); }
+  });
   b.addEventListener('contextmenu', e => e.preventDefault());
+  b.addEventListener('dragstart', e => e.preventDefault());
+  b.addEventListener('selectstart', e => e.preventDefault());
 }
 
 /* ---------- توهّج الماوس (كمبيوتر فقط) ---------- */
-/* واتساب: يفتح التطبيق مباشرة بدل صفحة «Open app» */
+/* روابط واتساب والسوشيال: روابط https عادية (universal links) عشان الفون يفتح التطبيق علطول من غير سؤال «Open in…» */
 const IS_MOBILE = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+const APP_HOSTS = /^https:\/\/(wa\.me|api\.whatsapp\.com|(www\.)?(instagram|tiktok|youtube|x|twitter|snapchat|facebook|linkedin)\.com|youtu\.be|t\.snapchat\.com)\//i;
 function initWa() {
   document.addEventListener('click', e => {
-    const a = e.target.closest && e.target.closest('a[href^="https://wa.me/"]'); if (!a) return;
-    e.preventDefault(); track('wa');
-    const u = new URL(a.href), phone = u.pathname.replace(/\D/g, ''), text = u.searchParams.get('text') || '';
-    if (IS_MOBILE) {
-      const t0 = Date.now(); location.href = `whatsapp://send?phone=${phone}&text=${encodeURIComponent(text)}`;
-      setTimeout(() => { if (!document.hidden && Date.now() - t0 < 2500) location.href = a.href; }, 1600);
-    } else window.open(`https://web.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(text)}`, '_blank', 'noopener');
-  });
-  document.addEventListener('click', e => { const a = e.target.closest && e.target.closest('a[href^="tel:"]'); if (a) track('call'); const s = e.target.closest && e.target.closest('[data-ev]'); if (s) track(s.dataset.ev); });
+    const a = e.target.closest && e.target.closest('a[href]'); if (!a) return;
+    if (/^https:\/\/wa\.me\//.test(a.href)) track('wa');
+    if (a.href.startsWith('tel:')) track('call');
+    // على الموبايل: نفس التاب (من غير target) = iOS/Android يفتح التطبيق مباشرة
+    if (IS_MOBILE && APP_HOSTS.test(a.href)) a.removeAttribute('target');
+  }, true);
+  document.addEventListener('click', e => { const s = e.target.closest && e.target.closest('[data-ev]'); if (s) track(s.dataset.ev); });
 }
 function initGlow() {
   if (!matchMedia('(hover:hover) and (pointer:fine)').matches || (C.design && C.design.cursorGlow === false)) return;

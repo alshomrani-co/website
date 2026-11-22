@@ -1,0 +1,244 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isOwner() { return signedIn() && request.auth.uid in ['bRGeKE9GqXYFh2F93FO6osHYxr63']; }
+    function empDoc() { return get(/databases/$(database)/documents/employees/$(request.auth.uid)); }
+    function isActiveEmp() {
+      return signedIn() && exists(/databases/$(database)/documents/employees/$(request.auth.uid)) && empDoc().data.active == true;
+    }
+    function isViewer() { return signedIn() && exists(/databases/$(database)/documents/viewers/$(request.auth.uid)); }
+    function canSee() { return isOwner() || isViewer(); }
+    function isWatcher() { return isActiveEmp() && empDoc().data.get('watch', false) == true; }
+    function isMgrOf(d) { return isActiveEmp() && d is string && d != '' && empDoc().data.get('mgr', '') == d; }
+    function myRoom(d) { return isActiveEmp() && d is string && d != '' && (empDoc().data.get('dept', '') == d || empDoc().data.get('mgr', '') == d); }
+    function okText(x) { return x.text is string && x.text.size() <= 1000 && (x.text.size() > 0 || (x.get('kind', '') in ['img', 'voice', 'file'] && x.media is string)); }
+    function today() { return int(math.floor((request.time.toMillis() + 10800000) / 86400000)); }
+    function stampNew(k) {
+      return !(k in request.resource.data) || request.resource.data[k] == request.time;
+    }
+    function stampKept(k) {
+      return (k in resource.data)
+        ? (k in request.resource.data && request.resource.data[k] == resource.data[k])
+        : (!(k in request.resource.data) || request.resource.data[k] == request.time);
+    }
+
+    match /settings/{id} {
+      allow read: if signedIn();
+      allow write: if isOwner();
+    }
+
+    match /viewers/{uid} {
+      allow read: if isOwner() || (signedIn() && request.auth.uid == uid);
+      allow write: if isOwner();
+    }
+
+    match /reads/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    match /secrets/{uid} {
+      allow read: if isOwner();
+      allow write: if isOwner() || (signedIn() && request.auth.uid == uid);
+    }
+
+    match /visits/{id} {
+      allow read: if canSee() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if isActiveEmp()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.at == request.time
+        && request.resource.data.district is string;
+      allow delete: if isOwner();
+    }
+
+    match /employees/{uid} {
+      allow read: if canSee() || isWatcher() || isMgrOf(resource.data.get('dept', '')) || (signedIn() && request.auth.uid == uid);
+      allow create, delete: if isOwner();
+      allow update: if isOwner()
+        || (signedIn() && request.auth.uid == uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['cred', 'mustChange', 'name', 'birth', 'profileDone', 'photo', 'photoSm', 'phone', 'email', 'jobTitle', 'city', 'emergency', 'about', 'profileAt'])
+            && (!('photo' in request.resource.data) || request.resource.data.photo.size() < 200000)
+            && request.resource.data.name is string && request.resource.data.name.size() >= 2 && request.resource.data.name.size() <= 60);
+    }
+
+    match /days/{id} {
+      allow read: if canSee() || isWatcher() || isMgrOf(resource.data.get('dept', '')) || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if isOwner() || (isActiveEmp()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.day == today()
+        && id == request.auth.uid + '_' + string(today())
+        && stampNew('p1') && stampNew('p2') && stampNew('p3') && stampNew('p4'));
+      allow update: if isOwner() || (isActiveEmp()
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.day == resource.data.day
+        && resource.data.day == today()
+        && stampKept('p1') && stampKept('p2') && stampKept('p3') && stampKept('p4'));
+      allow delete: if isOwner();
+    }
+
+    match /live/{uid} {
+      allow read: if canSee() || isWatcher() || isMgrOf(resource.data.get('dept', '')) || (signedIn() && request.auth.uid == uid);
+      allow write: if isActiveEmp() && request.auth.uid == uid;
+      allow delete: if isOwner();
+    }
+
+    match /chat/{id} {
+      allow read: if canSee() || isActiveEmp();
+      allow create: if (canSee() || isActiveEmp())
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.at == request.time
+        && request.resource.data.owner == isOwner()
+        && request.resource.data.text is string
+        && request.resource.data.text.size() <= 1000
+        && (request.resource.data.text.size() > 0
+            || (request.resource.data.get('kind', '') in ['img', 'voice', 'file'] && request.resource.data.media is string));
+      allow update: if signedIn() && resource.data.uid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'edited', 'editedAt'])
+        && request.resource.data.text is string && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 1000;
+      allow delete: if isOwner() || (signedIn() && resource.data.uid == request.auth.uid);
+    }
+
+    match /dchat/{id} {
+      allow read: if canSee() || myRoom(resource.data.rd);
+      allow create: if (canSee() || myRoom(request.resource.data.rd))
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.at == request.time
+        && request.resource.data.owner == isOwner()
+        && okText(request.resource.data);
+      allow update: if signedIn() && resource.data.uid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'edited', 'editedAt'])
+        && request.resource.data.text is string && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 1000;
+      allow delete: if isOwner() || (signedIn() && resource.data.uid == request.auth.uid);
+    }
+
+    match /dm/{id} {
+      allow read: if signedIn() && (resource.data.from == request.auth.uid || resource.data.to == request.auth.uid);
+      allow create: if (canSee() || isActiveEmp())
+        && request.resource.data.from == request.auth.uid
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.to is string && request.resource.data.to != request.auth.uid
+        && request.resource.data.at == request.time
+        && okText(request.resource.data);
+      allow update: if signedIn() && (
+        (resource.data.from == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'edited', 'editedAt'])
+          && request.resource.data.text is string && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 1000)
+        || (resource.data.to == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['seen', 'seenAt'])));
+      allow delete: if signedIn() && resource.data.from == request.auth.uid;
+    }
+
+    match /people/{uid} {
+      allow read: if canSee() || isActiveEmp();
+      allow write: if isOwner();
+      allow update: if isOwner() || (signedIn() && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'photoSm'])
+        && request.resource.data.name is string && request.resource.data.name.size() <= 60
+        && (!('photoSm' in request.resource.data) || request.resource.data.photoSm.size() < 60000));
+    }
+
+    match /media/{id} {
+      allow read: if canSee() || isActiveEmp();
+      allow create: if (canSee() || isActiveEmp())
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.kind in ['img', 'voice', 'file', 'site']
+        && request.resource.data.data is string
+        && request.resource.data.data.size() < 1000000;
+      allow delete: if isOwner() || (signedIn() && resource.data.uid == request.auth.uid);
+    }
+
+    function hasMod(m) {
+      return isOwner() || (isActiveEmp() && m in empDoc().data.get('mods', []));
+    }
+
+    match /site/{id} {
+      allow read: if true;
+      allow write: if hasMod('cms');
+    }
+    match /siteMedia/{id} {
+      allow read: if true;
+      allow create, update: if hasMod('cms')
+        && request.resource.data.data is string
+        && request.resource.data.data.size() < 1000000;
+      allow delete: if hasMod('cms');
+    }
+
+    match /settingsPriv/{id} {
+      allow read, write: if isOwner();
+    }
+
+    match /requests/{uid} {
+      allow read: if isOwner() || (signedIn() && request.auth.uid == uid);
+      allow create: if signedIn() && request.auth.uid == uid
+        && !exists(/databases/$(database)/documents/employees/$(uid))
+        && request.resource.data.code is string
+        && request.resource.data.code.size() > 0
+        && request.resource.data.code == get(/databases/$(database)/documents/settingsPriv/invite).data.code
+        && request.resource.data.name is string && request.resource.data.name.size() <= 60
+        && request.resource.data.num is string && request.resource.data.num.size() <= 24;
+      allow delete: if isOwner();
+    }
+
+    match /tickets/{code} {
+      allow get: if true;
+      allow list, update, delete: if hasMod('support');
+      allow create: if request.resource.data.code == code
+        && request.resource.data.status == 'new'
+        && request.resource.data.msgs.size() == 0
+        && request.resource.data.name is string && request.resource.data.name.size() <= 80
+        && request.resource.data.phone is string && request.resource.data.phone.size() <= 20
+        && request.resource.data.msg is string && request.resource.data.msg.size() <= 3000
+        && request.resource.data.img is string && request.resource.data.img.size() < 900000;
+    }
+
+    match /reports/{id} {
+      allow read: if hasMod('reports') || (signedIn() && resource.data.by == request.auth.uid);
+      allow create: if hasMod('report') && request.resource.data.by == request.auth.uid;
+      allow update: if isOwner() || (hasMod('report') && resource.data.by == request.auth.uid
+                                     && request.resource.data.by == request.auth.uid);
+      allow delete: if isOwner();
+    }
+    match /rmedia/{id} {
+      allow read: if hasMod('reports') || (signedIn() && resource.data.by == request.auth.uid);
+      allow create: if isOwner() || (hasMod('report') && request.resource.data.by == request.auth.uid
+        && request.resource.data.src is string && request.resource.data.src.size() < 1000000);
+      allow update: if isOwner() || (hasMod('report') && resource.data.by == request.auth.uid
+        && request.resource.data.by == request.auth.uid);
+      allow delete: if isOwner() || (signedIn() && resource.data.by == request.auth.uid);
+    }
+
+    match /stats/{day} {
+      allow read: if hasMod('cms');
+      allow create, update: if request.resource.data.size() < 40;
+    }
+    match /presence/{sid} {
+      allow read: if hasMod('cms');
+      allow create, update: if request.resource.data.keys().hasOnly(['at', 'page', 'cc', 'city', 'dev'])
+        && request.resource.data.page is string && request.resource.data.page.size() <= 60;
+      allow delete: if hasMod('cms');
+    }
+    match /chats/{id} {
+      allow get: if true;
+      allow list, delete: if hasMod('support');
+      allow create: if request.resource.data.id == id
+        && request.resource.data.name is string && request.resource.data.name.size() <= 60
+        && request.resource.data.phone is string && request.resource.data.phone.size() <= 15
+        && request.resource.data.msgs.size() == 1;
+      allow update: if hasMod('support')
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['msgs', 'upd', 'unread'])
+            && request.resource.data.msgs.size() == resource.data.msgs.size() + 1
+            && request.resource.data.msgs.size() <= 400);
+    }
+    match /clients/{no} {
+      allow read: if hasMod('report') || hasMod('reports');
+      allow create, update: if hasMod('report') || hasMod('reports');
+      allow delete: if isOwner();
+    }
+    match /meta/{id} {
+      allow read: if hasMod('report') || hasMod('reports');
+      allow write: if hasMod('report') || hasMod('reports');
+    }
+  }
+}

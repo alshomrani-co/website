@@ -32,7 +32,7 @@ function viewLogin(msg) {
     <div class="fld"><label>كلمة السر</label><input id="p" type="password" autocomplete="current-password"></div>
     <label class="switch" style="font-weight:600"><input type="checkbox" id="rm" checked> تذكّرني على الجهاز ده</label>
     <button class="btn btn-red" id="b">دخول</button><p class="err" id="er">${esc(msg || '')}</p></form>
-    <p style="text-align:center">موظف جديد؟ <a class="link" href="#register" id="toReg">سجّل حسابك</a></p><a class="back" href="index.html">← رجوع للموقع</a>`);
+    <p style="text-align:center">موظف جديد؟ <a class="link" href="#register" id="toReg">سجّل حسابك</a></p><a class="glass-back" href="index.html" style="margin:14px auto 0;display:flex;width:max-content">← رجوع للموقع</a>`);
   $('#toReg').onclick = e => { e.preventDefault(); viewRegister(); };
   $('#f').onsubmit = async e => {
     e.preventDefault(); const u = $('#u').value.trim(), p = $('#p').value, er = $('#er');
