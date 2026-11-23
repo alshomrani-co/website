@@ -27,11 +27,12 @@ const L = {
   story: 'قصة الشركة (فقرات)', quotes: 'اقتباسات', ceo: 'المدير التنفيذي', role: 'المنصب', quote: 'الاقتباس', why: 'ليش نحن', steps: 'خطوات العمل', licenses: 'التراخيص', isic: 'الأنشطة (ISIC)', code: 'الرمز', num: 'الرقم', t: 'العنوان', d: 'الوصف',
   addr: 'العنوان', auth: 'الجهة', q: 'السؤال', a: 'الإجابة', depts: 'الأقسام في نموذج الدعم', label: 'التسمية', href: 'الرابط', url: 'الرابط',
   until: 'ينتهي العرض في (تاريخ)', youtubeKey: 'مفتاح YouTube API (اختياري — يجيب كل فيديوهات القناة لوحده)', videoMobile: 'فيديو الفون (طولي 9:16 — اختياري)',
-  replyNote: 'ملاحظة وقت الرد', cap: 'تعليق على الصورة', gallery: 'صور المشروع (أكتر من صورة)', keywords: 'الكلمات المفتاحية — افصل بينها بفاصلة (،)', videoSrc: 'ملف الفيديو', video: 'تشغيل فيديو الخلفية', scope: 'نطاق العمل', quote2: 'اقتباس ثاني', ceoTitle: 'مسمى المدير', fields: 'المجالات'
+  replyNote: 'ملاحظة وقت الرد', cap: 'تعليق على الصورة', gallery: 'صور المشروع (أكتر من صورة)', keywords: 'الكلمات المفتاحية — افصل بينها بفاصلة (،)', videoSrc: 'ملف الفيديو', video: 'تشغيل فيديو الخلفية', scope: 'نطاق العمل', quote2: 'اقتباس ثاني', ceoTitle: 'مسمى المدير', fields: 'المجالات',
+  grp: 'المجموعة (المساحة، السلامة، المخططات، الواجهات، التصميم الداخلي — افصل بفاصلة)', key: 'المفتاح (لازم يطابق «المجموعة» في المشاريع)', subs: 'تفاصيل الخدمات الفرعية (صفحة لكل بند)', intro: 'مقدمة الخدمة', docs: 'المستندات المطلوبة', dur: 'المدة المتوقعة', chatLabel: 'كلمة زر الشات (مثلاً: تحدث معنا)', appLine: 'سطر تحميل التطبيق في الواجهة', playStore: 'رابط Google Play (لو فاضي: تثبيت التطبيق من المتصفح)', appStore: 'رابط App Store (لو فاضي: تعليمات الإضافة للشاشة الرئيسية)'
 };
 const lab = k => L[k] || KEYT[k] || k;
 const IMGK = /^(img|poster|logo|image|photo|cover)$/i;
-const LONGK = /^(lead|desc|text|a|long|quote|story|note|confidential|sub|d)$/;
+const LONGK = /^(intro|lead|desc|text|a|long|quote|story|note|confidential|sub|d)$/;
 
 /* ---------- sections ---------- */
 const SECTIONS = [
@@ -47,13 +48,14 @@ const SECTIONS = [
   { id: 'design', t: 'اللوجو والألوان والخطوط', ic: '🎨' },
   { id: 'video', t: 'فيديو الواجهة', ic: '▶' },
   { id: 'pages', t: 'الصفحات (ترتيب وأحجام)', ic: '☰' },
+  { id: 'occasion', t: 'المناسبات والأعياد', ic: '🎉' },
   { h: 'المحتوى' },
   { id: 'hero', t: 'الواجهة والأرقام', keys: ['hero', 'stats'], ic: '◧', d: 'العنوان الكبير والأزرار والأرقام اللي تحت الفيديو.' },
   { id: 'offer', t: 'العروض', keys: ['offer', 'announce', 'popup'], ic: '🎁', d: 'عرض يظهر للناس بشكل واضح في الرئيسية بعدّاد تنازلي، وشريط أعلى الموقع، ونافذة منبثقة.' },
   { id: 'brand', t: 'الهوية والتواصل', keys: ['brand', 'contact'], ic: '◆', d: 'اسم الشركة، أرقام التواصل، العنوان، ومواعيد العمل.' },
   { id: 'social', t: 'السوشيال ميديا', keys: ['socials', 'media'], ic: '♥', d: 'روابط الحسابات (الضغط على الأيقونة يفتح الحساب مباشرة)، ولينكات فيديوهات تظهر في صفحة السوشيال.' },
   { id: 'services', t: 'الخدمات', keys: ['services'], ic: '▦', d: 'كل خدمة لها صفحة خاصة بالبنود والصورة.' },
-  { id: 'projects', t: 'الأعمال والمعرض', keys: ['gallery', 'cats', 'projects', 'confidential'], ic: '▣', d: 'صور المعرض (أول الصفحة الرئيسية)، والمشاريع وتصنيفاتها.' },
+  { id: 'projects', t: 'الأعمال والمعرض', keys: ['workGroups', 'gallery', 'cats', 'projects', 'confidential', 'reviews'], ic: '▣', d: 'صور المعرض (أول الصفحة الرئيسية)، والمشاريع وتصنيفاتها.' },
   { id: 'packages', t: 'الباقات', keys: ['packages'], ic: '★', d: 'باقات الإشراف وأسعارها ومميزاتها.' },
   { id: 'about', t: 'من نحن', keys: ['about', 'partners'], ic: 'ⓘ', d: 'القصة، الرسالة، التراخيص، والشركاء.' },
   { id: 'branches', t: 'الفروع', keys: ['branches'], ic: '⌂', d: 'الفروع وعناوينها والجهات.' },
@@ -63,7 +65,7 @@ const SECTIONS = [
   { id: 'seo', t: 'محركات البحث', keys: ['seo'], ic: '⌕', d: 'عنوان الموقع ووصفه في جوجل، والكلمات اللي الناس بتدوّر بيها عليكم. ✔ بعد النشر: سجّل الموقع في Google Search Console وابعت ملف sitemap.xml.' },
   { id: 'json', t: 'النسخ الاحتياطي', ic: '⇩', d: 'تصدير واستيراد واسترجاع المحتوى.' }
 ];
-const KEYT = { offer: 'عرض الصفحة الرئيسية', media: 'فيديوهات السوشيال', design: 'التصميم', brand: 'الهوية', contact: 'التواصل', socials: 'السوشيال ميديا', hero: 'الواجهة', stats: 'الأرقام', announce: 'شريط الإعلان', popup: 'نافذة العروض المنبثقة', services: 'الخدمات', cats: 'تصنيفات الأعمال', projects: 'المشاريع', confidential: 'نص سرية الأعمال', gallery: 'معرض الصور', packages: 'الباقات', about: 'من نحن', partners: 'الشركاء والجهات', branches: 'الفروع', faq: 'الأسئلة الشائعة', prepare: 'جهّز قبل التواصل', support: 'إعدادات الدعم الفني', cta: 'دعوة التواصل', seo: 'SEO' };
+const KEYT = { offer: 'عرض الصفحة الرئيسية', media: 'فيديوهات السوشيال', design: 'التصميم', brand: 'الهوية', contact: 'التواصل', socials: 'السوشيال ميديا', hero: 'الواجهة', stats: 'الأرقام', announce: 'شريط الإعلان', popup: 'نافذة العروض المنبثقة', services: 'الخدمات', cats: 'تصنيفات الأعمال', projects: 'المشاريع', confidential: 'نص سرية الأعمال', gallery: 'معرض الصور', packages: 'الباقات', about: 'من نحن', partners: 'الشركاء والجهات', branches: 'الفروع', faq: 'الأسئلة الشائعة', prepare: 'جهّز قبل التواصل', support: 'إعدادات الدعم الفني', cta: 'دعوة التواصل', seo: 'SEO', workGroups: 'كروت «من أعمالنا» في الرئيسية', reviews: 'قسم آراء العملاء' };
 
 /* ---------- state ---------- */
 let me = null, isOwner = false, emp = null;
@@ -152,7 +154,7 @@ function blank(v) {
 }
 const TPL = {};
 function arrField(k, v, p) {
-  const key = p.join('.'); if (v.length) TPL[key] = blank(v[0]); else if (k === 'gallery' && p[0] === 'projects') TPL[key] = { img: '', cap: '' };
+  const key = p.join('.'); if (v.length) TPL[key] = blank(v[0]); else if (k === 'gallery' && p[0] === 'projects') TPL[key] = { img: '', cap: '' }; else if (k === 'faq' && p[0] === 'services') TPL[key] = { q: '', a: '' };
   const prim = v.every(x => typeof x !== 'object') && (!v.length || typeof v[0] === 'string') && !(TPL[key] && typeof TPL[key] === 'object');
   if (prim) {
     return `<div class="fld"><label>${esc(lab(k))} <span class="hint" style="font-weight:500">— كل سطر بند</span></label><textarea rows="${Math.min(12, Math.max(3, v.length + 1))}" data-p="${P(p)}" data-t="lines">${esc(v.join('\n'))}</textarea></div>`;
@@ -235,6 +237,7 @@ function rerender() {
   const ctx = { F, db, D: () => D, setD: v => { D = v; }, dirty, rerender, toast, esc, me: () => me, isOwner: () => isOwner, upload, mediaURL, bindEditor, field, EN, DEFAULT, clone, deepMerge };
   if (cur === 'owners') return V5.vOwners(mp, ctx);
   if (cur === 'pages' || cur === 'layout') return V5.vPages(mp, ctx);
+  if (cur === 'occasion') return V5.vOccasion(mp, ctx);
   if (X.VIEWS[cur]) return X.VIEWS[cur](mp, ctx);
   const open = $$('details.item[open]', mp).map(d => [...d.parentElement.children].indexOf(d) + '|' + d.parentElement.dataset.arr);
   const y = scrollY;

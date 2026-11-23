@@ -89,7 +89,7 @@ function top() {
   const name = isOwner ? 'المالك' : (emp && emp.name) || '';
   return `<header class="top"><div class="top-in"><a class="brand" href="portal.html"><img src="assets/img/mark.png" alt="">بوابة الشمراني</a><div class="who"><span class="av">${esc(name.slice(0, 1))}</span><span>${esc(name)}</span><button class="btn btn-ghost sm" id="lo" title="خروج">${IC.out}</button></div></div></header>`;
 }
-let counts = { tickets: 0, chats: 0 };
+let counts = { tickets: 0, chats: 0, reviews: 0 };
 function viewHome() {
   if (!can('report') && can('reports') && !mods().includes('report')) { /* يشوف تقارير الكل */ }
   const h = new Date().getHours(), gr = h < 12 ? 'صباح الخير' : 'مساء الخير';
@@ -144,7 +144,7 @@ function openTicket(id) {
 
 /* المحادثات المباشرة من الموقع */
 let chats = [], openChat = null;
-const supTabs = cur => `<div class="seg" style="margin-bottom:14px"><a href="#support" class="${cur === 'support' ? 'on' : ''}" style="padding:7px 14px;border-radius:999px;font-weight:700">طلبات الخدمة ${counts.tickets ? `<span class="chip red">${counts.tickets}</span>` : ''}</a><a href="#chats" class="${cur === 'chats' ? 'on' : ''}" style="padding:7px 14px;border-radius:999px;font-weight:700">المحادثات المباشرة ${counts.chats ? `<span class="chip red">${counts.chats}</span>` : ''}</a><a href="#botlogs" class="${cur === 'botlogs' ? 'on' : ''}" style="padding:7px 14px;border-radius:999px;font-weight:700">أسئلة المساعد</a></div>${notifBtn()}`;
+const supTabs = cur => `<div class="seg" style="margin-bottom:14px"><a href="#support" class="${cur === 'support' ? 'on' : ''}" style="padding:7px 14px;border-radius:999px;font-weight:700">طلبات الخدمة ${counts.tickets ? `<span class="chip red">${counts.tickets}</span>` : ''}</a><a href="#chats" class="${cur === 'chats' ? 'on' : ''}" style="padding:7px 14px;border-radius:999px;font-weight:700">المحادثات المباشرة ${counts.chats ? `<span class="chip red">${counts.chats}</span>` : ''}</a><a href="#botlogs" class="${cur === 'botlogs' ? 'on' : ''}" style="padding:7px 14px;border-radius:999px;font-weight:700">أسئلة المساعد</a>${isOwner ? `<a href="#reviews" class="${cur === 'reviews' ? 'on' : ''}" style="padding:7px 14px;border-radius:999px;font-weight:700">آراء العملاء ${counts.reviews ? `<span class="chip red">${counts.reviews}</span>` : ''}</a>` : ''}</div>${notifBtn()}`;
 /* أسئلة الزوار للمساعد الآلي (من غير أسماء) */
 async function viewBotlogs() {
   if (!can('support')) return viewHome();
@@ -156,11 +156,32 @@ async function viewBotlogs() {
     $('#bl').innerHTML = s.size ? s.docs.map(d => { const x = d.data(); return `<details class="li" style="display:block"><summary style="cursor:pointer;display:flex;gap:10px;align-items:center"><span>${DV[x.dev] || '🌐'}</span><b style="flex:1">${esc(((x.qs || [])[0] || {}).q || '')}</b><span class="chip">${(x.qs || []).length} سؤال</span><small style="color:var(--mut)">${x.upd && x.upd.toDate ? x.upd.toDate().toLocaleString('ar-SA') : ''}</small></summary><div class="thread" style="margin-top:10px">${(x.qs || []).map(m => `<div class="msg"><b>الزائر</b><br>${esc(m.q)}</div><div class="msg staff"><b>المساعد</b><br>${esc(m.a)}</div>`).join('')}</div></details>`; }).join('') : '<p class="empty">لسه محدش سأل المساعد</p>';
   } catch (e) { $('#bl').innerHTML = `<p class="empty">${esc(F.authMsg(e))}</p>`; }
 }
+/* آراء العملاء: بتتنشر بعد موافقة المالك */
+let reviews = [];
+const RST = { pending: ['قيد المراجعة', 'warn'], approved: ['منشور', 'ok'], rejected: ['مرفوض', 'red'], hidden: ['مخفي', ''] };
+function viewReviews() {
+  if (!isOwner) return viewHome();
+  root.innerHTML = top() + `<main class="shell"><div class="hello"><div><a class="back glass-back" href="#">→ رجوع</a><h1>آراء العملاء</h1><p>كل رأي جديد بيستنى موافقتك قبل ما يظهر على الموقع. الرفض أو الحذف بيخليه ميظهرش خالص.</p></div></div>${supTabs('reviews')}
+  <div class="seg" id="rvF" style="margin-bottom:12px">${[['pending', 'قيد المراجعة'], ['approved', 'المنشورة'], ['rejected', 'المرفوضة'], ['all', 'الكل']].map(([k, l], i) => `<a href="#" data-f="${k}" class="${i ? '' : 'on'}" style="padding:6px 12px;border-radius:999px;font-weight:700">${l}</a>`).join('')}</div><div class="list" id="rvl"><p class="empty">جارٍ التحميل…</p></div></main>`;
+  $('#lo').onclick = () => F.signOut(auth);
+  $('#rvF').onclick = e => { const a = e.target.closest('a[data-f]'); if (!a) return; e.preventDefault(); $$('#rvF a').forEach(x => x.classList.toggle('on', x === a)); paintReviews(); };
+  paintReviews();
+}
+function paintReviews() {
+  const el = $('#rvl'); if (!el) return; const f = ($('#rvF a.on') || {}).dataset ? $('#rvF a.on').dataset.f : 'pending';
+  const L = reviews.filter(r => f === 'all' || (r.status || 'pending') === f);
+  el.innerHTML = L.length ? L.map(r => { const st = RST[r.status] || RST.pending; return `<div class="li rv-li ${r.status === 'pending' ? 'unseen' : ''}" style="display:block"><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><b style="font-size:16px">${esc(r.name || '')}</b>${r.uid ? '<span class="chip ok">✓ عميل موثّق</span>' : ''}<span style="color:#f5a623;letter-spacing:2px">${'★'.repeat(r.stars || 0)}<span style="opacity:.25">${'★'.repeat(5 - (r.stars || 0))}</span></span><span class="chip ${st[1]}">${st[0]}</span><small style="color:var(--mut);margin-inline-start:auto">${r.at && r.at.toDate ? r.at.toDate().toLocaleString('ar-SA') : ''}</small></div>
+    ${r.svc ? `<small style="color:var(--mut)">${esc(r.svc)}</small>` : ''}<p style="margin:8px 0;white-space:pre-wrap;line-height:1.8">${esc(r.text || '')}</p>${r.phone ? `<small dir="ltr" style="color:var(--mut)">${esc(r.phone)}</small>` : ''}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">${r.status !== 'approved' ? `<button class="btn btn-red sm" data-rv="approved" data-id="${r.id}" style="background:#1f9d55">✓ نشر</button>` : `<button class="btn btn-ghost sm" data-rv="hidden" data-id="${r.id}">🙈 إخفاء من الموقع</button>`}${r.status !== 'rejected' && r.status !== 'approved' ? `<button class="btn btn-ghost sm" data-rv="rejected" data-id="${r.id}">✕ رفض</button>` : ''}<button class="btn btn-ghost sm" data-rvdel="${r.id}" style="color:#c0262b">🗑 حذف</button></div></div>`; }).join('') : '<p class="empty">مفيش آراء هنا.</p>';
+  $$('[data-rv]', el).forEach(b => b.onclick = async () => { b.disabled = true; try { await F.updateDoc(F.doc(db, 'reviews', b.dataset.id), { status: b.dataset.rv, by: me.uid, dec: F.serverTimestamp() }); toast(b.dataset.rv === 'approved' ? 'اتنشر على الموقع ✓' : 'اتحفظ ✓'); } catch (e) { toast(F.authMsg(e), 1); b.disabled = false; } });
+  $$('[data-rvdel]', el).forEach(b => b.onclick = async () => { if (!confirm('حذف الرأي نهائياً؟')) return; try { await F.deleteDoc(F.doc(db, 'reviews', b.dataset.rvdel)); toast('اتحذف'); } catch (e) { toast(F.authMsg(e), 1); } });
+}
 /* التنبيهات: صوت + اهتزاز + رقم في عنوان الصفحة + إشعار المتصفح */
 const baseTitle = document.title; let lastN = -1, blink = null;
 function notifBtn() { return ('Notification' in window) && Notification.permission === 'default' ? `<button class="btn btn-ghost sm" id="nfOn" style="margin-bottom:12px">🔔 فعّل التنبيهات على الجهاز ده</button>` : ''; }
 document.addEventListener('click', e => { if (e.target.id === 'nfOn') Notification.requestPermission().then(() => e.target.remove()); });
-function beep() { try { const a = new (window.AudioContext || window.webkitAudioContext)(); [[880, 0], [1320, .16]].forEach(([f, t]) => { const o = a.createOscillator(), g = a.createGain(); o.type = 'sine'; o.frequency.value = f; g.gain.setValueAtTime(.0001, a.currentTime + t); g.gain.exponentialRampToValueAtTime(.25, a.currentTime + t + .02); g.gain.exponentialRampToValueAtTime(.0001, a.currentTime + t + .22); o.connect(g).connect(a.destination); o.start(a.currentTime + t); o.stop(a.currentTime + t + .25); }); } catch (e) { } }
+function snd(kind) { if (localStorage.getItem('sh.pmute') === '1') return; try { window._ac = window._ac || new (window.AudioContext || window.webkitAudioContext)(); const a = window._ac; if (a.state === 'suspended') a.resume(); const N = kind === 'send' ? [[660, 0, .07], [990, .06, .09]] : [[784, 0, .12], [1175, .12, .2]]; N.forEach(([f, t0, d]) => { const o = a.createOscillator(), g = a.createGain(); o.frequency.value = f; const t = a.currentTime + t0; g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(kind === 'send' ? .12 : .22, t + .015); g.gain.exponentialRampToValueAtTime(.0001, t + d); o.connect(g).connect(a.destination); o.start(t); o.stop(t + d + .02); }); } catch (e) { } }
+function beep() { if (localStorage.getItem('sh.pmute') === '1') return; try { const a = new (window.AudioContext || window.webkitAudioContext)(); [[880, 0], [1320, .16]].forEach(([f, t]) => { const o = a.createOscillator(), g = a.createGain(); o.type = 'sine'; o.frequency.value = f; g.gain.setValueAtTime(.0001, a.currentTime + t); g.gain.exponentialRampToValueAtTime(.25, a.currentTime + t + .02); g.gain.exponentialRampToValueAtTime(.0001, a.currentTime + t + .22); o.connect(g).connect(a.destination); o.start(a.currentTime + t); o.stop(a.currentTime + t + .25); }); } catch (e) { } }
 function notify(what) {
   const n = tickets.filter(t => !t.seen && t.status === 'new').length + counts.chats;
   if (lastN >= 0 && n > lastN) {
@@ -199,20 +220,32 @@ function renderChatSheet() {
   let lastDay = '';
   const rows = (c.msgs || []).map(m => { if (m.sys) { const dl0 = dayL(m.at || Date.now()); const sep0 = dl0 !== lastDay ? `<div class="wa-day"><span>${dl0}</span></div>` : ''; lastDay = dl0; return sep0 + `<div class="wa-day"><span>💬 ${esc(m.text)} · ${m.at ? tm(m.at) : ''}</span></div>`; } const dl = dayL(m.at || Date.now()); const sep = dl !== lastDay ? `<div class="wa-day"><span>${dl}</span></div>` : ''; lastDay = dl;
     const mine = m.from !== 'c'; const seen = mine && (c.seenAt || 0) >= (m.at || 0);
-    return sep + `<div class="wa-m ${mine ? 'out' : 'in'}">${mine ? `<b class="wa-by">${esc(m.by || 'الفريق')}</b>` : ''}<div class="wa-t">${nl(m.text)}</div><span class="wa-meta">${m.at ? tm(m.at) : ''}${mine ? `<i class="wa-tick ${seen ? 'seen' : ''}">✓✓</i>` : ''}</span></div>`; }).join('');
+    return sep + `<div class="wa-m ${mine ? 'out' : 'in'}">${mine ? `<b class="wa-by">${esc(m.by || 'الفريق')}</b>` : ''}${m.file ? (/^image\//.test(m.file.type || '') ? `<img class="wa-img" data-mid="${esc(m.file.id)}" alt="">` : `<button type="button" class="wa-pdf" data-mid="${esc(m.file.id)}"><span>PDF</span><b>${esc(m.file.name || 'file.pdf')}</b></button>`) : ''}${m.text ? `<div class="wa-t">${nl(m.text)}</div>` : ''}<span class="wa-meta">${m.at ? tm(m.at) : ''}${mine ? `<i class="wa-tick ${seen ? 'seen' : ''}">✓✓</i>` : ''}</span></div>`; }).join('');
   sh.innerHTML = `<div class="wa-win"><header class="wa-h"><button class="x wa-back" aria-label="رجوع">→</button><span class="wa-av">${esc((c.name || '؟').trim().slice(0, 1))}</span><div class="wa-who"><b>${esc(c.name)}</b><small>${online ? '<i class="wa-on"></i> متصل الآن' : (last ? 'آخر رسالة ' + tm(last.at) : '')}${c.page ? ' · من صفحة ' + esc(c.page.replace(/^#\/?/, '') || 'الرئيسية') : ''}</small></div>
-    <div class="wa-acts">${ph ? `<a href="tel:${esc(c.phone)}" title="اتصال" class="wa-ic">📞</a><a href="${waL}" target="_blank" rel="noopener" title="واتساب" class="wa-ic wa-g">${IC.wa}</a>` : '<span class="chip" title="العميل مدخلش رقم">بدون رقم</span>'}</div></header>
+    <div class="wa-acts"><button type="button" class="wa-ic" id="waMute" title="الصوت">${localStorage.getItem('sh.pmute') === '1' ? '🔕' : '🔔'}</button>${ph ? `<a href="tel:${esc(c.phone)}" title="اتصال" class="wa-ic">📞</a><a href="${waL}" target="_blank" rel="noopener" title="واتساب" class="wa-ic wa-g">${IC.wa}</a>` : '<span class="chip" title="العميل مدخلش رقم">بدون رقم</span>'}</div></header>
+    <div class="wa-info" id="waInfo">${[['الاسم', c.name], ['الجوال', c.phone ? `<a href="tel:${esc(c.phone)}" dir="ltr">${esc(c.phone)}</a>` : '—', 1], ['الحساب', c.uid ? 'عميل مسجّل على الموقع' : 'زائر'], ['الجهاز', ({ iphone: 'آيفون', android: 'أندرويد', ipad: 'آيباد', desktop: 'كمبيوتر' })[c.dev] || '—'], ['من صفحة', c.page ? c.page.replace(/^#\/?/, '') || 'الرئيسية' : 'الرئيسية'], ['بدأت', c.at && c.at.toDate ? c.at.toDate().toLocaleString('ar-SA') : '']].map(([k, v, raw]) => `<div><small>${k}</small><b>${raw ? v : esc(v || '—')}</b></div>`).join('')}<div id="waCust" style="display:contents"></div></div>
     ${c.botLog && c.botLog.length ? `<div class="wa-note">🤖 سأل المساعد قبل كده: ${esc(c.botLog.join(' · ').slice(0, 160))}</div>` : ''}
     <div class="wa-body" id="thr">${rows}</div>
     <div class="wa-quick">${QUICK.map(q => `<button type="button" data-q="${esc(q)}">${esc(q)}</button>`).join('')}</div>
-    <form id="cf" class="wa-in"><textarea rows="1" placeholder="اكتب رسالة…" title="Enter للإرسال، Shift+Enter لسطر جديد">${esc(keep)}</textarea><button class="wa-send" aria-label="إرسال"><svg viewBox="0 0 24 24"><path d="M3 20l18-8L3 4l3 8-3 8zm3-8h8"/></svg></button></form></div>`;
+    <form id="cf" class="wa-in"><label class="wa-att" title="إرفاق صورة أو PDF"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 11l-8.5 8.5a5 5 0 0 1-7-7L14 4a3.5 3.5 0 0 1 5 5l-8.6 8.6a2 2 0 0 1-2.8-2.8L15 7.5"/></svg><input type="file" accept="image/*,application/pdf" hidden id="waF"></label><textarea rows="1" placeholder="اكتب رسالة…" title="Enter للإرسال، Shift+Enter لسطر جديد">${esc(keep)}</textarea><button class="wa-send" aria-label="إرسال"><svg viewBox="0 0 24 24"><path d="M3 20l18-8L3 4l3 8-3 8zm3-8h8"/></svg></button></form></div>`;
   $('.wa-back', sh).onclick = closeChat; const thr = $('#thr', sh); thr.scrollTop = 1e6;
+  $('.wa-who', sh).onclick = () => $('#waInfo', sh).classList.toggle('on');
+  const mu = $('#waMute', sh); if (mu) mu.onclick = () => { localStorage.setItem('sh.pmute', localStorage.getItem('sh.pmute') === '1' ? '0' : '1'); renderChatSheet(); };
+  if (c.uid) F.getDoc(F.doc(db, 'customers', c.uid)).then(d => { if (!d.exists()) return; const x = d.data(); const w = $('#waCust', sh); if (w) w.innerHTML = [['الإيميل', x.email], ['المدينة', x.city], ['رقم الملف', x.clientNo != null ? `<a href="supervision.html#c/${esc(x.clientNo)}">${esc(x.clientNo)}</a>` : 'مش مربوط', 1]].filter(r => r[1]).map(([k, v, raw]) => `<div><small>${k}</small><b>${raw ? v : esc(v)}</b></div>`).join(''); }).catch(() => { });
+  $$('.wa-img[data-mid]', sh).forEach(async im => { try { const d = await F.getDoc(F.doc(db, 'chatmedia', im.dataset.mid)); if (d.exists()) { im.src = d.data().data; im.onclick = () => window.open(URL.createObjectURL(dataBlob(im.src)), '_blank'); } } catch (e) { } });
+  $$('.wa-pdf[data-mid]', sh).forEach(b => b.onclick = async () => { try { const d = await F.getDoc(F.doc(db, 'chatmedia', b.dataset.mid)); if (d.exists()) window.open(URL.createObjectURL(dataBlob(d.data().data)), '_blank'); } catch (e) { toast(F.authMsg(e), 1); } });
+  $('#waF', sh).onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if (!f) return; try {
+      let data, type = f.type, name = f.name.slice(0, 80);
+      if (/^image\//.test(f.type)) { data = await shrinkTo(f); type = 'image/jpeg'; } else if (/pdf/.test(f.type) || /\.pdf$/i.test(f.name)) { if (f.size > 700 * 1024) return toast('ملف الـ PDF لازم يكون أقل من ٧٠٠ كيلو', 1); data = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(f); }); type = 'application/pdf'; } else return toast('صور أو PDF بس', 1);
+      const ref = F.doc(F.collection(db, 'chatmedia')); await F.setDoc(ref, { chat: c.id, by: 's', name, type, data, at: Date.now() });
+      await F.updateDoc(F.doc(db, 'chats', c.id), { msgs: F.arrayUnion({ from: 's', text: '', file: { id: ref.id, name, type }, by: isOwner ? 'الإدارة' : ((emp && emp.name) || 'الفريق').split(' ')[0], at: Date.now() }), upd: F.serverTimestamp(), unread: 0 }); snd('send');
+    } catch (x) { toast(F.authMsg(x), 1); } };
   const ta = $('textarea', sh); const fit = () => { ta.style.height = 'auto'; ta.style.height = Math.min(140, ta.scrollHeight) + 'px'; }; ta.oninput = fit; fit();
   ta.onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('#cf', sh).requestSubmit(); } };
   $$('[data-q]', sh).forEach(b => b.onclick = () => { ta.value = b.dataset.q; fit(); ta.focus(); });
   if (!matchMedia('(hover:none)').matches) ta.focus();
   $('#cf', sh).onsubmit = async e => { e.preventDefault(); const v = ta.value.trim(); if (!v) return; ta.value = ''; fit();
-    try { await F.updateDoc(F.doc(db, 'chats', c.id), { msgs: F.arrayUnion({ from: 's', text: v, by: isOwner ? 'الإدارة' : ((emp && emp.name) || 'الفريق').split(' ')[0], at: Date.now() }), upd: F.serverTimestamp(), unread: 0 }); } catch (x) { toast(F.authMsg(x), 1); ta.value = v; } };
+    try { await F.updateDoc(F.doc(db, 'chats', c.id), { msgs: F.arrayUnion({ from: 's', text: v, by: isOwner ? 'الإدارة' : ((emp && emp.name) || 'الفريق').split(' ')[0], at: Date.now() }), upd: F.serverTimestamp(), unread: 0 }); snd('send'); } catch (x) { toast(F.authMsg(x), 1); ta.value = v; } };
 }
 
 /* reports archive */
@@ -244,6 +277,7 @@ function route() {
   if (h === 'support') return viewSupport();
   if (h === 'chats') return viewChats();
   if (h === 'botlogs') return viewBotlogs();
+  if (h === 'reviews') return viewReviews();
   if (h === 'reports') return viewReports();
   viewHome();
 }
@@ -279,9 +313,17 @@ function startLive() {
   if (can('support')) unsubs.push(F.onSnapshot(F.query(F.collection(db, 'chats'), F.orderBy('upd', 'desc'), F.limit(200)), s => {
     const before = counts.chats; chats = s.docs.map(d => ({ id: d.id, ...d.data() })); counts.chats = chats.filter(c => c.unread > 0).length;
     if (counts.chats > before && document.hidden === false) { try { navigator.vibrate && navigator.vibrate(60); } catch (e) { } }
+    if (openChat) { const oc = chats.find(x => x.id === openChat); const n = oc ? (oc.msgs || []).filter(m => m.from === 'c').length : 0; if (window._ocN != null && window._ocKey === openChat && n > window._ocN) snd('recv'); window._ocN = n; window._ocKey = openChat; }
     if (location.hash === '#chats') paintChats(); else if (openChat) renderChatSheet();
     notify('رسالة جديدة في المحادثات المباشرة');
     const b = $('.tile[data-k=support]'); if (b) { let bd = b.querySelector('.badge'); const n = counts.tickets + counts.chats; if (n) { if (!bd) { bd = document.createElement('span'); bd.className = 'badge'; b.prepend(bd); } bd.textContent = n; } else if (bd) bd.remove(); }
+  }, () => { }));
+  if (isOwner) unsubs.push(F.onSnapshot(F.query(F.collection(db, 'reviews'), F.orderBy('at', 'desc'), F.limit(300)), s => {
+    const before = counts.reviews; reviews = s.docs.map(d => ({ id: d.id, ...d.data() })); counts.reviews = reviews.filter(r => (r.status || 'pending') === 'pending').length;
+    if (before !== undefined && counts.reviews > before && lastN >= 0) { beep(); if ('Notification' in window && Notification.permission === 'granted' && document.hidden) { try { new Notification('رأي عميل جديد', { body: 'مستني موافقتك قبل النشر', icon: 'assets/img/icon-192.png', tag: 'sh-review' }); } catch (e) { } } }
+    if (location.hash === '#reviews') paintReviews();
+    const tb = document.querySelector('.seg a[href="#reviews"]'); if (tb) { let c = tb.querySelector('.chip'); if (counts.reviews) { if (!c) { c = document.createElement('span'); c.className = 'chip red'; tb.appendChild(c); } c.textContent = counts.reviews; } else if (c) c.remove(); }
+    const b = $('.tile[data-k=support]'); if (b && counts.reviews) { let bd = b.querySelector('.badge'); if (!bd) { bd = document.createElement('span'); bd.className = 'badge'; b.prepend(bd); } bd.textContent = counts.tickets + counts.chats + counts.reviews; }
   }, () => { }));
   if (can('support')) unsubs.push(F.onSnapshot(F.query(F.collection(db, 'tickets'), F.orderBy('at', 'desc'), F.limit(300)), s => {
     tickets = s.docs.map(d => ({ id: d.id, ...d.data() })); counts.tickets = tickets.filter(t => t.status === 'new' && !t.seen).length; if (location.hash === '#support' || location.hash === '#chats' || location.hash === '#botlogs') { const tb = document.querySelector('.seg a[href="#support"] .chip'); if (tb) { if (counts.tickets) tb.textContent = counts.tickets; else tb.remove(); } }
@@ -289,3 +331,6 @@ function startLive() {
     if (location.hash === '#support') paintTickets(); else if (!location.hash || location.hash === '#') { const b = $('.tile[data-k=support]'); if (b) { let bd = b.querySelector('.badge'); if (counts.tickets) { if (!bd) { bd = document.createElement('span'); bd.className = 'badge'; b.prepend(bd); } bd.textContent = counts.tickets; } else if (bd) bd.remove(); } }
   }, () => { }));
 }
+
+function dataBlob(u) { const [h, b] = u.split(','); const bin = atob(b), a = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i); return new Blob([a], { type: (h.match(/data:([^;]+)/) || [])[1] || 'application/octet-stream' }); }
+function shrinkTo(f) { return new Promise((res, rej) => { const u = URL.createObjectURL(f), im = new Image(); im.onload = () => { const k = Math.min(1, 1280 / Math.max(im.width, im.height)); const c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); URL.revokeObjectURL(u); let o = c.toDataURL('image/jpeg', .76); if (o.length > 900000) o = c.toDataURL('image/jpeg', .55); res(o); }; im.onerror = rej; im.src = u; }); }

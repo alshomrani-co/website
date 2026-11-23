@@ -130,15 +130,15 @@ export async function wireMy() {
     if (!cu) { gUser = u; mode = 'up'; location.hash = '#/account'; return; }
     st('sh.custName', cu.name || ''); if (cu.phone) st('sh.custPhone', cu.phone);
     st('sh.cust', u.uid);
-    const top = `<div class="my-top glass"><div><b>${esc((cu && cu.name) || u.displayName || u.email)}</b><small dir="ltr">${esc(u.email || '')}</small></div><button class="btn btn-ghost sm" id="myOut">${T('خروج', 'Sign out')}</button></div>`;
+    const top = `<div class="my-top glass"><span class="my-av">${cu && cu.photo ? `<img src="${cu.photo}" alt="">` : esc(((cu && cu.name) || u.email || '؟').trim().slice(0, 1))}</span><div style="flex:1;min-width:0"><b>${esc((cu && cu.name) || u.displayName || u.email)}</b><small dir="ltr">${esc(u.email || '')}</small></div><button class="btn btn-ghost sm" onclick="window.SH_review&&SH_review()">⭐ ${T('قيّم تجربتك', 'Rate us')}</button><button class="btn btn-ghost sm" id="myEdit">✎ ${T('بياناتي', 'My details')}</button><button class="btn btn-ghost sm" id="myOut">${T('خروج', 'Sign out')}</button></div><div id="myProf"></div>`;
     if (!cu || cu.clientNo == null) {
       const code = u.uid.slice(0, 6).toUpperCase();
       box.innerHTML = top + `<div class="my-wait glass"><div class="ic">⏳</div><h3>${T('حسابك لسه مش مربوط بمشروع', 'Your account is not linked yet')}</h3><p>${T('المهندس المسؤول هيربط حسابك بملف مشروعك. لو عايز تسرّع، ابعتلنا رقم مشروعك أو اسم المالك مع الكود ده:', 'Our engineer will link your account to your project. To speed it up, send us your project number or owner name with this code:')}</p><div class="code">${code}</div><a class="btn btn-red" target="_blank" rel="noopener" href="https://wa.me/966570086833?text=${encodeURIComponent(T('السلام عليكم، سجلت حساب في الموقع وعايز أربطه بمشروعي. الكود: ', 'Hello, I created an account and want to link it to my project. Code: ') + code)}">${T('ابعت الكود واتساب', 'Send code on WhatsApp')}</a></div>`;
-      $('#myOut').onclick = () => out(F); return;
+      $('#myOut').onclick = () => out(F); $('#myEdit').onclick = () => profile(F, u, cu); return;
     }
     ctx = { F, u, cu, no: cu.clientNo };
     box.innerHTML = top + `<div class="year-note">ⓘ ${T('البيانات متاحة هنا لمدة سنة واحدة فقط على الموقع والتطبيق، وتحتفظ الشركة بنسخة كاملة دائمة في أرشيفها.', 'Data is available here for one year only on the website and app; the company keeps a complete permanent copy in its archive.')}</div><div id="myBody"><p class="empty">${T('جارٍ التحميل…', 'Loading…')}</p></div>`;
-    $('#myOut').onclick = () => out(F);
+    $('#myOut').onclick = () => out(F); $('#myEdit').onclick = () => profile(F, u, cu);
     loadMy();
   });
 }
@@ -184,4 +184,20 @@ function paintMy() {
       ta.disabled = false;
     };
   });
+}
+
+/* بياناتي: صورة + بيانات اختيارية */
+function profile(F, u, cu) {
+  const box = $('#myProf'); if (!box) return; if (box.innerHTML) { box.innerHTML = ''; return; } cu = cu || {};
+  let photo = cu.photo || '';
+  box.innerHTML = `<form class="form-card glass my-prof" id="pf"><h3>${T('بياناتي', 'My details')}</h3>
+    <div class="pf-ph"><span class="my-av big" id="pfAv">${photo ? `<img src="${photo}" alt="">` : '👤'}</span><label class="btn btn-ghost sm">${T('صورة شخصية', 'Profile photo')}<input type="file" accept="image/*" hidden id="pfF"></label>${photo ? `<button type="button" class="link-btn" id="pfX">${T('إزالة', 'Remove')}</button>` : ''}</div>
+    <div class="row2"><div class="fld"><label>${T('الاسم', 'Name')}</label><input id="pfN" maxlength="60" value="${esc(cu.name || '')}" required></div><div class="fld"><label>${T('الجوال', 'Mobile')}</label><input id="pfP" dir="ltr" inputmode="tel" maxlength="15" value="${esc(cu.phone || '')}"></div></div>
+    <div class="row2"><div class="fld"><label>${T('المدينة / الحي', 'City / district')} <small>(${T('اختياري', 'optional')})</small></label><input id="pfC" maxlength="80" value="${esc(cu.city || '')}"></div><div class="fld"><label>${T('رقم الهوية أو السجل التجاري', 'ID or CR number')} <small>(${T('اختياري', 'optional')})</small></label><input id="pfI" dir="ltr" maxlength="20" value="${esc(cu.idNo || '')}"></div></div>
+    <button class="btn btn-red">${T('حفظ', 'Save')}</button><p class="err" id="pfE"></p></form>`;
+  $('#pfF').onchange = async e => { const f = e.target.files[0]; if (!f) return; photo = await new Promise(res => { const im = new Image(), ur = URL.createObjectURL(f); im.onload = () => { const k = 256 / Math.min(im.width, im.height), c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d'); const w = im.width * k, h = im.height * k; g.drawImage(im, (256 - w) / 2, (256 - h) / 2, w, h); URL.revokeObjectURL(ur); res(c.toDataURL('image/jpeg', .82)); }; im.src = ur; }); $('#pfAv').innerHTML = `<img src="${photo}" alt="">`; };
+  const x = $('#pfX'); if (x) x.onclick = () => { photo = ''; $('#pfAv').innerHTML = '👤'; };
+  $('#pf').onsubmit = async e => { e.preventDefault(); const d = { name: $('#pfN').value.trim().slice(0, 60), phone: F.toEn($('#pfP').value).replace(/\D/g, '').slice(0, 15), city: $('#pfC').value.trim().slice(0, 80), idNo: F.toEn($('#pfI').value).replace(/[^\dA-Za-z]/g, '').slice(0, 20), photo, upd: F.serverTimestamp() };
+    if (d.name.length < 2) { $('#pfE').textContent = T('اكتب اسمك', 'Enter your name'); return; }
+    try { await F.updateDoc(F.doc(F.db, 'customers', u.uid), d); st('sh.custName', d.name); if (d.phone) st('sh.custPhone', d.phone); toast(T('اتحفظت ✓', 'Saved ✓')); Object.assign(cu, d); box.innerHTML = ''; wireMy(); } catch (x) { $('#pfE').textContent = errMsg(F, x); } };
 }

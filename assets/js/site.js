@@ -4,6 +4,7 @@ import { EN } from './data-en.js';
 import { UI } from './i18n.js';
 import { makeBot } from './bot.js';
 import * as ACC from './site-acc.js';
+import { OCC, activeOcc, greeting, fxHTML, nationalNo } from './occ.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const store = (k, area = 'local') => { try { return (area === 'local' ? localStorage : sessionStorage).getItem(k); } catch (e) { return null; } };
@@ -101,8 +102,10 @@ const ext = href => /^https?:|^mailto:|^tel:/.test(href) ? 'target="_blank" rel=
 function applyDesign() {
   const pgk = (location.hash.replace(/^#\/?/, '').split(/[/?]/)[0]) || 'home';
   const d0 = C.design || {}, d = { ...d0, ...((d0.pageStyle || {})[pgk] || {}) }, r = document.documentElement.style;
-  if (d.red) { r.setProperty('--red', d.red); r.setProperty('--red2', `color-mix(in srgb, ${d.red} 82%, #000)`); }
-  if (d.gold) r.setProperty('--gold', d.gold);
+  const ok = activeOcc(C.occasion), oc = ok && OCC[ok], red = (oc && oc.red) || d.red, gold = (oc && oc.gold) || d.gold;
+  if (red) { r.setProperty('--red', red); r.setProperty('--red2', `color-mix(in srgb, ${red} 82%, #000)`); } else { r.removeProperty('--red'); r.removeProperty('--red2'); }
+  if (gold) r.setProperty('--gold', gold); else r.removeProperty('--gold');
+  if (ok) document.documentElement.dataset.occ = ok; else delete document.documentElement.dataset.occ;
   r.setProperty('--fs', ((+d.fontScale || 100) / 100).toFixed(2));
   r.setProperty('--logo', ((+d.logoSize || 100) / 100).toFixed(2));
   r.setProperty('--hlogo', ((+d.heroLogoSize || 100) / 100).toFixed(2));
@@ -118,7 +121,7 @@ function applyDesign() {
 }
 
 /* ---------- chrome ---------- */
-const NAV_MAIN = ['services', 'projects', 'packages', 'contact'];
+const NAV_MAIN = ['', 'services', 'projects', 'packages', 'contact'];
 const NAV_ALL = ['', 'services', 'projects', 'packages', 'about', 'support', 'track', 'request', 'contact'];
 function chrome() {
   const v = V();
@@ -128,12 +131,12 @@ function chrome() {
   $('#langBtn').textContent = t('langBtn'); $('#langBtn').title = t('langName');
   $('#reqBtn').textContent = t('request');
   paintAcc();
-  $('#nav').innerHTML = NAV_MAIN.filter(r => r !== 'packages' || v.packages.on).map(r => `<a href="#/${r}" data-r="${r}">${t(r)}</a>`).join('') + `<button class="more-btn" id="moreBtn" aria-label="${t('more')}" aria-expanded="false"><i></i><i></i><i></i></button>`;
+  $('#nav').innerHTML = NAV_MAIN.filter(r => r !== 'packages' || v.packages.on).map(r => `<a href="#/${r}" data-r="${r}" class="${r === 'packages' ? 'nav-pk' : ''}">${t(r || 'home')}</a>`).join('') + `<button class="more-btn" id="moreBtn" aria-label="${t('more')}" aria-expanded="false"><i></i><i></i><i></i></button>`;
   $('#moreList').innerHTML = NAV_ALL.filter(r => r !== 'packages' || v.packages.on).map((r, i) => `<a href="#/${r}" data-r="${r}" style="--i:${i}"><span>${t(r || 'home')}</span>${I.prev}</a>`).join('') + `<a href="#/${ACC.signedIn() ? 'my' : 'account'}" data-r="${ACC.signedIn() ? 'my' : 'account'}" class="acc-link" style="--i:10"><span>${ACC.signedIn() ? t('myProject') : t('myAccount')}</span>${I.prev}</a>` + (store('sh.staff') ? `<a href="portal.html" class="staff-link" style="--i:11"><span>${t('staff')}</span>${I.prev}</a>` : '') +
     `<div class="more-foot"><a class="btn btn-red" href="${wa()}" target="_blank" rel="noopener">${I.wa} ${t('waNow')}</a><a class="btn btn-ghost" href="${tel()}" dir="ltr">${I.phone} ${esc(v.contact.phone)}</a><button class="btn btn-ghost" data-lang>${t('switchLang')}</button></div>`;
   $('#moreBtn').onclick = () => toggleMore();
   $('#waFab').href = wa();
-  const an = v.announce; if (an.on && an.text && store('sh.annX','session') !== an.text) { $('#announce').hidden = false; $('#announceText').innerHTML = an.link ? `<a href="${esc(an.link)}">${esc(an.text)}</a>` : esc(an.text); } else $('#announce').hidden = true;
+  const an = v.announce; $('#announce').classList.remove('occ'); if (paintOcc(v)) { } else if (an.on && an.text && store('sh.annX','session') !== an.text) { $('#announce').hidden = false; $('#announceText').innerHTML = an.link ? `<a href="${esc(an.link)}">${esc(an.text)}</a>` : esc(an.text); } else $('#announce').hidden = true;
   const s = v.socials, soc = SOC.filter(x => s[x[0]]).map(x => `<a href="${esc(s[x[0]])}" target="_blank" rel="noopener" aria-label="${socName(x)}">${I[x[1]]}</a>`).join('');
   $('#ftr').innerHTML = `<div class="wrap"><div class="ftr-grid">
     <div><div class="brand" style="color:#fff"><span class="mark"><img src="assets/img/mark.png" data-logo alt="" width="40"></span><span class="bname"><b>${esc(v.brand.short)}</b><small>${t('company')}</small></span></div>
@@ -142,10 +145,22 @@ function chrome() {
     <div><h5>${t('links')}</h5><a href="#/projects">${t('projects')}</a>${v.packages.on ? `<a href="#/packages">${t('packages')}</a>` : ''}<a href="#/about">${t('aboutLic')}</a><a href="#/support">${t('helpCenter')}</a><a href="#/track">${t('track')}</a><a href="#/contact">${t('contact')}</a></div>
     <div><h5>${t('fContact')}</h5><a href="${tel()}" dir="ltr" class="num">${esc(v.contact.phone)}</a>${v.contact.phone2 ? `<a href="${tel(v.contact.phone2)}" dir="ltr" class="num">${esc(v.contact.phone2)}</a>` : ''}<a href="mailto:${esc(v.contact.email)}">${esc(v.contact.email)}</a><p style="margin-top:8px">${esc(v.contact.address)}</p></div>
   </div><div class="ftr-bot"><span>© ${new Date().getFullYear()} ${esc(v.brand.name)}. ${t('rights')}</span><span>${store('sh.staff') ? `<a href="portal.html" style="display:inline;opacity:1;color:var(--red)">${t('staff')}</a>` : t('city')}</span></div></div>`;
-  $('#botName').textContent = t('botName'); $('#botSubT').textContent = t('botSub'); $('#botIn').placeholder = t('botPh'); $('#botSend').textContent = t('sendB'); $('#botFabT').textContent = t('ask');
+  $('#botName').textContent = t('botName'); $('#botSubT').textContent = t('botSub'); $('#botIn').placeholder = t('botPh'); $('#botSend').textContent = t('sendB'); { const fl = (v.brand && v.brand.chatLabel) || t('ask'); $('#botFabT').textContent = fl; $('#botFab').setAttribute('aria-label', fl); }
   $('#holdHint').textContent = t('staffHint');
   $$('[data-lang]').forEach(b => b.onclick = switchLang);
   applyDesign();
+}
+/* المناسبة الحالية: شريط تهنئة + زينة متحركة (الزائر يقدر يقفلها) */
+function paintOcc(v) {
+  const k = activeOcc(C.occasion), o = C.occasion || {}, en = LANG === 'en'; let fx = $('#occFx');
+  const off = store('sh.occFx', 'session') === '0' || o.fx === false || matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!k || off) { if (fx) fx.remove(); } else if (!fx || fx.dataset.k !== k) { if (fx) fx.remove(); fx = document.createElement('div'); fx.id = 'occFx'; fx.className = 'occ-fx'; fx.dataset.k = k; fx.setAttribute('aria-hidden', 'true'); fx.innerHTML = fxHTML(k, matchMedia('(max-width:700px)').matches); document.body.appendChild(fx); }
+  if (!k) return false;
+  const txt = greeting(k, LANG, (v.occasion || {}).text), bar = $('#announce');
+  if (store('sh.occBar', 'session') === k) return false;
+  bar.hidden = false; bar.classList.add('occ'); $('#announceText').innerHTML = `<span class="occ-ic">${OCC[k].ic}</span>${esc(txt)}${off ? '' : ` <button class="occ-off" type="button">${en ? 'Hide decorations' : 'إخفاء الزينة'}</button>`}`;
+  const b = $('.occ-off', bar); if (b) b.onclick = e => { e.stopPropagation(); storeSet('sh.occFx', '0', 'session'); const f = $('#occFx'); if (f) f.remove(); b.remove(); };
+  bar.dataset.occ = k; return true;
 }
 function seoMeta(v) {
   let k = document.querySelector('meta[name=keywords]'); if (!k) { k = document.createElement('meta'); k.name = 'keywords'; document.head.appendChild(k); } k.content = v.seo.keywords || '';
@@ -202,7 +217,109 @@ const faqItem = (f) => `<details class="glass rv"><summary>${esc(f.q)}${f.cat ? 
 
 /* ---------- pages ---------- */
 const P = {};
+/* ===== الصفحة الرئيسية v7 (تصميم الشركة الكبيرة) ===== */
+const ARW = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>';
+const subHref = (sid, n) => `#/service/${encodeURIComponent(sid)}/${n}`;
+function svcPanel(x, i) {
+  if (!x) return ''; const en = LANG === 'en';
+  return `<div class="h7-x-img"><img src="${esc(src(x.img))}" alt="${esc(x.title)}"><span class="nn">${String(i + 1).padStart(2, '0')}</span></div>
+    <div class="h7-x-b"><h3>${esc(x.title)}</h3><p>${esc(x.desc || x.short)}</p><h4>${en ? 'Included services' : 'الخدمات المشمولة'}</h4>
+    <ul class="h7-x-ul">${(x.items || []).map((it, n) => `<li style="--gi:${n}"><a href="${subHref(x.id, n)}">${esc(it)}<span>${ARW}</span></a></li>`).join('')}</ul>
+    <a class="h7-red sm" href="#/service/${esc(x.id)}">${en ? 'Department details' : 'تفاصيل القسم'} ${ARW}</a></div>`;
+}
+/* سطر «حمّل التطبيق»: روابط المتاجر لو موجودة، وإلا تثبيت التطبيق من المتصفح */
+function appStrip(v) {
+  const c = v.contact || {}, en = LANG === 'en', line = c.appLine || (en ? 'Get the app to follow your project' : 'حمّل التطبيق لمتابعة مشروعك');
+  const gp = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 3.5v17l9-8.5z" fill="#34A853"/><path d="M4 3.5l9 8.5 3-2.8L5.6 3z" fill="#4285F4"/><path d="M4 20.5l9-8.5 3 2.8-10.4 6.2z" fill="#EA4335"/><path d="M16 9.2l3.6 2.1c.7.4.7 1 0 1.4L16 14.8 13 12z" fill="#FBBC04"/></svg>';
+  const ap = '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="18" r="1.1"/></svg>';
+  const b = (href, ic, sm, big, k) => href ? `<a class="h7-store" href="${esc(href)}" target="_blank" rel="noopener" data-ev="app:${k}">${ic}<span><small>${sm}</small><b>${big}</b></span></a>` : `<button class="h7-store" data-inst="${k}">${ic}<span><small>${sm}</small><b>${big}</b></span></button>`;
+  return `<div class="h7-app"><span class="h7-app-t"><i>📱</i>${esc(line)}</span><div class="h7-app-b">${b(c.playStore, gp, en ? 'Get it on' : 'حمّله من', 'Google Play', 'android')}${b(c.appStore, ap, en ? 'Download on the' : 'حمّله من', 'App Store', 'ios')}</div></div>`;
+}
+const grps = p => String(p.grp || '').split(/[,،]/).map(x => x.trim()).filter(Boolean);
+function workCards() {
+  const v = V(), Ga = C.workGroups || [], en = LANG === 'en';
+  return (v.workGroups || []).map((g, i) => { const key = (Ga[i] || {}).key || g.key; if (!key) return ''; const P = v.projects.filter(p => grps(p).includes(key)); const n = P.reduce((a, p) => a + (p.img ? 1 : 0) + (p.gallery || []).filter(x => x.img).length, 0);
+    const im = g.img || (P.find(p => p.img) || {}).img || '';
+    return `<a class="h7-wk rv d${i % 5}" href="#/projects?g=${encodeURIComponent(key)}">${im ? img(im, g.title) : ''}<div class="ov"><span class="cnt">${n} ${en ? 'photos' : 'صورة'}</span><h3>${esc(g.title)}</h3><p>${esc(g.sub || '')}</p><span class="go">${ARW}</span></div></a>`; }).join('');
+}
+/* الأقسام بتقلّب لوحدها كل ٥ ثواني، وتقف لما العميل يلمسها */
+let xTimer = null;
+function wireX() {
+  clearInterval(xTimer); const sec = $('#services'), p = $('#h7X'); if (!sec || !p || !$('.h7-xi')) return;
+  const mob = () => matchMedia('(max-width:860px)').matches; let vis = false, hold = 0;
+  const show = (el, user) => { const i = +el.dataset.xi, sv = V().services[i]; if (!sv) return; $$('.h7-xi').forEach(x => { x.classList.toggle('on', x === el); x.setAttribute('aria-selected', x === el); x.classList.remove('run'); });
+    if (!user && !hold) { void el.offsetWidth; el.classList.add('run'); }
+    p.classList.add('sw'); setTimeout(() => { p.innerHTML = svcPanel(sv, i); if (user && mob()) { el.after(p); el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } p.classList.remove('sw'); }, mob() && user ? 0 : 180); };
+  $$('.h7-xi').forEach(el => el.onclick = () => { hold = Date.now(); if (!el.classList.contains('on') || mob()) show(el, 1); });
+  sec.addEventListener('mouseenter', () => { hold = hold || 1; $$('.h7-xi.run').forEach(x => x.classList.remove('run')); }); sec.addEventListener('mouseleave', () => { if (hold === 1) hold = 0; });
+  { const on = $('.h7-xi.on'); if (on && mob()) on.after(p); }
+  try { new IntersectionObserver(e => { const was = vis; vis = e[0].isIntersecting; sec.classList.toggle('xin', vis || sec.classList.contains('xin')); if (vis && !was && !hold) { const on = $('.h7-xi.on'); on && (on.classList.remove('run'), void on.offsetWidth, on.classList.add('run')); } }, { threshold: .25 }).observe(sec); } catch (e) { vis = true; sec.classList.add('xin'); }
+  xTimer = setInterval(() => {
+    if (!document.body.contains(sec)) return clearInterval(xTimer);
+    if (hold > 1 && Date.now() - hold > 10000) hold = 0;
+    if (!vis || hold || document.hidden) return;
+    const all = $$('.h7-xi'), cur = all.findIndex(x => x.classList.contains('on')); show(all[(cur + 1) % all.length]);
+  }, 5000);
+}
+let instEv = null;
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); instEv = e; });
+addEventListener('appinstalled', () => { instEv = null; toast(LANG === 'en' ? 'App installed ✓' : 'التطبيق اتثبت ✓'); });
+async function doInstall(k) {
+  const en = LANG === 'en', ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (matchMedia('(display-mode: standalone)').matches) return toast(en ? 'The app is already installed ✓' : 'التطبيق متثبت عندك بالفعل ✓');
+  if (instEv && !ios) { instEv.prompt(); try { await instEv.userChoice; } catch (e) { } instEv = null; return; }
+  const steps = ios ? (en ? ['Open this site in <b>Safari</b>', 'Tap the <b>Share</b> button ⬆︎', 'Choose <b>Add to Home Screen</b>'] : ['افتح الموقع من متصفح <b>Safari</b>', 'اضغط زر <b>المشاركة</b> ⬆︎', 'اختار <b>إضافة إلى الشاشة الرئيسية</b>'])
+    : (en ? ['Open the browser menu <b>⋮</b>', 'Choose <b>Install app</b> or <b>Add to Home screen</b>'] : ['افتح قائمة المتصفح <b>⋮</b>', 'اختار <b>تثبيت التطبيق</b> أو <b>إضافة إلى الشاشة الرئيسية</b>']);
+  $('#popBody').innerHTML = `<div class="inst"><img src="assets/img/icon-192.png" alt="" width="64" height="64"><h3>${en ? 'Install the app' : 'ثبّت التطبيق على جوالك'}</h3><p>${en ? 'Follow your project, reports and chat with your engineer from your home screen.' : 'تابع مشروعك وتقاريرك وكلّم المهندس من الشاشة الرئيسية لجوالك.'}</p><ol>${steps.map(x => `<li>${x}</li>`).join('')}</ol>${ios ? `<p class="inst-n">${en ? 'Coming soon on the App Store.' : 'قريباً على App Store.'}</p>` : `<p class="inst-n">${en ? 'Coming soon on Google Play.' : 'قريباً على Google Play.'}</p>`}</div>`;
+  $('#popup').hidden = false;
+}
+function homeV7() {
+  const v = V(), h = v.hero, d = C.design || {}, en = LANG === 'en';
+  const tag = (x, gold) => `<div class="h7-tag ${gold ? 'g' : ''}"><i></i>${x}</div>`;
+  const vsrc = (h.videoMobile && matchMedia('(max-width:700px) and (orientation:portrait)').matches) ? h.videoMobile : h.videoSrc;
+  const S = {
+    offer: offerBlock, packages: () => v.packages.on ? `<section class="sec"><div class="wrap">${head(t('pkgEy'), esc(v.packages.title), v.packages.sub)}<div class="pk-grid">${pkCards()}</div></div></section>` : '',
+    social: socialBlock, strip, gallery: galleryBlock,
+    stats: () => `<section class="stats-sec"><div class="wrap">${stats()}</div></section>`,
+    faq: () => `<section class="sec tight"><div class="wrap">${head(t('faqEy'), t('faqTitle'), '', `<a class="btn btn-ghost sm" href="#/support">${t('faqAll')}</a>`)}<div class="faq">${v.faq.slice(0, 4).map(faqItem).join('')}</div></div></section>`,
+    why: () => `<section class="sec alt"><div class="wrap">${head(t('whyEy'), t('whyTitle'), '')}<div class="why">${v.about.why.map((w, i) => `<div class="it glass rv d${i}"><span class="ic">0${i + 1}</span><div><h4>${esc(w.t)}</h4><p>${esc(w.d)}</p></div></div>`).join('')}</div></div></section>`,
+    trust: () => `<section class="h7-trust"><div class="wrap h7-trust-in"><small>${en ? 'We work with' : 'نتعامل مع'}</small>${v.partners.slice(0, 6).map(p => `<span>${esc(p)}</span>`).join('')}</div></section>`,
+    partners: () => S.trust(),
+    services: () => `<section class="h7-sec" id="services"><div class="wrap"><div class="h7-sh"><div>${tag(en ? 'Our services' : 'خدماتنا')}<h2 class="h7-h2">${en ? 'Every engineering discipline under one roof' : 'كل الأقسام الهندسية تحت سقف واحد'}</h2></div><p>${esc(t('svcSub'))}</p></div>
+      <div class="h7-x"><div class="h7-x-l" role="tablist">${v.services.map((x, i) => `<button class="h7-xi ${i ? '' : 'on'}" role="tab" aria-selected="${!i}" data-xi="${i}" style="--xi:${i}"><span class="n">${String(i + 1).padStart(2, '0')}</span><span class="tt"><b>${esc(x.title)}</b><small>${esc(x.short)}</small></span><span class="ar">${ARW}</span></button>`).join('')}</div>
+      <div class="h7-x-p" id="h7X">${svcPanel(v.services[0], 0)}</div></div></div></section>`,
+    feature: () => `<section class="h7-sec h7-dark" id="work"><div class="wrap"><div class="h7-sh"><div>${tag(en ? 'Our work' : 'من أعمالنا', 1)}<h2 class="h7-h2">${en ? 'Documented work, not just photos' : 'أعمال موثّقة، مش مجرد صور'}</h2></div><p>${en ? 'Pick a field to see all its projects and photos.' : 'اختار المجال وشوف كل مشاريعه وصوره.'}</p></div>
+      <div class="h7-wk-g">${workCards()}</div>
+      <div class="h7-all on"><a class="h7-red glow" href="#/projects">${en ? 'See all our work' : 'شوف كل أعمالنا'} ${ARW}</a></div></div></section>`,
+    reviews: () => v.reviews && v.reviews.on !== false ? `<section class="h7-sec h7-rev" id="reviews"><div class="wrap"><div class="h7-sh"><div>${tag(en ? 'Reviews' : 'آراء العملاء')}<h2 class="h7-h2">${esc(v.reviews.title)}</h2></div><div class="rev-hd"><p>${esc(v.reviews.sub)}</p><button class="h7-red sm" data-review>✍️ ${en ? 'Write your review' : 'اكتب رأيك'}</button></div></div><div class="rev-track" id="revTrack"><p class="rev-empty">${en ? 'Loading…' : 'جارٍ التحميل…'}</p></div></div></section>` : '',
+    steps: () => `<section class="h7-sec" id="process"><div class="wrap"><div class="h7-sh"><div>${tag(t('how'))}<h2 class="h7-h2">${en ? 'Clear steps, no surprises' : 'خطوات واضحة، بدون مفاجآت'}</h2></div></div><div class="h7-steps">${v.about.steps.map((x, i) => `<div class="h7-step rv d${i}"><span class="dot"></span><span class="sn">${String(i + 1).padStart(2, '0')}</span><h4>${esc(x.t)}</h4><p>${esc(x.d)}</p></div>`).join('')}</div></div></section>`,
+    portal: () => `<section class="h7-portal-w" id="portal"><div class="wrap"><div class="h7-portal"><div>${tag(en ? 'New' : 'جديد', 1)}<h2 class="h7-h2" style="font-size:clamp(26px,3.4vw,40px)">${en ? 'Follow your project from your phone' : 'تابع مشروعك من جوالك'}</h2><p>${en ? 'Sign in to see supervision reports and drawings as they come, and chat with your engineer right here.' : 'سجّل دخولك وشوف تقارير الإشراف والمخططات أول بأول، وكلّم المهندس المختص مباشرة على الموقع.'}</p><div class="h7-chips"><span>${en ? 'Supervision reports' : 'تقارير الإشراف'}</span><span>${en ? 'Drawings' : 'المخططات المعمارية والإنشائية'}</span><span>${en ? 'MEP' : 'الكهروميكانيك'}</span><span>${en ? 'Comments to your engineer' : 'تعليقك للمهندس'}</span></div></div><a class="h7-red big" href="#/${ACC.signedIn() ? 'my' : 'account'}">${ACC.signedIn() ? (en ? 'My project' : 'مشروعي') : (en ? 'Sign in / Create account' : 'دخول / إنشاء حساب')}</a></div></div></section>`,
+    cta: () => { const c = v.contact, ic = (d) => `<span class="ct-ic"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">${d}</svg></span>`;
+      const adr = String(c.address || '').split(/\s+—\s+/); const a1 = adr.slice(0, 2).join(' — '), a2 = adr.slice(2).join(' — ');
+      const cp = x => `<button class="ct-cp" data-copy="${esc(x)}" aria-label="${en ? 'Copy' : 'نسخ'}"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg></button>`;
+      return `<section class="h7-sec h7-dark h7-end-w" id="contact"><div class="wrap"><div class="ct-g">
+      <div class="ct-l">${tag(en ? 'Start your project' : 'ابدأ مشروعك', 1)}<h2 class="h7-big">${en ? 'Send us your title deed —<br><em>we reply with a clear path.</em>' : 'أرسل صكّ أرضك،<br><em>ونرجع لك بمسار واضح.</em>'}</h2>
+        <p class="ct-note"><i></i>${esc(c.replyNote || '')}</p>
+        <div class="h7-btns"><a class="h7-red" href="#/request">${esc(h.cta1)} ${ARW}</a><a class="ct-wa" href="${wa()}" target="_blank" rel="noopener">${I.wa} ${en ? 'WhatsApp us' : 'كلّمنا واتساب'}</a></div>
+        <a class="ct-deed" href="#/request?deed=1"><span>📎</span><div><b>${en ? 'Upload your title deed' : 'ارفع صورة الصك'}</b><small>${en ? 'We review it and call you back' : 'نراجعه ونتواصل معك'}</small></div>${ARW}</a></div>
+      <div class="ct-cards">
+        <div class="ct-c"><a href="tel:${esc(c.phone)}" class="ct-a">${ic('<path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/>')}<span><small>${en ? 'Call us' : 'اتصال'}</small><b dir="ltr" class="h7-num">${esc(c.phone)}</b></span></a>${cp(c.phone)}</div>
+        <div class="ct-c wa"><a href="${wa()}" target="_blank" rel="noopener" class="ct-a"><span class="ct-ic">${I.wa}</span><span><small>${en ? 'WhatsApp' : 'واتساب'}</small><b dir="ltr" class="h7-num">${esc(c.phone)}</b></span></a></div>
+        <div class="ct-c wide"><a href="mailto:${esc(c.email)}" class="ct-a">${ic('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>')}<span><small>${en ? 'Email' : 'البريد'}</small><b dir="ltr" class="ct-mail">${esc(c.email)}</b></span></a>${cp(c.email)}</div>
+        <div class="ct-c wide"><div class="ct-a">${ic('<path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/>')}<span><small>${t('hq')}</small><b>${esc(a1)}</b>${a2 ? `<em>${esc(a2)}</em>` : ''}</span></div><a class="ct-map" href="${esc(c.map || '#/contact')}" target="_blank" rel="noopener">${en ? 'Open map' : 'افتح الخريطة'}</a></div>
+        ${(c.hours || []).length ? `<div class="ct-c wide"><div class="ct-a">${ic('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>')}<span><small>${en ? 'Working hours' : 'مواعيد العمل'}</small><ul class="ct-h">${c.hours.map(x => { const [d, tm] = String(x).split(/:\s*/); return `<li><span>${esc(d)}</span><b>${esc(tm || '')}</b></li>`; }).join('')}</ul></span></div></div>` : ''}
+      </div></div></div></section>`; }
+  };
+  let order = (d.sections && d.sections.length ? d.sections.slice() : DEFAULT.design.sections.slice());
+  return `<section class="h7-hero" data-blk="hero">${h.video && vsrc ? `<video autoplay muted loop playsinline preload="auto" poster="${esc(src(h.poster))}"><source src="${esc(vsrc)}" type="video/mp4"></video>` : `<img class="poster" src="${esc(src(h.poster))}" alt="">`}<div class="shade"></div>
+    <div class="wrap h7-hero-c">${d.heroLogo !== false ? `<div class="h7-logo" data-hold>${d.logo ? `<span class="hl-cube custom">${img(d.logo, '')}</span>` : `<span class="hl-cube"><img class="g" src="assets/img/cube-gray.png" alt=""><img class="r" src="assets/img/cube-red.png" alt=""></span>`}<span class="h7-lt"><b>${esc(v.brand.short)}</b><small>${t('company')}</small></span></div>` : ''}<div class="h7-eyb"><i></i>${esc(h.eyebrow)}</div><h1 class="h7-h1">${esc(h.title)} <em>${esc(h.highlight)}</em></h1><p class="h7-lead">${esc(h.lead)}</p>
+    <div class="h7-btns"><a class="h7-red" href="#/request">${esc(h.cta1)} ${ARW}</a><a class="h7-ghost" href="#/projects">${esc(h.cta2)}</a></div>
+    ${appStrip(v)}
+    <div class="h7-stats">${v.stats.map(x => `<div><b class="h7-num">${x.pre ? `<em>${esc(x.pre)}</em>` : ''}<span data-count="${+x.n || 0}" data-from="${x.plain ? (+x.n || 0) - 12 : 0}">${x.plain ? (+x.n || 0) : 0}</span>${esc(x.suf || '')}</b><small>${esc(x.l)}</small></div>`).join('')}</div></div></section>
+  ${order.map(k => S[k] ? S[k]().replace(/^\s*<section/, `<section data-blk="${k}"`) : '').join('')}`;
+}
 P[''] = () => {
+  if ((C.design || {}).homeStyle !== 'classic') return homeV7();
   const v = V(), h = v.hero, d = C.design || {};
   const S = {
     offer: offerBlock,
@@ -237,22 +354,123 @@ P.service = (id) => {
   const vv = V(), v = vv.services.find(x => x.id === id) || vv.services[0];
   return `<section class="phead"><div class="wrap"><div class="crumbs"><a href="#/">${t('home')}</a><span>/</span><a href="#/services">${t('services')}</a><span>/</span><span>${esc(v.title)}</span></div><h1>${esc(v.title)}</h1><p class="lead" style="max-width:760px">${esc(v.desc)}</p></div></section>
   <section class="sec tight" style="padding-top:20px"><div class="wrap svc-page"><div><div class="hero-img rv">${img(v.img, v.title)}</div>
-    <h3 style="margin-top:34px;font-size:24px" class="rv">${t('included')}</h3><ul class="check">${v.items.map((x, i) => `<li class="glass rv d${i % 4}">${esc(x)}</li>`).join('')}</ul>
+    <h3 style="margin-top:34px;font-size:24px" class="rv">${t('included')}</h3><ul class="check sub-links">${v.items.map((x, i) => `<li class="glass rv d${i % 4}"><a href="${subHref(v.id, i)}">${esc(x)} <span>${ARW}</span></a></li>`).join('')}</ul>
     ${v.fit ? `<div class="fit rv"><b>${t('fitFor')}</b> ${esc(v.fit)}</div>` : ''}</div>
     <aside class="side-card glass rv"><span class="chip">${t('svcNo')} ${esc(v.no)}</span><h3>${esc(t('want', { s: v.title }))}</h3><p style="color:var(--mut)">${t('wantP')}</p>
       <a class="btn btn-red" href="#/request?s=${esc(v.id)}">${t('orderOnline')}</a><a class="btn btn-ghost" href="${wa(t('svcWa') + v.title)}" target="_blank" rel="noopener">${I.wa} ${t('askWa')}</a>
       <div class="svc-nav">${vv.services.map(x => `<a href="#/service/${esc(x.id)}" class="${x.id === v.id ? 'on' : ''}">${esc(x.title)}<span>${esc(x.no)}</span></a>`).join('')}</div></aside></div></section>${strip()}${ctaBox()}`;
 };
 
-let prjCat = -1;
-P.projects = () => { const v = V(); return `<section class="phead"><div class="wrap">${crumbs(t('projects'))}<h1>${em(t('prjTitle'))}</h1><p class="lead">${esc(t('prjLead', { y: v.brand.founded }))}</p></div></section>
+/* ===== صفحة الخدمة الفرعية (#/service/<قسم>/<رقم البند>) ===== */
+const SUBF = { name: '', phone: '', msg: '', img: '' };
+P.sub = (sid, n) => {
+  const vv = V(), en = LANG === 'en', sv = vv.services.find(x => x.id === sid) || vv.services[0]; if (!sv) return '';
+  const items = sv.items || []; n = Math.max(0, Math.min(items.length - 1, n | 0)); const name = items[n] || sv.title;
+  const ar = C.services.find(x => x.id === sv.id) || {}, arName = (ar.items || [])[n];
+  const d = (sv.subs || []).find(x => x && (x.name === name || x.name === arName)) || {};
+  const docs = (d.docs || []).filter(Boolean), steps = (d.steps || []).filter(Boolean), faq = (d.faq || []).filter(f => f && f.q && f.a);
+  const defSteps = en ? ['Send your request with the title deed or the documents you have', 'Our engineer reviews it and calls you', 'We confirm the required documents, the cost and the timeline', 'We carry out the work and keep you updated', 'Handover and delivery of the final documents']
+    : ['أرسل طلبك مع صورة الصك أو المستندات اللي عندك', 'المهندس المختص يراجع الطلب ويتواصل معك', 'نوضح لك المستندات المطلوبة والتكلفة والمدة', 'ننفّذ الخدمة ونبلغك أول بأول', 'التسليم واستلام المستندات النهائية'];
+  const rel = items.map((x, i) => [x, i]).filter(([, i]) => i !== n);
+  return `<section class="phead" data-blk="head"><div class="wrap"><div class="crumbs"><a href="#/">${t('home')}</a><span>/</span><a href="#/services">${t('services')}</a><span>/</span><a href="#/service/${esc(sv.id)}">${esc(sv.title)}</a><span>/</span><span>${esc(name)}</span></div><span class="chip">${esc(sv.title)}</span><h1 style="margin-top:12px">${esc(name)}</h1>
+    <p class="lead" style="max-width:780px">${esc(d.intro || (en ? `“${name}” is one of our ${sv.title} services. Our team handles it end to end — from reviewing your documents to final delivery.` : `خدمة «${name}» ضمن ${sv.title}. فريقنا بيتولاها بالكامل من مراجعة مستنداتك لحد التسليم النهائي.`))}</p></div></section>
+  <section class="sec tight" data-blk="body" style="padding-top:18px"><div class="wrap sub-g"><div class="sub-main">
+    <div class="sub-cards"><div class="sub-c glass rv"><small>${en ? 'Department' : 'القسم'}</small><a href="#/service/${esc(sv.id)}"><b>${esc(sv.title)}</b></a></div><div class="sub-c glass rv d1"><small>${en ? 'Expected duration' : 'المدة المتوقعة'}</small><b>${esc(d.dur || (en ? 'Set after reviewing your request' : 'نحددها بعد مراجعة طلبك'))}</b></div></div>
+    <div class="sub-blk glass rv"><h3>${en ? 'Required documents' : 'المستندات المطلوبة'}</h3>${docs.length ? `<ul class="check">${docs.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : `<p class="sub-ph">${en ? 'We confirm the exact documents you need after reviewing your title deed.' : 'نحدد لك المستندات المطلوبة بعد مراجعة الصك.'}</p>`}</div>
+    <div class="sub-blk glass rv"><h3>${en ? 'How it works' : 'خطوات الخدمة'}</h3><ol class="sub-steps">${(steps.length ? steps : defSteps).map(x => `<li>${esc(x)}</li>`).join('')}</ol></div>
+    ${faq.length ? `<div class="sub-blk rv"><h3>${en ? 'FAQ' : 'أسئلة شائعة'}</h3><div class="faq">${faq.map(f => `<details class="glass"><summary>${esc(f.q)}</summary><div class="ans">${nl(f.a)}</div></details>`).join('')}</div></div>` : ''}
+    ${rel.length ? `<div class="sub-blk rv"><h3>${en ? 'Related services' : 'خدمات مرتبطة'}</h3><div class="sub-rel">${rel.map(([x, i]) => `<a href="${subHref(sv.id, i)}">${esc(x)} ${ARW}</a>`).join('')}</div></div>` : ''}
+  </div>
+  <aside class="sub-side"><form class="form-card glass sub-f" id="subF" novalidate><h3>${en ? 'Request this service' : 'اطلب الخدمة دي'}</h3><div class="sub-svc">${esc(name)}</div>
+    <div class="fld"><label>${t('nameL')}</label><input id="sfName" maxlength="80" autocomplete="name" value="${esc(SUBF.name || store('sh.custName') || '')}"></div>
+    <div class="fld"><label>${t('phoneL')}</label><input id="sfPhone" inputmode="tel" dir="ltr" maxlength="15" placeholder="05xxxxxxxx" autocomplete="tel" value="${esc(SUBF.phone || store('sh.custPhone') || '')}"></div>
+    <div class="fld"><label>${en ? 'Details (optional)' : 'التفاصيل (اختياري)'}</label><textarea id="sfMsg" rows="3" maxlength="1500" placeholder="${en ? 'Location, area, anything that helps' : 'الموقع، المساحة، أي تفاصيل تساعدنا'}">${esc(SUBF.msg)}</textarea></div>
+    <label class="drop sub-drop" id="sfDrop">${SUBF.img ? `<img src="${SUBF.img}" alt="">` : ''}<span>${SUBF.img ? t('changeImg') : (en ? '📎 Attach a photo of the title deed (optional)' : '📎 أرفق صورة الصك (اختياري)')}</span><input type="file" accept="image/*" id="sfFile" hidden></label>
+    <p class="err" id="sfErr"></p><button class="btn btn-red" id="sfGo">${en ? 'Send request' : 'أرسل الطلب'}</button>
+    <button type="button" class="btn btn-ghost" id="sfChat">💬 ${en ? 'Talk to the engineer' : 'كلّم المهندس'}</button></form></aside></div></section>${ctaBox().replace(/^\s*<section/, '<section data-blk="cta"')}`;
+};
+function wireSub() {
+  const f = $('#subF'); if (!f) return; const en = LANG === 'en';
+  const keep = () => { SUBF.name = $('#sfName').value; SUBF.phone = $('#sfPhone').value; SUBF.msg = $('#sfMsg').value; };
+  $('#sfFile').onchange = async e => { const fl = e.target.files[0]; if (!fl) return; keep(); const F = await fb(); SUBF.img = await F.compressImage(fl, 1400, .72); const dz = $('#sfDrop'); dz.querySelector('span').textContent = t('changeImg'); let im = dz.querySelector('img'); if (!im) { im = document.createElement('img'); dz.prepend(im); } im.src = SUBF.img; };
+  $('#sfChat').onclick = () => { keep(); const n = SUBF.name.trim(), ph = toEnDigits(SUBF.phone).replace(/\D/g, ''); if (n.length > 1 && !store('sh.custName')) storeSet('sh.custName', n); if (ph.length > 8 && !store('sh.custPhone')) storeSet('sh.custPhone', ph); openBot(); startEngineer(); };
+  f.onsubmit = async e => {
+    e.preventDefault(); keep(); const er = $('#sfErr'), b = $('#sfGo'), ph = toEnDigits(SUBF.phone).replace(/\D/g, '');
+    if (SUBF.name.trim().length < 2) return er.textContent = t('writeName');
+    if (ph.length < 9) return er.textContent = t('writePhone');
+    er.textContent = ''; b.disabled = true; b.textContent = t('sending');
+    const [, sid, n] = location.hash.split('?')[0].replace(/^#\/?/, '').split('/'); const sv = C.services.find(x => x.id === decodeURIComponent(sid)) || {}; const nm = (sv.items || [])[+n] || '';
+    try {
+      const code = await createTicket({ name: SUBF.name.trim(), phone: ph, dept: (sv.title || '') + (nm ? ' — ' + nm : ''), ptype: nm, city: '', msg: SUBF.msg.trim() || nm, img: SUBF.img });
+      track('req'); SUBF.msg = ''; SUBF.img = '';
+      f.innerHTML = `<div class="ticket-ok"><svg class="check-anim" viewBox="0 0 84 84"><circle cx="42" cy="42" r="38"/><path d="M26 43l11 11 21-23"/></svg><h3 style="margin:0">${t('gotIt')}</h3><p style="color:var(--mut)">${t('yourNo')}</p><div class="code">${esc(code)}</div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center"><button type="button" class="btn btn-ghost sm" id="sfCp">${t('copyNo')}</button><a class="btn btn-ink sm" href="#/track?c=${esc(code)}">${t('trackIt')}</a></div></div>`;
+      $('#sfCp').onclick = () => copy(code);
+    } catch (z) { er.innerHTML = `${t('sendFail')} <a style="color:var(--red)" target="_blank" rel="noopener" href="${wa(`${sv.title} — ${nm}\n${SUBF.msg}\n${SUBF.name} ${ph}`)}">${t('sendFail2')}</a>`; b.disabled = false; b.textContent = en ? 'Send request' : 'أرسل الطلب'; }
+  };
+}
+
+/* ===== آراء العملاء: بتتنشر بعد موافقة المدير ===== */
+let REVS = null;
+const stars = n => `<span class="stars" aria-label="${n}/5">${[1, 2, 3, 4, 5].map(i => `<i class="${i <= n ? 'on' : ''}">★</i>`).join('')}</span>`;
+async function loadReviews() {
+  const tr = $('#revTrack'); if (!tr) return; const en = LANG === 'en';
+  if (!REVS) { try { const F = await fb(); const sn = await F.getDocs(F.query(F.collection(F.db, 'reviews'), F.where('status', '==', 'approved'), F.limit(30))); REVS = sn.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => ((b.at && b.at.seconds) || 0) - ((a.at && a.at.seconds) || 0)); } catch (e) { REVS = []; } }
+  const el = $('#revTrack'); if (!el) return;
+  if (!REVS.length) { el.innerHTML = `<div class="rev-first glass"><span>⭐</span><div><b>${en ? 'Worked with us? Be the first to review us' : 'اتعاملت معانا؟ كن أول واحد يكتب رأيه'}</b><small>${en ? 'Your review appears after management approval.' : 'رأيك بيظهر بعد موافقة الإدارة.'}</small></div><button class="btn btn-red sm" data-review>${en ? 'Write a review' : 'اكتب رأيك'}</button></div>`; $$('[data-review]', el).forEach(b => b.onclick = openReview); return; }
+  el.innerHTML = `<div class="rev-row" id="revRow">${REVS.map(r => `<figure class="rev glass">${stars(r.stars || 5)}<blockquote>${esc(r.text)}</blockquote><figcaption><span class="rav">${esc((r.name || '?').trim().charAt(0))}</span><span><b>${esc(r.name)}${r.uid ? ` <em class="ver">✓ ${en ? 'Verified client' : 'عميل موثّق'}</em>` : ''}</b><small>${esc(r.svc || '')}</small></span></figcaption></figure>`).join('')}</div>`;
+  const row = $('#revRow'); if (row && REVS.length > 1) { let hov = false; row.onmouseenter = () => hov = true; row.onmouseleave = () => hov = false; row.addEventListener('touchstart', () => { hov = true; setTimeout(() => hov = false, 8000); }, { passive: true });
+    const it = setInterval(() => { if (!document.body.contains(row)) return clearInterval(it); if (hov || document.hidden) return; const w = row.firstElementChild.offsetWidth + 16, dir = LANG === 'en' ? 1 : -1, max = row.scrollWidth - row.clientWidth; if (Math.abs(row.scrollLeft) + w > max + 4) row.scrollTo({ left: 0, behavior: 'smooth' }); else row.scrollBy({ left: dir * w, behavior: 'smooth' }); }, 5000); }
+}
+function openReview() {
+  const en = LANG === 'en', v = V(); let st = 5;
+  try { const last = +localStorage.getItem('sh.revAt') || 0; if (Date.now() - last < 864e5) { toast(en ? 'You already sent a review today — thank you!' : 'بعت رأيك النهارده بالفعل — شكراً ليك!'); return; } } catch (e) { }
+  $('#popBody').innerHTML = `<form class="rev-f" id="revF" novalidate><h3>${en ? 'Share your experience' : 'شاركنا رأيك'}</h3><p class="hint">${en ? 'Published after management review.' : 'بيتنشر بعد مراجعة الإدارة.'}</p>
+    <div class="rev-st" id="revSt">${[1, 2, 3, 4, 5].map(i => `<button type="button" data-s="${i}" class="on" aria-label="${i}">★</button>`).join('')}</div>
+    <div class="fld"><label>${t('nameL')}</label><input id="rvName" maxlength="60" value="${esc(store('sh.custName') || '')}"></div>
+    <div class="fld"><label>${en ? 'Service' : 'الخدمة'}</label><select id="rvSvc"><option value="">${en ? '— choose —' : '— اختار —'}</option>${v.services.map(x => `<option>${esc(x.title)}</option>`).join('')}<option>${en ? 'Other' : 'أخرى'}</option></select></div>
+    <div class="fld"><label>${en ? 'Your review' : 'رأيك'}</label><textarea id="rvText" rows="4" maxlength="600" placeholder="${en ? 'How was working with us?' : 'إيه رأيك في التعامل معانا؟'}"></textarea></div>
+    <div class="fld"><label>${en ? 'Mobile (optional — not shown)' : 'رقم الجوال (اختياري — مش بيظهر)'}</label><input id="rvPh" inputmode="tel" dir="ltr" maxlength="15" placeholder="05xxxxxxxx" value="${esc(store('sh.custPhone') || '')}"></div>
+    <p class="err" id="rvErr"></p><button class="btn btn-red" id="rvGo">${en ? 'Send review' : 'أرسل رأيك'}</button></form>`;
+  $('#popup').hidden = false;
+  const paint = () => $$('#revSt button').forEach(b => b.classList.toggle('on', +b.dataset.s <= st)); $('#revSt').onclick = e => { const b = e.target.closest('button'); if (b) { st = +b.dataset.s; paint(); } };
+  $('#revF').onsubmit = async e => {
+    e.preventDefault(); const er = $('#rvErr'), name = $('#rvName').value.trim(), text = $('#rvText').value.trim(), b = $('#rvGo');
+    if (name.length < 2) return er.textContent = t('writeName'); if (text.length < 5) return er.textContent = en ? 'Write a few words about your experience' : 'اكتب كلمتين عن تجربتك';
+    b.disabled = true; b.textContent = t('sending');
+    try { const F = await fb(); const u = F.auth.currentUser, cu = store('sh.cust');
+      await F.addDoc(F.collection(F.db, 'reviews'), { name: name.slice(0, 60), stars: st, svc: $('#rvSvc').value.slice(0, 80), text: text.slice(0, 600), phone: toEnDigits($('#rvPh').value).replace(/\D/g, '').slice(0, 15), uid: u && cu && u.uid === cu ? u.uid : '', status: 'pending', at: F.serverTimestamp(), lang: LANG });
+      try { localStorage.setItem('sh.revAt', String(Date.now())); } catch (x) { } track('review');
+      $('#popBody').innerHTML = `<div class="ticket-ok"><svg class="check-anim" viewBox="0 0 84 84"><circle cx="42" cy="42" r="38"/><path d="M26 43l11 11 21-23"/></svg><h3 style="margin:0">${en ? 'Thank you!' : 'شكراً ليك!'}</h3><p style="color:var(--mut)">${en ? 'Your review was received and will appear after review.' : 'رأيك وصل وهيظهر بعد المراجعة.'}</p></div>`;
+    } catch (x) { er.textContent = t('connErr'); b.disabled = false; b.textContent = en ? 'Send review' : 'أرسل رأيك'; }
+  };
+}
+window.SH_review = openReview;
+let prjChip = 0, prjTimer = null, prjStop = false;
+function prjChips() {
+  const v = V(), ar = C.cats || [], Ga = C.workGroups || [], G = v.workGroups || [], used = new Set(['تصميم 3D', 'خدمات مساحية']);
+  const cat = n => { const i = ar.indexOf(n); used.add(n); return i < 0 ? null : { l: v.cats[i] || n, f: p => p.cat === n, k: 'c:' + n }; };
+  const grp = k => { const i = Ga.findIndex(g => g.key === k); return i < 0 || (G[i] && G[i]._off) ? null : { l: (G[i] || {}).title || k, f: p => grps(p).includes(k), k: 'g:' + k }; };
+  return [{ l: t('all'), f: () => true, k: 'all' }, cat('تجاري'), grp('الواجهات'), grp('المساحة'), grp('السلامة'), grp('المخططات'), grp('التصميم الداخلي'), ...ar.filter(n => !used.has(n)).map(cat)].filter(Boolean);
+}
+P.projects = (q) => { const v = V(), ch = prjChips(), g = new URLSearchParams(q || '').get('g'); prjStop = !!g; prjChip = g ? Math.max(0, ch.findIndex(c => c.k === 'g:' + g)) : 0;
+  return `<section class="phead"><div class="wrap">${crumbs(t('projects'))}<h1>${em(t('prjTitle'))}</h1><p class="lead">${esc(t('prjLead', { y: v.brand.founded }))}</p></div></section>
   <div class="wrap">${stats()}</div>
-  <section class="sec tight"><div class="wrap"><div class="filters" id="filters">${[t('all'), ...v.cats].map((c, i) => `<button class="${i - 1 === prjCat ? 'on' : ''}" data-c="${i - 1}">${esc(c)}</button>`).join('')}</div><div class="prj-grid" id="prjGrid">${prjCards()}</div>
+  <section class="sec tight"><div class="wrap"><div class="filters ${prjStop ? '' : 'auto'}" id="filters">${ch.map((c, i) => `<button class="${i === prjChip ? 'on' : ''}" data-c="${i}">${esc(c.l)}</button>`).join('')}</div><div class="prj-grid" id="prjGrid">${prjCards()}</div>
   <div class="note-box glass rv" style="margin-top:34px"><div><h4>${t('whyNo')}</h4><p>${esc(v.confidential)}</p></div><a class="btn btn-ink" href="${wa(t('portfolioWa'))}" target="_blank" rel="noopener">${t('portfolio')}</a></div></div></section>
   ${galleryBlock()}${ctaBox()}`; };
-const prjCards = () => { const v = V(), cat = prjCat >= 0 ? v.cats[prjCat] : null; return v.projects.map((p, k) => [p, k]).filter(([p]) => !cat || p.cat === cat).map(([p, k], i) => `<article class="prj glass ${p.img || (p.gallery || []).length ? 'has-img' : ''}" data-prj="${k}" style="animation-delay:${i * 40}ms">${(p.gallery || []).filter(g => g.img).length ? `<span class="prj-n">${I.play.replace('M8 5v14l11-7z', 'M4 5h16v14H4zM4 15l5-5 4 4 3-3 4 4')} ${(p.gallery || []).filter(g => g.img).length + (p.img ? 1 : 0)}</span>` : ''}<div class="ph">${p.img ? img(p.img, p.title) : `<img class="ph-ic" src="assets/img/mark.png" alt="">`}</div><div class="bd"><span class="chip" style="align-self:flex-start">${esc(p.tag || p.cat)}</span><h3>${esc(p.title)}</h3><p>${esc(p.desc)}</p><div class="meta"><span>${t('loc')} <b>${esc(p.loc)}</b></span><span>·</span><span>${t('scope')} <b>${esc(p.scope)}</b></span></div></div></article>`).join(''); };
+const prjCards = () => { const v = V(), c = prjChips()[prjChip] || { f: () => true }; return v.projects.map((p, k) => [p, k]).filter(([p]) => c.f(p)).map(([p, k], i) => `<article class="prj glass ${p.img || (p.gallery || []).length ? 'has-img' : ''}" data-prj="${k}" style="animation-delay:${i * 40}ms">${(p.gallery || []).filter(g => g.img).length ? `<span class="prj-n">${I.play.replace('M8 5v14l11-7z', 'M4 5h16v14H4zM4 15l5-5 4 4 3-3 4 4')} ${(p.gallery || []).filter(g => g.img).length + (p.img ? 1 : 0)}</span>` : ''}<div class="ph">${p.img ? img(p.img, p.title) : `<img class="ph-ic" src="assets/img/mark.png" alt="">`}</div><div class="bd"><span class="chip" style="align-self:flex-start">${esc(p.tag || p.cat)}</span><h3>${esc(p.title)}</h3><p>${esc(p.desc)}</p><div class="meta"><span>${t('loc')} <b>${esc(p.loc)}</b></span><span>·</span><span>${t('scope')} <b>${esc(p.scope)}</b></span></div></div></article>`).join(''); };
+function setChip(i, user) {
+  const fl = $('#filters'); if (!fl) return; const bs = $$('button', fl); if (!bs.length) return; prjChip = (i + bs.length) % bs.length;
+  bs.forEach((x, j) => x.classList.toggle('on', j === prjChip)); const g = $('#prjGrid'); g.classList.add('sw'); setTimeout(() => { g.innerHTML = prjCards(); g.classList.remove('sw'); $$('[data-prj]', g).forEach(bindPrj); }, user ? 0 : 200);
+}
+function bindPrj(a) { a.onclick = () => { const p = V().projects[+a.dataset.prj]; if (!p) return; const L = [p.img, ...(p.gallery || []).map(g => g.img)].filter(Boolean).map((x, i) => ({ src: src(x), cap: i ? ((p.gallery || []).filter(g => g.img)[i - (p.img ? 1 : 0)] || {}).cap || p.title : p.title })); if (L.length) lbOpen(L, 0); }; }
+function prjAuto() {
+  clearInterval(prjTimer); const fl = $('#filters'); if (!fl || prjStop) return; let vis = true;
+  try { const o = new IntersectionObserver(e => { vis = e[0].isIntersecting; fl.classList.toggle('paused', !vis); }); o.observe(fl); } catch (e) { }
+  prjTimer = setInterval(() => { if (!document.body.contains(fl)) return clearInterval(prjTimer); if (prjStop || !vis || document.hidden) return; setChip(prjChip + 1); }, 4000);
+}
 
-P.packages = () => { const v = V(); return `<section class="phead"><div class="wrap">${crumbs(t('packages'))}<h1>${esc(v.packages.title)}</h1><p class="lead">${esc(v.packages.sub)}</p></div></section>
+P.packages = P.packages = () => { const v = V(); return `<section class="phead"><div class="wrap">${crumbs(t('packages'))}<h1>${esc(v.packages.title)}</h1><p class="lead">${esc(v.packages.sub)}</p></div></section>
   <section class="sec tight"><div class="wrap"><div class="pk-grid">${pkCards()}</div></div></section>${ctaBox()}`; };
 
 P.about = () => { const v = V(); return `<section class="phead"><div class="wrap">${crumbs(t('about'))}<h1>${esc(v.about.title)}</h1><p class="lead" style="max-width:780px">${esc(v.about.lead)}</p></div></section>
@@ -329,7 +547,7 @@ P.account = q => ACC.pageAccount(q); P.my = () => ACC.pageMy();
 /* request wizard */
 let wiz = { step: 0, s: '', type: '', city: '', name: '', phone: '', msg: '', img: '' };
 P.request = (q) => {
-  const sp = new URLSearchParams(q || ''); if (sp.get('s')) { const v = V().services.find(x => x.id === sp.get('s')); if (v) { wiz.s = v.title; wiz.step = Math.max(wiz.step, 1); } }
+  const sp = new URLSearchParams(q || ''); if (sp.get('deed')) { if (!wiz.s) wiz.s = t('general'); wiz.step = Math.max(wiz.step, 2); } if (sp.get('s')) { const v = V().services.find(x => x.id === sp.get('s')); if (v) { wiz.s = v.title; wiz.step = Math.max(wiz.step, 1); } }
   return `<section class="phead"><div class="wrap">${crumbs(t('request'))}<h1>${em(t('reqTitle'))}</h1><p class="lead">${t('reqLead')}</p></div></section>
   <section class="sec tight" style="padding-top:10px"><div class="wrap" style="max-width:760px"><div class="form-card glass wiz" id="wiz"></div></div></section>`;
 };
@@ -403,11 +621,11 @@ async function doTrack(e) {
 /* ---------- router ---------- */
 let curPath = null;
 function render(soft) {
-  const h = location.hash.replace(/^#\/?/, ''); const [path, q] = h.split('?'); const [r, arg] = path.split('/');
+  const h = location.hash.replace(/^#\/?/, ''); const [path, q] = h.split('?'); const [r, arg, arg2] = path.split('/');
   const fn = P[r] ? P[r] : P[''];
   if (soft && curPath === h && r === 'request') { paintWiz(); return; }
   curPath = h;
-  const app = $('#app'); app.innerHTML = fn(r === 'service' || r === 'media' ? arg : q); app.classList.remove('page-enter'); void app.offsetWidth; app.classList.add('page-enter');
+  const app = $('#app'); app.innerHTML = r === 'service' && arg2 != null ? P.sub(decodeURIComponent(arg || ''), +arg2) : fn(r === 'service' || r === 'media' ? arg : q); app.classList.remove('page-enter'); void app.offsetWidth; app.classList.add('page-enter');
   const cur = r === 'service' ? 'services' : (P[r] ? r : '');
   $$('#nav a[data-r], #moreList a[data-r]').forEach(a => a.classList.toggle('on', a.dataset.r === cur));
   $('#hdr').classList.toggle('on-hero', !P[r] || r === '');
@@ -417,13 +635,18 @@ function render(soft) {
   applyDesign(); paintAcc(); wire(r); pageView();
 }
 function wire(r) {
-  applyBlocks(r); reveal(); counters(); countdown(); initStrip();
+  wireX();
+  $$('[data-inst]').forEach(b => b.onclick = () => { track('app:' + b.dataset.inst); doInstall(b.dataset.inst); });
+  if ($('#subF')) wireSub();
+  initHold(); applyBlocks($('#subF') ? 'sub' : r); reveal(); counters(); countdown(); initStrip();
   $$('[data-copy]').forEach(b => b.onclick = () => copy(b.dataset.copy));
   $$('[data-lang]').forEach(b => b.onclick = switchLang);
   $$('[data-lb]').forEach(f => f.onclick = () => { if (f.closest('.strip') && f.closest('.strip')._dragged) return; lbOpen([{ src: f.querySelector('img').src, cap: f.dataset.cap }], 0); });
   const gal = $('#gal'); if (gal) $$('[data-g]').forEach(b => b.onclick = () => { gal._pause && gal._pause(2500); gal.scrollBy({ left: (LANG === 'en' ? 1 : -1) * (+b.dataset.g) * 260, behavior: 'smooth' }); });
-  $$('[data-prj]').forEach(a => a.onclick = () => { const p = V().projects[+a.dataset.prj]; if (!p) return; const L = [p.img, ...(p.gallery || []).map(g => g.img)].filter(Boolean).map((x, i) => ({ src: src(x), cap: i ? ((p.gallery || []).filter(g => g.img)[i - (p.img ? 1 : 0)] || {}).cap || p.title : p.title })); if (L.length) lbOpen(L, 0); });
-  const fl = $('#filters'); if (fl) fl.onclick = e => { const b = e.target.closest('button'); if (!b) return; prjCat = +b.dataset.c; $$('button', fl).forEach(x => x.classList.toggle('on', x === b)); $('#prjGrid').innerHTML = prjCards(); };
+  $$('[data-prj]').forEach(bindPrj);
+  clearInterval(prjTimer); const fl = $('#filters'); if (fl) { fl.onclick = e => { const b = e.target.closest('button'); if (!b) return; prjStop = true; fl.classList.remove('auto'); clearInterval(prjTimer); setChip(+b.dataset.c, 1); }; prjAuto(); }
+  if ($('#revTrack')) loadReviews();
+  $$('[data-review]').forEach(b => b.onclick = openReview);
   if (r === 'support') { const q = $('#faqQ'), cats = $('#faqCats'); let cat = ''; const F = V().faq; const run = () => { const v = q.value.trim().toLowerCase(); let n = 0; $$('#faqList details').forEach((d, i) => { const f = F[i]; const ok = (!cat || f.cat === cat) && (!v || (f.q + f.a).toLowerCase().includes(v)); d.hidden = !ok; d.classList.add('in'); if (ok) n++; if (v && ok) d.open = f.a.toLowerCase().includes(v); }); $('#faqNone').hidden = n > 0; }; q.oninput = run; cats.onclick = e => { const b = e.target.closest('button'); if (!b) return; cat = b.dataset.c; $$('button', cats).forEach(x => x.classList.toggle('on', x === b)); run(); }; }
   if (r === 'request') paintWiz();
   if (r === 'track') { $('#trForm').onsubmit = doTrack; if ($('#trCode').value && new URLSearchParams(location.hash.split('?')[1] || '').get('c')) doTrack(); }
@@ -483,7 +706,7 @@ function lbOpen(L, i) { lbL = L; lbI = i; lbShow(); $('#lb').hidden = false; $('
 function lbShow() { const x = lbL[lbI]; if (!x) return; $('#lbImg').src = x.src; $('#lbCap').textContent = (x.cap || '') + (lbL.length > 1 ? `  (${lbI + 1}/${lbL.length})` : ''); }
 function lbStep(d) { if (lbL.length < 2) return; lbI = (lbI + d + lbL.length) % lbL.length; lbShow(); }
 /* بلوكات الصفحات: ترتيب وإخفاء وحجم خط وأيقونات من لوحة التحكم */
-const POS = { services: ['head', 'strip', 'grid', 'cta'], service: ['head', 'body', 'strip', 'cta'], projects: ['head', 'stats', 'list', 'gallery', 'cta'], packages: ['head', 'list', 'cta'], about: ['head', 'story', 'licenses', 'branches', 'isic', 'quote', 'cta'], contact: ['head', 'cards', 'branches'], support: ['hero', 'faq'], request: ['head', 'form'], track: ['head', 'form'], account: ['head', 'form'], my: ['head', 'body'] };
+const POS = { sub: ['head', 'body', 'cta'], services: ['head', 'strip', 'grid', 'cta'], service: ['head', 'body', 'strip', 'cta'], projects: ['head', 'stats', 'list', 'gallery', 'cta'], packages: ['head', 'list', 'cta'], about: ['head', 'story', 'licenses', 'branches', 'isic', 'quote', 'cta'], contact: ['head', 'cards', 'branches'], support: ['hero', 'faq'], request: ['head', 'form'], track: ['head', 'form'], account: ['head', 'form'], my: ['head', 'body'] };
 function applyBlocks(r) {
   const pg = r || 'home', app = $('#app'), kids = [...app.children], cfg = ((C.design || {}).pages || {})[pg] || {};
   if (pg !== 'home' && POS[pg]) kids.forEach((el, i) => { if (!el.dataset.blk && POS[pg][i]) el.dataset.blk = POS[pg][i]; });
@@ -504,7 +727,7 @@ function botSay(html, me, chips) {
   $('#botMsgs').appendChild(m); $('#botMsgs').scrollTop = 1e6;
 }
 function botAsk(q) {
-  botSay(esc(q), true); const ty = document.createElement('div'); ty.className = 'bm bt typing'; ty.innerHTML = '<i></i><i></i><i></i>'; $('#botMsgs').appendChild(ty); $('#botMsgs').scrollTop = 1e6;
+  botSay(esc(q), true); const ty = document.createElement('div'); ty.className = 'bm bt typing rb-ty'; ty.innerHTML = ROBOT('think') + '<span><i></i><i></i><i></i></span>'; $('#botMsgs').appendChild(ty); $('#botMsgs').scrollTop = 1e6;
   const a = bot.answer(q); setTimeout(() => { ty.remove(); botSay(a.text, false, a.chips); }, 500 + Math.min(900, a.text.length * 6));
   try { const h = JSON.parse(sessionStorage.getItem('sh.botlog') || '[]'); h.push({ q, at: Date.now() }); sessionStorage.setItem('sh.botlog', JSON.stringify(h.slice(-50))); } catch (e) { }
   logBot(q, a);
@@ -519,30 +742,41 @@ async function logBot(q, a) {
     else await F.updateDoc(ref, { qs: F.arrayUnion(item), upd: F.serverTimestamp(), n: F.increment(1) });
   } catch (e) { console.warn('botlog', e); }
 }
+/* روبوت المساعد (متحرك) */
+const ROBOT = (c = '') => `<svg class="robot ${c}" viewBox="0 0 64 64" aria-hidden="true"><g class="rb-body"><line x1="32" y1="6" x2="32" y2="14" stroke="#8b93a1" stroke-width="2.5" stroke-linecap="round"/><circle class="rb-ant" cx="32" cy="6" r="3.6" fill="#E1262B"/><rect x="11" y="14" width="42" height="32" rx="12" fill="#f3f4f7" stroke="#c9ced8" stroke-width="2"/><rect x="17" y="20" width="30" height="19" rx="8" fill="#1d2230"/><g class="rb-eyes"><ellipse cx="26" cy="29.5" rx="3.6" ry="4.2" fill="#5ef0c4"/><ellipse cx="38" cy="29.5" rx="3.6" ry="4.2" fill="#5ef0c4"/></g><path class="rb-mouth" d="M28 35.5q4 2.6 8 0" stroke="#5ef0c4" stroke-width="2" fill="none" stroke-linecap="round"/><rect x="6" y="25" width="5" height="11" rx="2.5" fill="#c9ced8"/><rect x="53" y="25" width="5" height="11" rx="2.5" fill="#c9ced8"/><rect x="22" y="48" width="20" height="10" rx="5" fill="#E1262B"/></g></svg>`;
+const HELMET = `<svg class="helmet" viewBox="0 0 64 64" aria-hidden="true"><path d="M12 40a20 20 0 0 1 40 0z" fill="#F5B301"/><path d="M28 21h8v19h-8z" fill="#ffd34d"/><rect x="8" y="39" width="48" height="7" rx="3.5" fill="#d89a00"/><circle cx="32" cy="52" r="0" /></svg>`;
+function botMini(on) {
+  let m = $('#botMini'); if (!on) { if (m) m.remove(); return; }
+  if (!m) { m = document.createElement('button'); m.id = 'botMini'; m.className = 'bot-mini'; document.body.appendChild(m); m.onclick = () => { botMini(false); $('#bot').hidden = false; $('#botFab').classList.add('hide'); hideTease(); if (chatMode) { unreadC = 0; fabBadge(); paintChat(); } }; }
+  const live = $('#bot').classList.contains('live'), asst = $('#bot').classList.contains('asst');
+  m.innerHTML = `<span class="bm-av">${asst ? ROBOT('sm') : '<img src="assets/img/mark.png" alt="">'}<i></i></span><span><b>${t('botName')}</b><small>${live ? ENG() : asst ? ASSIST() : (LANG === 'en' ? 'Tap to continue' : 'اضغط للمتابعة')}</small></span>${unreadC ? `<em>${unreadC}</em>` : ''}<span class="bm-up">⌃</span>`;
+}
 function resetBot() { $('#botMsgs').innerHTML = ''; $('#botQuick').innerHTML = ''; if (!$('#bot').hidden) openBot(); }
 function openBot() {
   $('#bot').hidden = false; $('#botFab').classList.add('hide'); track('bot');
-  if (chatId && !chatMode && !$('#botMsgs').children.length) { startChat(); return; }
-  if (!$('#botMsgs').children.length) { botSay(t('botHi')); showChoice(); }
+  botMini(false);
+  if (!$('#botMsgs').children.length) { $('#bot').classList.remove('live', 'asst'); $('#botSubT').textContent = LANG === 'en' ? 'How can we help?' : 'نخدمك إزاي؟'; botSay(LANG === 'en' ? 'Hi 👋 Who would you like to talk to?' : 'أهلاً بيك 👋 تحب تتكلم مع مين؟'); showChoice(); }
   hideTease();
   if (matchMedia('(hover:hover)').matches) setTimeout(() => $('#botIn').focus(), 200);
 }
 /* اختيار: المساعد أو المهندس المختص */
 const ENG = () => LANG === 'en' ? 'Our engineer' : 'المهندس المختص', ASSIST = () => LANG === 'en' ? 'Assistant' : 'المساعد';
 function showChoice() {
-  $('#botQuick').innerHTML = `<div class="bot-choice"><button data-mode="bot"><span>🤖</span><b>${LANG === 'en' ? 'Talk to the assistant' : 'التحدث إلى المساعد'}</b><small>${LANG === 'en' ? 'Instant answers' : 'رد فوري على أسئلتك'}</small></button><button data-mode="eng"><span>👷</span><b>${LANG === 'en' ? 'Talk to the engineer' : 'التحدث إلى المهندس'}</b><small>${LANG === 'en' ? 'Chat with a real engineer' : 'كلّم مهندس من الفريق'}</small></button></div>`;
+  $('#botQuick').innerHTML = `<div class="bot-choice"><button data-mode="bot"><span class="ch-ic">${ROBOT()}</span><b>${LANG === 'en' ? 'Talk to the assistant' : 'التحدث إلى المساعد'}</b><small>${LANG === 'en' ? 'Instant answers, 24/7' : 'رد فوري على أسئلتك ٢٤ ساعة'}</small></button><button data-mode="eng"><span class="ch-ic eng"><img src="assets/img/mark.png" alt="">${HELMET}<i></i></span><b>${LANG === 'en' ? 'Talk to the engineer' : 'التحدث إلى المهندس'}</b><small>${LANG === 'en' ? 'Chat with a real engineer' : 'كلّم مهندس من الفريق'}</small></button></div>`;
   paintSwitch(true);
 }
 function setAssist() {
-  chatMode = false; if (chatUnsub) { chatUnsub(); chatUnsub = null; } snapOn = false; $('#bot').classList.remove('live'); $('#botSubT').textContent = ASSIST(); $('#botMsgs').innerHTML = ''; botSay(t('botHi'));
+  chatMode = false; $('#bot').classList.remove('live'); $('#bot').classList.add('asst'); $('#botSubT').textContent = ASSIST(); $('#botMsgs').innerHTML = ''; botSay(t('botHi'));
   $('#botQuick').innerHTML = t('quick').map(q => `<button>${esc(q)}</button>`).join(''); paintSwitch();
 }
 function paintSwitch(hide) {
   const b = $('#botSwitch'); if (!b) return; b.hidden = !!hide;
-  b.innerHTML = chatMode ? `🤖 ${LANG === 'en' ? 'Talk to the assistant' : 'التحدث إلى المساعد'}` : `👷 ${LANG === 'en' ? 'Talk to the engineer' : 'التحدث إلى المهندس'}`;
+  b.innerHTML = chatMode ? `<span class="sw-ic">${ROBOT('sm')}</span>${LANG === 'en' ? 'Switch to the assistant' : 'التحويل إلى المساعد'}` : `<span class="sw-ic eng"><img src="assets/img/mark.png" alt=""></span>${LANG === 'en' ? 'Talk to a real engineer' : 'كلّم المهندس المختص'}`;
 }
 // المهندس: محادثة مباشرة على الموقع، من غير اسم ولا رقم. لو الاتصال فشل الرسايل بتستنى وتتبعت لوحدها
 function startEngineer() {
+  if (!chatId && !(store('sh.custName') && store('sh.custPhone'))) return engForm();
+  try { if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission(); } catch (e) { }
   if (!chatId) {
     const id = 'C' + Date.now().toString(36).toUpperCase() + Array.from(crypto.getRandomValues(new Uint8Array(5)), b => ALPH[b % ALPH.length]).join('');
     let log = []; try { log = JSON.parse(sessionStorage.getItem('sh.botlog') || '[]').slice(-8).map(x => x.q); } catch (e) { }
@@ -553,6 +787,28 @@ function startEngineer() {
   }
   $('#botMsgs').innerHTML = ''; startChat();
 }
+// قبل المهندس: الاسم ورقم الجوال (بيتملوا لوحدهم لو العميل مسجّل)
+function engForm() {
+  chatMode = false; $('#bot').classList.remove('asst'); $('#bot').classList.add('live'); $('#botSubT').textContent = ENG(); $('#botQuick').innerHTML = ''; paintSwitch();
+  const en = LANG === 'en'; const box = $('#botMsgs'); box.innerHTML = '';
+  const el = document.createElement('div'); el.className = 'bm bt eng-f';
+  el.innerHTML = `<b>${en ? 'Before we connect you to the engineer:' : 'قبل ما نوصلك بالمهندس المختص:'}</b><form id="engF"><input id="eName" placeholder="${en ? 'Your name' : 'الاسم'}" maxlength="60" autocomplete="name" value="${esc(store('sh.custName') || '')}" required><input id="ePhone" placeholder="05xxxxxxxx" inputmode="tel" dir="ltr" maxlength="15" autocomplete="tel" value="${esc(store('sh.custPhone') || '')}" required><button class="btn btn-red sm">${en ? 'Start chat' : 'ابدأ المحادثة'}</button><small id="eErr"></small></form>`;
+  box.appendChild(el); setTimeout(() => $('#eName').focus(), 50);
+  $('#engF').onsubmit = e => { e.preventDefault(); const n = $('#eName').value.trim(), ph = toEnD($('#ePhone').value).replace(/\D/g, '');
+    if (n.length < 2) { $('#eErr').textContent = en ? 'Enter your name' : 'اكتب اسمك'; return; } if (!/^0?5\d{8}$|^9665\d{8}$|^\d{9,14}$/.test(ph)) { $('#eErr').textContent = en ? 'Enter a valid mobile number' : 'اكتب رقم جوال صحيح'; return; }
+    storeSet('sh.custName', n); storeSet('sh.custPhone', ph); startEngineer(); };
+}
+const toEnD = x => String(x || '').replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d));
+/* أصوات الشات (من غير ملفات) + كتم */
+let AC = null;
+function snd(kind) {
+  if (store('sh.mute') === '1') return;
+  try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume();
+    const notes = kind === 'send' ? [[660, 0, .07], [990, .06, .09]] : kind === 'recv' ? [[880, 0, .12], [1320, .13, .18]] : [[520, 0, .1]];
+    notes.forEach(([f, t0, d]) => { const o = AC.createOscillator(), g = AC.createGain(); o.type = 'sine'; o.frequency.value = f; const t = AC.currentTime + t0; g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(kind === 'send' ? .12 : .22, t + .015); g.gain.exponentialRampToValueAtTime(.0001, t + d); o.connect(g).connect(AC.destination); o.start(t); o.stop(t + d + .02); });
+  } catch (e) { }
+}
+addEventListener('pointerdown', () => { try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); if (AC.state === 'suspended') AC.resume(); } catch (e) { } }, { once: true });
 /* فقاعة الترحيب جنب أيقونة الشات — مرة واحدة في الزيارة */
 function initTease() {
   if (store('sh.tease', 'session') || PREVIEW) return;
@@ -560,16 +816,24 @@ function initTease() {
     if (!$('#bot').hidden || store('sh.tease', 'session')) return; storeSet('sh.tease', '1', 'session');
     const d = document.createElement('div'); d.className = 'bot-tease'; d.id = 'botTease';
     d.innerHTML = `<button class="bt-x" aria-label="×">×</button><b>${LANG === 'en' ? 'Hi 👋 How can I help?' : 'هلا 👋 كيف أقدر أخدمك؟'}</b>`;
-    document.body.appendChild(d); $('#botFab').classList.add('has-n');
+    document.body.appendChild(d); $('#botFab').dataset.n = '1'; $('#botFab').classList.add('has-n'); snd('pop');
     d.onclick = e => { if (e.target.closest('.bt-x')) { hideTease(); return; } openBot(); };
-  }, 1800);
+  }, 5000);
 }
-function hideTease() { const d = $('#botTease'); if (d) d.remove(); $('#botFab').classList.remove('has-n'); }
+function hideTease() { const d = $('#botTease'); if (d) d.remove(); if (!unreadC) $('#botFab').classList.remove('has-n'); }
 function initBot() {
   $('#botFab').onclick = openBot;
+  const at = document.createElement('label'); at.className = 'bot-att'; at.title = LANG === 'en' ? 'Attach image or PDF' : 'إرفاق صورة أو PDF'; at.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 11l-8.5 8.5a5 5 0 0 1-7-7L14 4a3.5 3.5 0 0 1 5 5l-8.6 8.6a2 2 0 0 1-2.8-2.8L15 7.5"/></svg><input type="file" accept="image/*,application/pdf" hidden>'; $('#botForm').prepend(at);
+  $('input', at).onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (chatMode) pickFile(f); };
+  const mu = document.createElement('button'); mu.type = 'button'; mu.className = 'bot-mute'; const pm = () => { const m = store('sh.mute') === '1'; mu.textContent = m ? '🔕' : '🔔'; mu.title = m ? (LANG === 'en' ? 'Sound off' : 'الصوت مقفول') : (LANG === 'en' ? 'Sound on' : 'الصوت شغال'); }; pm();
+  mu.onclick = () => { storeSet('sh.mute', store('sh.mute') === '1' ? '0' : '1'); pm(); if (store('sh.mute') !== '1') snd('recv'); }; $('#bot header').insertBefore(mu, $('#botX'));
+  if (chatId && !store('sh.chatPend')) setTimeout(listen, 2500);
   const sw = document.createElement('button'); sw.type = 'button'; sw.id = 'botSwitch'; sw.className = 'bot-switch'; sw.hidden = true; $('#botForm').after(sw);
   sw.onclick = () => { if (chatMode) setAssist(); else startEngineer(); };
-  $('#botX').onclick = () => { $('#bot').hidden = true; $('#botFab').classList.remove('hide'); };
+  $('.bot-av', $('#bot')).insertAdjacentHTML('beforeend', ROBOT('hd'));
+  const mn = document.createElement('button'); mn.type = 'button'; mn.className = 'bot-min'; mn.id = 'botMin'; mn.setAttribute('aria-label', LANG === 'en' ? 'Minimize' : 'تصغير'); mn.title = LANG === 'en' ? 'Minimize' : 'تصغير'; mn.innerHTML = '<i></i>'; $('#bot header').insertBefore(mn, $('#botX'));
+  mn.onclick = () => { $('#bot').hidden = true; botMini(true); };
+  $('#botX').onclick = () => { $('#bot').hidden = true; botMini(false); $('#botFab').classList.remove('hide'); chatMode = false; $('#botMsgs').innerHTML = ''; $('#botQuick').innerHTML = ''; paintSwitch(true); $('#bot').classList.remove('live', 'asst'); };
   $('#botQuick').onclick = e => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.mode === 'bot') return setAssist(); if (b.dataset.mode === 'eng') return startEngineer(); if (!b.dataset.botBack) botAsk(b.textContent); };
   $('#botForm').onsubmit = e => { e.preventDefault(); const v = $('#botIn').value.trim(); if (!v) return; $('#botIn').value = ''; if (chatMode) chatSend(v); else botAsk(v); };
   $('#bot').addEventListener('click', e => { const a = e.target.closest('a[href="#chat"]'); if (a) { e.preventDefault(); startEngineer(); } if (e.target.closest('[data-bot-back]')) setAssist(); });
@@ -577,8 +841,11 @@ function initBot() {
 }
 
 /* ---------- long-press logo → staff portal ---------- */
-function initHold() {
-  const b = $('#brand'); const HOLD = 1000, TOL = 12;
+// ضغطة مطوّلة (ثانية) أو ٥ ضغطات سريعة على أي لوجو في الموقع → بوابة الموظفين
+const HOLD_SEL = '#brand, img[data-logo], .ftr .brand, .ftr-logo, .bot-av, [data-hold]';
+function initHold() { $$(HOLD_SEL).forEach(el => { if (el.dataset.holdOn || (el.id !== 'brand' && el.parentElement && el.parentElement.closest('#brand, .ftr .brand, [data-hold-on]'))) return; el.dataset.holdOn = '1'; el.style.webkitTouchCallout = 'none'; el.style.userSelect = 'none'; bindHold(el); }); }
+function bindHold(b) {
+  const HOLD = 1000, TOL = 12;
   let tm = null, raf = null, t0 = 0, fired = false, sx = 0, sy = 0, on = false, taps = [];
   const hint = $('#holdHint');
   const go = () => { fired = true; stop(); if (navigator.vibrate) navigator.vibrate([20, 40, 30]); location.href = 'portal.html'; };
@@ -726,52 +993,81 @@ function chatForm() {
 }
 const chatQ = () => { try { return JSON.parse(store('sh.chatQ') || '[]'); } catch (e) { return []; } };
 const setQ = q => storeSet('sh.chatQ', JSON.stringify(q));
-let serverMsgs = [], flushing = false, flushT = null;
+let serverMsgs = [], flushing = false, flushT = null, staffSeen = -1, unreadC = 0;
 const ENG_HI = () => LANG === 'en' ? 'Hi 🌷 Write your question and our engineer will reply here shortly during working hours.' : 'أهلاً بك 🌷 اكتب سؤالك، والمهندس المختص هيرد عليك هنا خلال دقايق في وقت الدوام.';
+const CMEDIA = {};
+async function mediaGet(id) { if (CMEDIA[id]) return CMEDIA[id]; const F = await fb(); const d = await F.getDoc(F.doc(F.db, 'chatmedia', id)); return (CMEDIA[id] = d.exists() ? d.data() : null); }
+const fileHtml = (f, local) => { if (!f) return ''; const isImg = /^image\//.test(f.type || ''); return isImg ? `<img class="cm-img" data-mid="${esc(f.id)}" ${local && f.data ? `src="${f.data}"` : ''} alt="${esc(f.name || '')}">` : `<button type="button" class="cm-pdf" data-mid="${esc(f.id)}"><span>PDF</span><b>${esc(f.name || 'file.pdf')}</b></button>`; };
 function paintChat() {
   if (!chatMode) return; const box = $('#botMsgs'); box.innerHTML = '';
   const add = (cls, html) => { const el = document.createElement('div'); el.className = 'bm ' + cls; el.innerHTML = html; box.appendChild(el); };
+  const tk = (c, ttl) => `<i class="tk" title="${ttl}">${c === '✓' ? '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3 3 7-7"/></svg>' : '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5"/></svg>'}</i>`;
   if (!serverMsgs.some(x => x.from === 's')) add('bt', esc(ENG_HI()));
-  serverMsgs.filter(x => !x.sys).forEach(x => x.from === 'c' ? add('me', nl(x.text) + '<i class="tk">✓</i>') : add('bt staff', `<b class="who">${esc(x.by || t('team'))}</b>` + nl(x.text)));
-  chatQ().forEach(x => add('me pend', nl(x.text) + `<i class="tk" title="${LANG === 'en' ? 'Sending…' : 'جارٍ الإرسال'}">⏳</i>`));
+  serverMsgs.filter(x => !x.sys).forEach(x => x.from === 'c' ? add('me', tk('✓', '') + fileHtml(x.file) + (x.text ? nl(x.text) : '')) : add('bt staff', `<b class="who">${esc(x.by || t('team'))}</b>` + fileHtml(x.file) + (x.text ? nl(x.text) : '')));
+  chatQ().forEach(x => add('me pend', tk('⏳', LANG === 'en' ? 'Sending…' : 'جارٍ الإرسال') + fileHtml(x.file, 1) + (x.text ? nl(x.text) : '')));
+  $$('.cm-img[data-mid]:not([src])', box).forEach(async im => { try { const m = await mediaGet(im.dataset.mid); if (m) im.src = m.data; } catch (e) { } });
+  $$('.cm-img', box).forEach(im => im.onclick = () => im.src && lbOpen([{ src: im.src, cap: '' }], 0));
+  $$('.cm-pdf', box).forEach(b => b.onclick = async () => { try { const m = await mediaGet(b.dataset.mid); if (!m) return; const bl = await (await fetch(m.data)).blob(); window.open(URL.createObjectURL(bl), '_blank'); } catch (e) { toast(t('connErr')); } });
   box.scrollTop = 1e6;
 }
+function fabBadge() { const f = $('#botFab'); if (!f) return; f.dataset.n = unreadC || ''; f.classList.toggle('has-n', !!unreadC); if ($('#botMini')) botMini(true); }
 let snapOn = false;
 async function listen() {
-  if (snapOn || store('sh.chatPend')) return; const F = await fb(); if (chatUnsub) chatUnsub(); snapOn = true;
+  if (snapOn || !chatId || store('sh.chatPend')) return; const F = await fb(); if (chatUnsub) chatUnsub(); snapOn = true;
   chatUnsub = F.onSnapshot(F.doc(F.db, 'chats', chatId), d => {
     if (!d.exists()) { if (!store('sh.chatPend')) { storeSet('sh.chat', ''); chatId = null; } return; }
     serverMsgs = d.data().msgs || [];
-    if (!$('#bot').hidden && serverMsgs.some(x => x.from === 's' && x.at > (d.data().seenAt || 0))) F.updateDoc(F.doc(F.db, 'chats', chatId), { seenAt: Date.now() }).catch(() => { });
+    const sc = serverMsgs.filter(x => x.from === 's').length;
+    if (staffSeen >= 0 && sc > staffSeen) { // رد جديد من المهندس
+      snd('recv'); try { navigator.vibrate && navigator.vibrate([40, 60, 40]); } catch (e) { }
+      const last = serverMsgs.filter(x => x.from === 's').slice(-1)[0];
+      if ($('#bot').hidden || !chatMode) { unreadC += sc - staffSeen; fabBadge(); }
+      if (document.hidden && 'Notification' in window && Notification.permission === 'granted') { try { new Notification(LANG === 'en' ? 'Reply from our engineer' : 'رد من المهندس المختص', { body: (last.text || (LANG === 'en' ? 'Attachment' : 'مرفق')).slice(0, 120), icon: 'assets/img/icon-192.png', tag: 'sh-chat' }); } catch (e) { } }
+    }
+    staffSeen = sc;
+    if (!$('#bot').hidden && chatMode && serverMsgs.some(x => x.from === 's' && x.at > (d.data().seenAt || 0))) F.updateDoc(F.doc(F.db, 'chats', chatId), { seenAt: Date.now() }).catch(() => { });
     paintChat();
   }, e => { console.warn('chat listen', e); snapOn = false; chatUnsub = null; retrySoon(); });
 }
 function retrySoon() { clearTimeout(flushT); flushT = setTimeout(flushChat, 5000); }
-// بيبعت المحادثة والرسايل المستنية بالترتيب، ولو فشل يحاول تاني كل ٥ ثواني
 async function flushChat() {
   if (flushing || !chatId) return; flushing = true; clearTimeout(flushT);
   try {
     const F = await fb();
     const pend = store('sh.chatPend');
     if (pend) { const p = JSON.parse(pend); const { at0, ...rest } = p;
+      rest.name = (store('sh.custName') || rest.name || '').slice(0, 60); rest.phone = (store('sh.custPhone') || rest.phone || '').slice(0, 15);
       await F.setDoc(F.doc(F.db, 'chats', chatId), { ...rest, at: F.serverTimestamp(), upd: F.serverTimestamp(), open: true, unread: 1, msgs: [{ from: 'c', sys: true, text: LANG === 'en' ? 'Started a chat' : 'بدأ محادثة مع المهندس', at: at0 || Date.now() }] });
-      storeSet('sh.chatPend', ''); try { localStorage.removeItem('sh.chatPend'); } catch (e) { } }
+      try { localStorage.removeItem('sh.chatPend'); } catch (e) { } }
     let q = chatQ();
-    while (q.length) { const m = q[0];
-      await F.updateDoc(F.doc(F.db, 'chats', chatId), { msgs: F.arrayUnion({ from: 'c', text: m.text, at: m.at }), upd: F.serverTimestamp(), unread: F.increment(1) });
-      serverMsgs = [...serverMsgs, { from: 'c', text: m.text, at: m.at }]; q = chatQ().slice(1); setQ(q); paintChat(); }
-    if (chatMode) listen();
+    while (q.length) { const m = q[0]; const msg = { from: 'c', text: m.text || '', at: m.at };
+      if (m.file) { if (m.file.data) await F.setDoc(F.doc(F.db, 'chatmedia', m.file.id), { chat: chatId, by: 'c', name: m.file.name, type: m.file.type, data: m.file.data, at: Date.now() }); msg.file = { id: m.file.id, name: m.file.name, type: m.file.type }; }
+      await F.updateDoc(F.doc(F.db, 'chats', chatId), { msgs: F.arrayUnion(msg), upd: F.serverTimestamp(), unread: F.increment(1) });
+      if (!serverMsgs.some(x => x.at === msg.at && x.from === 'c')) serverMsgs = [...serverMsgs, msg]; q = chatQ().slice(1); setQ(q); paintChat(); }
+    listen();
   } catch (e) { console.warn('chat flush', e); retrySoon(); }
   flushing = false;
 }
 async function startChat() {
-  chatMode = true; $('#bot').classList.add('live'); $('#botSubT').textContent = ENG(); $('#botQuick').innerHTML = ''; paintSwitch();
+  chatMode = true; unreadC = 0; fabBadge(); $('#bot').classList.remove('asst'); $('#bot').classList.add('live'); $('#botSubT').textContent = ENG(); $('#botQuick').innerHTML = ''; paintSwitch();
   paintChat(); if (store('sh.chatPend') || chatQ().length) flushChat(); else listen();
 }
 function stopChat() { return setAssist(); }
-function chatSend(text) {
-  const q = chatQ(); q.push({ text: text.slice(0, 1500), at: Date.now() }); setQ(q); paintChat(); flushChat();
+function chatSend(text, file) {
+  const q = chatQ(); q.push({ text: (text || '').slice(0, 1500), at: Date.now(), file: file || null }); setQ(q); snd('send'); paintChat(); flushChat();
 }
+// مرفقات: صورة (بتتضغط) أو PDF لحد ٧٠٠ كيلو
+function readAsData(f) { return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f); }); }
+async function pickFile(f) {
+  const en = LANG === 'en'; if (!f) return;
+  const id = 'M' + Date.now().toString(36) + Array.from(crypto.getRandomValues(new Uint8Array(6)), b => ALPH[b % ALPH.length]).join('');
+  try {
+    if (/^image\//.test(f.type)) { const data = await shrinkImg(f, 1280, .76); chatSend('', { id, name: f.name.slice(0, 80), type: 'image/jpeg', data }); }
+    else if (f.type === 'application/pdf' || /\.pdf$/i.test(f.name)) { if (f.size > 700 * 1024) return toast(en ? 'PDF must be under 700 KB' : 'ملف الـ PDF لازم يكون أقل من ٧٠٠ كيلو'); chatSend('', { id, name: f.name.slice(0, 80), type: 'application/pdf', data: await readAsData(f) }); }
+    else toast(en ? 'Images or PDF only' : 'صور أو PDF بس');
+  } catch (e) { toast(t('connErr')); }
+}
+function shrinkImg(f, max, q) { return new Promise((res, rej) => { const u = URL.createObjectURL(f), im = new Image(); im.onload = () => { const k = Math.min(1, max / Math.max(im.width, im.height)); const c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); let out = c.toDataURL('image/jpeg', q); if (out.length > 900000) out = c.toDataURL('image/jpeg', .55); URL.revokeObjectURL(u); res(out); }; im.onerror = rej; im.src = u; }); }
 addEventListener('online', () => { if (chatId && (store('sh.chatPend') || chatQ().length)) flushChat(); });
 
 /* ---------- boot ---------- */
@@ -780,7 +1076,7 @@ function boot() {
   $('#themeBtn').onclick = () => { const d = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; document.documentElement.dataset.theme = d; try { localStorage.setItem('sh.theme', d); } catch (e) { } };
   $('#langBtn').onclick = switchLang;
   $('#moreX').onclick = () => toggleMore(false); $('#more').onclick = e => { if (e.target.id === 'more' || e.target.closest('a')) toggleMore(false); };
-  $('#announceX').onclick = () => { $('#announce').hidden = true; storeSet('sh.annX', V().announce.text, 'session'); };
+  $('#announceX').onclick = () => { const a = $('#announce'); a.hidden = true; if (a.classList.contains('occ')) storeSet('sh.occBar', a.dataset.occ, 'session'); else storeSet('sh.annX', V().announce.text, 'session'); };
   $('#popX').onclick = () => $('#popup').hidden = true; $('#popup').onclick = e => { if (e.target.id === 'popup') $('#popup').hidden = true; };
   $('#lbX').onclick = () => $('#lb').hidden = true;
   $('#topBtn').onclick = () => scrollTo({ top: 0, behavior: 'smooth' });

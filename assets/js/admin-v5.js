@@ -64,12 +64,13 @@ export function vPages(mp, c) {
     }
     mp.innerHTML = `<h2>الصفحات</h2><p class="desc">اختار الصفحة، وبعدين لكل جزء: 👁 إظهار/إخفاء، ↑↓ ترتيب، حجم الخط، حجم الأيقونات، و✎ تعديل المحتوى بتاعه.</p>
     <div class="pg-tabs">${Object.keys(PAGE_BLOCKS).map(k => `<button data-pg="${k}" class="${k === curPg ? 'on' : ''}">${esc(PAGE_BLOCKS[k].t)}</button>`).join('')}</div>
-    <div style="display:flex;gap:8px;margin:10px 0 14px;flex-wrap:wrap"><a class="btn btn-ghost sm" href="index.html?preview=1#/${pg.hash}" target="_blank" rel="noopener">👁 فتح الصفحة (معاينة)</a><button class="btn btn-ghost sm" id="pgReset">↺ رجّع الصفحة دي للأصل</button></div>
+    ${curPg === 'home' ? `<label class="switch" style="margin-top:12px"><input type="checkbox" id="hsNew" ${D.design.homeStyle !== 'classic' ? 'checked' : ''}><span></span> الشكل الجديد للصفحة الرئيسية (لو قفلته يرجع الشكل القديم)</label>` : ''}<div style="display:flex;gap:8px;margin:10px 0 14px;flex-wrap:wrap"><a class="btn btn-ghost sm" href="index.html?preview=1#/${pg.hash}" target="_blank" rel="noopener">👁 فتح الصفحة (معاينة)</a><button class="btn btn-ghost sm" id="pgReset">↺ رجّع الصفحة دي للأصل</button></div>
     <div class="list pg-list">${order.map((k, i) => { const off = hidden.has(k), fixed = k === 'hero' || (curPg !== 'home' && k === 'head' && i === 0 && false), fs = cfg.fs[k] || 100, ic = cfg.ic[k] || 100; const canMove = !(curPg === 'home' && k === 'hero');
       return `<div class="pg-row card ${off ? 'off' : ''}" data-k="${k}"><div class="pg-top"><button class="eye ${off ? 'off' : ''}" data-eye="${k}" title="${off ? 'إظهار' : 'إخفاء'}">${off ? '🙈' : '👁'}</button><b>${i + 1}. ${esc(pg.blocks[k] || k)}</b>${off ? '<small class="chip red">مخفي</small>' : ''}
         <span class="ops">${canMove ? `<button class="btn btn-ghost sm" data-mv="-1" data-i="${i}" ${i > (curPg === 'home' ? 1 : 0) ? '' : 'disabled'}>↑</button><button class="btn btn-ghost sm" data-mv="1" data-i="${i}" ${i < order.length - 1 ? '' : 'disabled'}>↓</button>` : ''}${EDIT[k] ? `<a class="btn btn-ghost sm" href="#${EDIT[k]}">✎ تعديل</a>` : ''}</span></div>
         <div class="pg-sl"><label>حجم الخط <b>${fs}%</b><input type="range" min="70" max="160" step="5" value="${fs}" data-fs="${k}"></label><label>حجم الأيقونات <b>${ic}%</b><input type="range" min="50" max="200" step="10" value="${ic}" data-ic="${k}"></label></div></div>`; }).join('')}</div>`;
     $$('[data-pg]', mp).forEach(b => b.onclick = () => { curPg = b.dataset.pg; paint(); });
+    const hs = $('#hsNew'); if (hs) hs.onchange = () => { D.design.homeStyle = hs.checked ? 'v7' : 'classic'; c.dirty(); };
     $('#pgReset').onclick = () => { if (!confirm('ترجّع ترتيب وأحجام الصفحة دي للأصل؟')) return; delete D.design.pages[curPg]; if (curPg === 'home') { D.design.sections = c.clone(c.DEFAULT.design.sections); D.design.hidden = []; } c.dirty(); paint(); };
     $$('[data-eye]', mp).forEach(b => b.onclick = () => {
       const k = b.dataset.eye;
@@ -141,4 +142,27 @@ export function cropper(srcUrl, aspect) {
       cv.toBlob(b => done(b ? new File([b], 'crop.webp', { type: b.type }) : null), 'image/webp', .86); void out;
     };
   });
+}
+
+/* ---------- المناسبات والأعياد ---------- */
+import { OCC, activeOcc, greeting, autoOcc } from './occ.js';
+export function vOccasion(mp, c) {
+  const D = c.D(), esc = c.esc; D.occasion = D.occasion || { active: 'none', auto: false, until: '', text: '', fx: true }; const o = D.occasion;
+  const cur = activeOcc(o), au = autoOcc();
+  const card = (k, x) => `<button type="button" class="occ-card ${o.active === k ? 'on' : ''}" data-k="${k}" style="--oc:${x ? x.red : '#16171A'};--og:${x ? x.gold : '#C9A24B'}"><span class="oi">${x ? x.ic : '⛔'}</span><b>${x ? x.ar : 'بدون مناسبة'}</b><small>${x ? x.when : 'ألوان الشركة العادية'}</small>${x ? `<span class="sw"><i style="background:${x.red}"></i><i style="background:${x.gold}"></i></span>` : ''}</button>`;
+  mp.innerHTML = `<h2>المناسبات والأعياد</h2><p class="desc">اضغط على أي مناسبة: ألوان الموقع وزينته بتتغير مرة واحدة، وبيظهر شريط تهنئة فوق. اضغط «معاينة» تشوف الشكل، وبعدين «حفظ ونشر».</p>
+  <div class="card" style="display:grid;gap:10px;margin-bottom:14px"><b>${cur ? `شغالة دلوقتي: ${OCC[cur].ic} ${OCC[cur].ar}${o.active === 'none' || !o.active ? ' (تلقائي)' : ''}` : 'مفيش مناسبة شغالة دلوقتي'}</b>${au ? `<small style="color:var(--mut)">حسب التقويم النهارده: ${OCC[au].ar}</small>` : ''}</div>
+  <div class="occ-grid">${card('none')}${Object.entries(OCC).map(([k, x]) => card(k, x)).join('')}</div>
+  <div class="card" style="display:grid;gap:14px;margin-top:16px">
+    <div class="fld"><label>نص التهنئة (اتركه فاضي للنص الجاهز)</label><input id="ocTxt" value="${esc(o.text || '')}" placeholder="${esc(greeting(o.active !== 'none' && o.active ? o.active : (cur || 'fitr'), 'ar'))}" maxlength="140"></div>
+    <div class="fld"><label>تنتهي المناسبة في (اختياري — الموقع يرجع لشكله العادي لوحده)</label><input type="datetime-local" id="ocUntil" value="${esc(o.until || '')}"></div>
+    <label class="switch"><input type="checkbox" id="ocFx" ${o.fx !== false ? 'checked' : ''}><span></span> الزينة المتحركة (فوانيس، نجوم، كونفيتي…)</label>
+    <label class="switch"><input type="checkbox" id="ocAuto" ${o.auto ? 'checked' : ''}><span></span> تشغيل تلقائي كل سنة في ميعاد كل مناسبة (الهجري بتقويم أم القرى)</label>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn btn-ghost sm" href="index.html?preview=1" target="_blank" rel="noopener">👁 معاينة</a></div>
+    <p class="hint">ملحوظة: الزينة مرسومة بالألوان والزخارف بس — مفيش علم بيتحرك أو بينزل، ومفيش شعارات رسمية.</p></div>`;
+  mp.onclick = e => { const b = e.target.closest('.occ-card'); if (!b) return; o.active = b.dataset.k; c.dirty(); vOccasion(mp, c); c.toast(o.active === 'none' ? 'رجع الشكل العادي — اضغط حفظ ونشر' : `${OCC[o.active].ar} — اضغط حفظ ونشر`); };
+  $('#ocTxt').oninput = e => { o.text = e.target.value; c.dirty(); };
+  $('#ocUntil').onchange = e => { o.until = e.target.value; c.dirty(); };
+  $('#ocFx').onchange = e => { o.fx = e.target.checked; c.dirty(); };
+  $('#ocAuto').onchange = e => { o.auto = e.target.checked; c.dirty(); vOccasion(mp, c); };
 }

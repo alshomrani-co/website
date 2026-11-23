@@ -33,7 +33,7 @@ export const UI = {
     liveNow: 'متاحين الآن', needToday: 'وش تحتاج اليوم؟', preview: 'وضع المعاينة — التعديلات لسه متحفظتش', staffHint: 'بوابة الموظفين…',
     offerEnds: 'ينتهي العرض خلال', d: 'يوم', h: 'ساعة', m: 'دقيقة', s: 'ثانية',
     socialEy: 'السوشيال ميديا', followOn: 'تابعنا على {p}', watchAll: 'شوف كل الفيديوهات', openOn: 'افتح حسابنا على {p}', noVideos: 'لسه ما أضفنا فيديوهات هنا — تقدر تتابعنا مباشرة على الحساب.', loading: 'جارٍ التحميل…',
-    botName: 'المحادثة', botSub: 'المساعد', ask: 'اسألنا', botPh: 'اكتب سؤالك…', sendB: 'إرسال',
+    botName: 'المحادثة', botSub: 'المساعد', ask: 'تحدث معنا', botPh: 'اكتب سؤالك…', sendB: 'إرسال',
     botHi: 'أهلاً وسهلاً 👋 أنا مساعد شركة سعد الشمراني. اسألني عن أي خدمة، أو الأسعار، أو الفروع، أو مواعيد الدوام — وأنا أدلّك على الطريق.',
     quick: ['السلام عليكم', 'أبغى رخصة بناء', 'كم سعر الإشراف؟', 'وين موقعكم؟', 'أوقات الدوام']
   },
@@ -70,7 +70,7 @@ export const UI = {
     liveNow: 'Online now', needToday: 'What do you need today?', preview: 'Preview mode — changes not saved yet', staffHint: 'Staff portal…',
     offerEnds: 'Offer ends in', d: 'days', h: 'hrs', m: 'min', s: 'sec',
     socialEy: 'Social media', followOn: 'Follow us on {p}', watchAll: 'Watch all videos', openOn: 'Open our {p} account', noVideos: 'No videos added here yet — follow us directly on the account.', loading: 'Loading…',
-    botName: 'Chat', botSub: 'Assistant', ask: 'Ask us', botPh: 'Type your question…', sendB: 'Send',
+    botName: 'Chat', botSub: 'Assistant', ask: 'Chat with us', botPh: 'Type your question…', sendB: 'Send',
     botHi: 'Welcome 👋 I\'m the Al-Shamrani assistant. Ask me about any service, prices, branches or working hours — and I\'ll point you the right way.',
     quick: ['Hello', 'I need a building permit', 'Supervision prices?', 'Where are you located?', 'Working hours']
   }

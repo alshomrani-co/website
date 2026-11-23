@@ -1,8 +1,47 @@
 // المحتوى الافتراضي للموقع — كل ده بيتعدّل من لوحة التحكم، وده بيظهر لحد ما يتحمّل المحتوى المحفوظ
+/* مشاريع v9: صور الأمن والسلامة + أعمال الـ 3D من البروفايل */
+const X = 'assets/img/projects/';
+export const NEW_PRJ = [
+  { img: X + 's-zahra.webp', gallery: [], cat: 'تجاري', tag: 'تجاري · تجزئة', title: 'أسواق زهرة التوفير', desc: 'تصميم أنظمة السلامة ومتابعة اعتمادها لمنشأة تجزئة.', loc: 'الرياض', scope: 'تصميم أنظمة سلامة' },
+  { img: X + 's-abyat.webp', gallery: [], cat: 'تجاري', tag: 'تجاري · تجزئة', title: 'أسواق أبيات', desc: 'تصميم أنظمة السلامة ومتابعة اعتمادها لمنشأة تجزئة.', loc: 'الرياض', scope: 'تصميم أنظمة سلامة' },
+  { img: X + 's-mayadeen.webp', gallery: [], cat: 'خدمي', tag: 'فعاليات', title: 'فعالية شركة ميادين', desc: 'متطلبات السلامة لموقع فعالية مؤقتة.', loc: 'الرياض', scope: 'أمن وسلامة' },
+  { img: X + 's-mixed.webp', gallery: [], cat: 'سكني', tag: 'سكني · تجاري', title: 'عمارة تجاري سكني', desc: 'مبنى متعدد الاستخدام (محلات تجارية وشقق سكنية) بمتطلبات سلامة لكل استخدام.', loc: 'الرياض', scope: 'أمن وسلامة' },
+  { img: X + 'r3d-villa.webp', gallery: [{ img: X + 'r3d-22.webp', cap: '' }], cat: 'تصميم 3D', tag: 'تصميم 3D · واجهات', title: 'فيلا كلاسيكية — «فلة تحكي جمال الرياض»', desc: 'تصميم ثلاثي الأبعاد لواجهة فيلا بطابع كلاسيكي وإضاءة معمارية.', loc: 'الرياض', scope: 'تصميم واجهات 3D' },
+  { img: X + 'r3d-14.webp', gallery: [{ img: X + 'r3d-12.webp', cap: '' }, { img: X + 'r3d-15.webp', cap: '' }, { img: X + 'r3d-16.webp', cap: '' }, { img: X + 'r3d-21.webp', cap: '' }], cat: 'تصميم 3D', tag: 'تصميم 3D · واجهات', title: 'واجهات فلل سكنية حديثة', desc: 'مجموعة من تصاميم واجهات الفلل السكنية بطابع حديث ومواد تشطيب متنوعة.', loc: 'الرياض', scope: 'تصميم واجهات 3D' },
+  { img: X + 'r3d-9.webp', gallery: [{ img: X + 'r3d-10.webp', cap: '' }, { img: X + 'r3d-17.webp', cap: '' }, { img: X + 'r3d-23.webp', cap: '' }, { img: X + 'r3d-24.webp', cap: '' }, { img: X + 'r3d-26.webp', cap: '' }], cat: 'تصميم 3D', tag: 'تصميم 3D · واجهات', title: 'واجهات عمائر سكنية حديثة', desc: 'تصاميم واجهات لعمائر سكنية متعددة الأدوار.', loc: 'الرياض', scope: 'تصميم واجهات 3D' },
+  { img: X + 'r3d-18.webp', gallery: [{ img: X + 'r3d-19.webp', cap: '' }], cat: 'تصميم 3D', tag: 'تصميم 3D · واجهات', title: 'واجهات عمائر سكنية كلاسيكية', desc: 'واجهات عمائر سكنية بطابع كلاسيكي وتفاصيل معمارية.', loc: 'الرياض', scope: 'تصميم واجهات 3D' },
+  { img: X + 'r3d-25.webp', gallery: [], cat: 'تصميم 3D', tag: 'تصميم 3D · واجهات', title: 'مبنى سكني تجاري', desc: 'واجهة مبنى بمحلات تجارية في الدور الأرضي وشقق سكنية فوقها.', loc: 'الرياض', scope: 'تصميم واجهات 3D' },
+  { img: X + 'r3d-13.webp', gallery: [], cat: 'تصميم 3D', tag: 'تصميم 3D · واجهات', title: 'مبنى تجاري — صف محلات', desc: 'واجهة مبنى تجاري بصف محلات ومكاتب.', loc: 'الرياض', scope: 'تصميم واجهات 3D' },
+  { img: X + 'r3d-11.webp', gallery: [], cat: 'تصميم 3D', tag: 'تصميم 3D · واجهات', title: 'مطعم — واجهة تجارية', desc: 'تصميم واجهة مطعم بجلسات خارجية في الدور العلوي.', loc: 'الرياض', scope: 'تصميم واجهات 3D' },
+  { img: X + 'r3d-20.webp', gallery: [], cat: 'تصميم 3D', tag: 'تصميم 3D · واجهات', title: 'محطة وقود', desc: 'تصميم ثلاثي الأبعاد لمحطة وقود ومظلتها.', loc: 'الرياض', scope: 'تصميم 3D' },
+  { img: X + 'r3d-30.webp', gallery: [], cat: 'تصميم 3D', tag: 'تصميم 3D · تصميم داخلي', title: 'تصميم داخلي — مجلس', desc: 'تصميم داخلي لمجلس مع المخطط ولوحة الألوان.', loc: 'الرياض', scope: 'تصميم داخلي 3D' },
+  { img: X + 'r3d-31.webp', gallery: [], cat: 'تصميم 3D', tag: 'تصميم 3D · تصميم داخلي', title: 'تصميم داخلي — منطقة المعيشة', desc: 'تصميم داخلي لمنطقة المعيشة مع المخطط ولوحة الألوان.', loc: 'الرياض', scope: 'تصميم داخلي 3D' },
+  { img: X + 'r3d-32.webp', gallery: [], cat: 'تصميم 3D', tag: 'تصميم 3D · تصميم داخلي', title: 'تصميم داخلي — فيلا دور أرضي', desc: 'تصميم داخلي لمساحات الدور الأرضي في فيلا.', loc: 'الرياض', scope: 'تصميم داخلي 3D' },
+  { img: X + 'r3d-28.webp', gallery: [{ img: X + 'r3d-29.webp', cap: '' }], cat: 'تصميم 3D', tag: 'تصميم 3D · تصميم داخلي', title: 'تصميم داخلي — غرف نوم رئيسية', desc: 'تصميم غرف نوم رئيسية مع غرف الملابس.', loc: 'الرياض', scope: 'تصميم داخلي 3D' },
+  { img: X + 'r3d-33.webp', gallery: [{ img: X + 'r3d-36.webp', cap: '' }, { img: X + 'r3d-37.webp', cap: '' }, { img: X + 'r3d-38.webp', cap: '' }, { img: X + 'r3d-39.webp', cap: '' }, { img: X + 'r3d-40.webp', cap: '' }], cat: 'تصميم 3D', tag: 'تصميم 3D · تصميم داخلي', title: 'تصميم داخلي — غرف نوم', desc: 'مجموعة تصاميم داخلية لغرف النوم.', loc: 'الرياض', scope: 'تصميم داخلي 3D' },
+  { img: X + 'r3d-27.webp', gallery: [], cat: 'تصميم 3D', tag: 'تصميم 3D · تصميم داخلي', title: 'تصميم داخلي — مكتب', desc: 'تصميم داخلي لغرفة مكتب مع المخطط ولوحة الألوان.', loc: 'الرياض', scope: 'تصميم داخلي 3D' },
+  { img: X + 'r3d-34.webp', gallery: [{ img: X + 'r3d-35.webp', cap: '' }], cat: 'تصميم 3D', tag: 'تصميم 3D · تصميم داخلي', title: 'تصميم داخلي — حمامات', desc: 'تصاميم داخلية للحمامات.', loc: 'الرياض', scope: 'تصميم داخلي 3D' }
+];
+
+/* مجموعات «من أعمالنا»: كل مشروع ممكن يبقى في أكتر من مجموعة (افصل بفاصلة) */
+export function grpOf(p) {
+  const i = String(p.img || ''), c = p.cat || '', m = i.match(/r3d-(\d+)/);
+  if (/\/s-/.test(i)) return 'السلامة';
+  if (m) return +m[1] >= 27 ? 'التصميم الداخلي,المخططات' : 'الواجهات';
+  if (/r3d-villa|villa-render/.test(i)) return 'الواجهات';
+  if (/3d-studio/.test(i)) return 'التصميم الداخلي';
+  if (/floor-plan|structural/.test(i)) return 'المخططات';
+  if (/مساح/.test(c)) return 'المساحة';
+  return '';
+}
+const SURVEY_GAL = ['w00', 'w01', 'w05', 'w06', 'w07', 'w08', 'w10', 'w12', 'w13', 'w16', 'w17', 'w18'].map(x => ({ img: 'assets/img/work/' + x + '.webp', cap: '' }));
+export const PLANS_PRJ = { img: 'assets/img/floor-plan.webp', gallery: [{ img: 'assets/img/structural-model.webp', cap: '' }], cat: 'تصميم 3D', tag: 'مخططات', title: 'مخططات معمارية وإنشائية', desc: 'مخططات معمارية تنفيذية ونماذج إنشائية بالأبعاد المعتمدة.', loc: 'الرياض', scope: 'تصميم معماري وإنشائي', grp: 'المخططات' };
+
 export const DEFAULT = {
   brand: {
     name: 'شركة سعد مفرح الشمراني للاستشارات الهندسية',
     short: 'شركة سعد الشمراني',
+    chatLabel: 'تحدث معنا',
     en: 'Saad M. Al-Shamrani Engineering Consultancy',
     tagline: 'من المخطط إلى التسليم',
     founded: 2016
@@ -13,7 +52,8 @@ export const DEFAULT = {
     map: 'https://maps.google.com/?q=%D8%B4%D8%A7%D8%B1%D8%B9+%D8%B1%D9%8A%D8%AD%D8%A7%D9%86%D8%A9+%D8%A8%D9%86%D8%AA+%D8%B2%D9%8A%D8%AF+%D8%A7%D9%84%D8%B9%D8%A7%D8%B1%D8%B6+%D8%A7%D9%84%D8%B1%D9%8A%D8%A7%D8%B6',
     hours: ['السبت: 11 صباحاً – 9 مساءً', 'الأحد – الأربعاء: 9 صباحاً – 9 مساءً', 'الخميس: 9 صباحاً – 5 مساءً'],
     replyNote: 'نرد خلال ساعات العمل · السبت – الخميس',
-    waText: 'السلام عليكم، أرغب بطلب استشارة هندسية.'
+    waText: 'السلام عليكم، أرغب بطلب استشارة هندسية.',
+    appLine: 'حمّل التطبيق لمتابعة مشروعك', playStore: '', appStore: ''
   },
   socials: {
     instagram: 'https://www.instagram.com/alshomrani.co', tiktok: 'https://www.tiktok.com/@alshomrani.co',
@@ -26,7 +66,7 @@ export const DEFAULT = {
     title: 'من المخطط', highlight: 'إلى التسليم',
     lead: 'نجمع لك التصميم، الرخص والمعاملات البلدية، الأعمال المساحية، الإشراف الهندسي، وأنظمة السلامة — تحت سقف واحد، بفريق مرخّص ومعتمد رسمياً.',
     cta1: 'احصل على استشارة مجانية', cta2: 'تعرّف على خدماتنا',
-    video: true, videoSrc: 'assets/video/hero.mp4', videoMobile: '', poster: 'assets/video/hero-poster.jpg'
+    video: true, videoSrc: 'assets/video/hero.mp4', videoMobile: 'assets/video/hero-mobile.mp4', poster: 'assets/video/hero-poster.jpg'
   },
   stats: [
     { n: 2016, pre: '', suf: '', l: 'سنة التأسيس', plain: true },
@@ -78,27 +118,38 @@ export const DEFAULT = {
   ],
   cats: ['تجاري', 'فندقي', 'تعليمي', 'صحي', 'سكني', 'خدمي', 'صناعي', 'تصميم 3D', 'خدمات مساحية'],
   projects: [
-    { img: '', gallery: [], cat: 'تجاري', tag: 'تجاري · مصرفي', title: 'البنك العربي — فرع حي لبن', desc: 'تجهيز فرع مصرفي وفق الهوية المعتمدة للبنك، مع التنسيق مع أنظمة الأمن والسلامة ومتطلبات الدفاع المدني.', loc: 'الرياض', scope: 'تصميم وإشراف تنفيذ' },
-    { img: '', gallery: [], cat: 'تجاري', tag: 'تجاري · مصرفي', title: 'البنك العربي — الوعلان، النسيم الشرقي', desc: 'فرع مصرفي ثانٍ ضمن نفس منظومة الهوية والاشتراطات الأمنية والسلامة.', loc: 'الرياض', scope: 'تصميم وإشراف تنفيذ' },
-    { img: '', gallery: [], cat: 'تجاري', tag: 'تجاري · تجزئة', title: 'مول جواهر القمة', desc: 'مركز تجاري متعدد المحلات، بتصميم يراعي مسالك الهروب وسعة الإشغال ومتطلبات السلامة للمجمعات التجارية.', loc: 'الرياض', scope: 'تصميم وإشراف' },
-    { img: '', gallery: [], cat: 'تجاري', tag: 'تجاري · تجزئة', title: 'معارض شركة درعة للعطور', desc: 'سلسلة معارض تجزئة بهوية بصرية موحّدة وتصميم داخلي وإضاءة تخدم عرض المنتج.', loc: 'الرياض', scope: 'تصميم داخلي وإشراف' },
-    { img: '', gallery: [], cat: 'تجاري', tag: 'تجاري', title: 'المعادن — طريق مكة', desc: 'مشروع تجاري على طريق مكة، شمل التصميم والإشراف على التنفيذ.', loc: 'الرياض', scope: 'تصميم وإشراف' },
-    { img: '', gallery: [], cat: 'فندقي', tag: 'فندقي', title: 'فندق 4 نجوم — حي قرطبة', desc: 'منشأة فندقية أربع نجوم شملت التصميم المعماري وأنظمة السلامة ومسالك الهروب واعتمادها لدى الدفاع المدني.', loc: 'الرياض', scope: 'تصميم وإشراف هندسي' },
-    { img: '', gallery: [], cat: 'تعليمي', tag: 'تعليمي', title: 'المدرسة الأمريكية العالمية', desc: 'منشأة تعليمية بمطابقة كاملة لاشتراطات السلامة ومسالك الهروب وسعة الإشغال.', loc: 'الرياض', scope: 'تصميم وإشراف هندسي' },
-    { img: '', gallery: [], cat: 'صحي', tag: 'صحي', title: 'مستوصف شركة سجايا للرعاية الطبية', desc: 'تصميم الأنظمة الكهروميكانيكية وأنظمة الإنذار والإطفاء لمرفق رعاية طبية، واعتمادها لدى الجهات المختصة.', loc: 'الرياض', scope: 'تصميم MEP وأنظمة سلامة' },
-    { img: '', gallery: [], cat: 'سكني', tag: 'سكني', title: 'مجمع سكني — شركة السليمان العقارية', desc: 'مجمع سكني متعدد الوحدات ضمن مخطط واحد، بتصميم معماري وإنشائي وإشراف على التنفيذ.', loc: 'الرياض', scope: 'تصميم وإشراف' },
-    { img: '', gallery: [], cat: 'سكني', tag: 'سكني', title: 'مشروع شركة مسكن رفاهة العقارية', desc: 'مشروع تطوير سكني شمل التصميم والإشراف الهندسي على مراحل التنفيذ.', loc: 'الرياض', scope: 'تصميم وإشراف' },
-    { img: '', gallery: [], cat: 'سكني', tag: 'سكني · خاص', title: 'قصر أوفال', desc: 'قصر سكني خاص بتصميم معماري مخصّص وإشراف كامل حتى التشطيبات النهائية.', loc: 'الرياض', scope: 'تصميم معماري وإشراف' },
-    { img: '', gallery: [], cat: 'سكني', tag: 'سكني', title: 'عمارة سكنية', desc: 'عمارة سكنية شملت التصميم واستخراج الرخصة والإشراف حتى شهادة الإشغال.', loc: 'الرياض', scope: 'تصميم ورخصة وإشراف' },
-    { img: '', gallery: [], cat: 'خدمي', tag: 'خدمي', title: 'محطة وقود بترو سهم', desc: 'محطة وقود بمتطلبات سلامة خاصة وأنظمة إطفاء واشتراطات دفاع مدني مشددة.', loc: 'الرياض', scope: 'تصميم وأنظمة سلامة' },
-    { img: '', gallery: [], cat: 'خدمي', tag: 'خدمي', title: 'محطة وقود شركة لتر', desc: 'محطة وقود ثانية ضمن نفس فئة الاشتراطات الفنية والسلامة.', loc: 'الرياض', scope: 'تصميم وأنظمة سلامة' },
-    { img: '', gallery: [], cat: 'صناعي', tag: 'صناعي', title: 'مستودعات الموريني', desc: 'مستودعات صناعية بتصميم إنشائي للبحور الواسعة وأنظمة إطفاء مناسبة لطبيعة التخزين.', loc: 'الرياض', scope: 'تصميم إنشائي وإشراف' },
-    { img: '', gallery: [], cat: 'خدمي', tag: 'خدمي', title: 'ورشة كيا للصيانة', desc: 'ورشة صيانة مركبات بمتطلبات تهوية وسلامة ومعالجة مخلفات خاصة.', loc: 'الرياض', scope: 'تصميم وإشراف' },
-    { img: '', gallery: [], cat: 'خدمي', tag: 'خدمي', title: 'محل بيع غاز', desc: 'منشأة بيع غاز باشتراطات دفاع مدني مشددة وأنظمة إنذار وإطفاء مخصصة.', loc: 'الرياض', scope: 'تصميم وأنظمة سلامة' },
+    { img: 'assets/img/projects/s-arab1.webp', gallery: [{ img: 'assets/img/projects/s-arab2.webp', cap: '' }], cat: 'تجاري', tag: 'تجاري · مصرفي', title: 'البنك العربي — فرع حي لبن', desc: 'تجهيز فرع مصرفي وفق الهوية المعتمدة للبنك، مع التنسيق مع أنظمة الأمن والسلامة ومتطلبات الدفاع المدني.', loc: 'الرياض', scope: 'تصميم وإشراف تنفيذ' },
+    { img: 'assets/img/projects/s-waalan.webp', gallery: [], cat: 'تجاري', tag: 'تجاري · مصرفي', title: 'البنك العربي — الوعلان، النسيم الشرقي', desc: 'فرع مصرفي ثانٍ ضمن نفس منظومة الهوية والاشتراطات الأمنية والسلامة.', loc: 'الرياض', scope: 'تصميم وإشراف تنفيذ' },
+    { img: 'assets/img/projects/s-jawaher.webp', gallery: [], cat: 'تجاري', tag: 'تجاري · تجزئة', title: 'مول جواهر القمة', desc: 'مركز تجاري متعدد المحلات، بتصميم يراعي مسالك الهروب وسعة الإشغال ومتطلبات السلامة للمجمعات التجارية.', loc: 'الرياض', scope: 'تصميم وإشراف' },
+    { img: 'assets/img/projects/s-deraa.webp', gallery: [], cat: 'تجاري', tag: 'تجاري · تجزئة', title: 'معارض شركة درعة للعطور', desc: 'سلسلة معارض تجزئة بهوية بصرية موحّدة وتصميم داخلي وإضاءة تخدم عرض المنتج.', loc: 'الرياض', scope: 'تصميم داخلي وإشراف' },
+    { img: 'assets/img/projects/s-maaden.webp', gallery: [], cat: 'تجاري', tag: 'تجاري', title: 'المعادن — طريق مكة', desc: 'مشروع تجاري على طريق مكة، شمل التصميم والإشراف على التنفيذ.', loc: 'الرياض', scope: 'تصميم وإشراف' },
+    { img: 'assets/img/projects/s-hotel.webp', gallery: [], cat: 'فندقي', tag: 'فندقي', title: 'فندق 4 نجوم — حي قرطبة', desc: 'منشأة فندقية أربع نجوم شملت التصميم المعماري وأنظمة السلامة ومسالك الهروب واعتمادها لدى الدفاع المدني.', loc: 'الرياض', scope: 'تصميم وإشراف هندسي' },
+    { img: 'assets/img/projects/s-school.webp', gallery: [], cat: 'تعليمي', tag: 'تعليمي', title: 'المدرسة الأمريكية العالمية', desc: 'منشأة تعليمية بمطابقة كاملة لاشتراطات السلامة ومسالك الهروب وسعة الإشغال.', loc: 'الرياض', scope: 'تصميم وإشراف هندسي' },
+    { img: 'assets/img/projects/s-sajaya.webp', gallery: [], cat: 'صحي', tag: 'صحي', title: 'مستوصف شركة سجايا للرعاية الطبية', desc: 'تصميم الأنظمة الكهروميكانيكية وأنظمة الإنذار والإطفاء لمرفق رعاية طبية، واعتمادها لدى الجهات المختصة.', loc: 'الرياض', scope: 'تصميم MEP وأنظمة سلامة' },
+    { img: 'assets/img/projects/s-sulaiman1.webp', gallery: [{ img: 'assets/img/projects/s-sulaiman2.webp', cap: '' }], cat: 'سكني', tag: 'سكني', title: 'مجمع سكني — شركة السليمان العقارية', desc: 'مجمع سكني متعدد الوحدات ضمن مخطط واحد، بتصميم معماري وإنشائي وإشراف على التنفيذ.', loc: 'الرياض', scope: 'تصميم وإشراف' },
+    { img: 'assets/img/projects/s-rafaha.webp', gallery: [], cat: 'سكني', tag: 'سكني', title: 'مشروع شركة مسكن رفاهة العقارية', desc: 'مشروع تطوير سكني شمل التصميم والإشراف الهندسي على مراحل التنفيذ.', loc: 'الرياض', scope: 'تصميم وإشراف' },
+    { img: 'assets/img/projects/s-oval.webp', gallery: [], cat: 'سكني', tag: 'سكني · خاص', title: 'قصر أوفال', desc: 'قصر سكني خاص بتصميم معماري مخصّص وإشراف كامل حتى التشطيبات النهائية.', loc: 'الرياض', scope: 'تصميم معماري وإشراف' },
+    { img: 'assets/img/projects/s-building.webp', gallery: [], cat: 'سكني', tag: 'سكني', title: 'عمارة سكنية', desc: 'عمارة سكنية شملت التصميم واستخراج الرخصة والإشراف حتى شهادة الإشغال.', loc: 'الرياض', scope: 'تصميم ورخصة وإشراف' },
+    { img: 'assets/img/projects/s-sahm.webp', gallery: [], cat: 'خدمي', tag: 'خدمي', title: 'محطة وقود بترو سهم', desc: 'محطة وقود بمتطلبات سلامة خاصة وأنظمة إطفاء واشتراطات دفاع مدني مشددة.', loc: 'الرياض', scope: 'تصميم وأنظمة سلامة' },
+    { img: 'assets/img/projects/s-litre.webp', gallery: [], cat: 'خدمي', tag: 'خدمي', title: 'محطة وقود شركة لتر', desc: 'محطة وقود ثانية ضمن نفس فئة الاشتراطات الفنية والسلامة.', loc: 'الرياض', scope: 'تصميم وأنظمة سلامة' },
+    { img: 'assets/img/projects/s-hourini.webp', gallery: [], cat: 'صناعي', tag: 'صناعي', title: 'مستودعات الموريني', desc: 'مستودعات صناعية بتصميم إنشائي للبحور الواسعة وأنظمة إطفاء مناسبة لطبيعة التخزين.', loc: 'الرياض', scope: 'تصميم إنشائي وإشراف' },
+    { img: 'assets/img/projects/s-kia.webp', gallery: [], cat: 'خدمي', tag: 'خدمي', title: 'ورشة كيا للصيانة', desc: 'ورشة صيانة مركبات بمتطلبات تهوية وسلامة ومعالجة مخلفات خاصة.', loc: 'الرياض', scope: 'تصميم وإشراف' },
+    { img: 'assets/img/projects/s-gas.webp', gallery: [], cat: 'خدمي', tag: 'خدمي', title: 'محل بيع غاز', desc: 'منشأة بيع غاز باشتراطات دفاع مدني مشددة وأنظمة إنذار وإطفاء مخصصة.', loc: 'الرياض', scope: 'تصميم وأنظمة سلامة' },
     { img: '', gallery: [], cat: 'تصميم 3D', tag: 'تصميم 3D', title: 'تصاميم ثلاثية الأبعاد — نماذج معمارية', desc: 'نماذج ومناظير ثلاثية الأبعاد تُظهر شكل المبنى ومواد التشطيب قبل بدء التنفيذ.', loc: 'الرياض', scope: 'نمذجة ومناظير', img: 'assets/img/villa-render.webp' },
     { img: '', gallery: [], cat: 'تصميم 3D', tag: 'تصميم 3D', title: 'تصميم ثلاثي الأبعاد — مطعم', desc: 'تصميم داخلي لمطعم مع نمذجة ثلاثية الأبعاد للإضاءة والتشطيبات وتوزيع الجلسات.', loc: 'الرياض', scope: 'تصميم داخلي ونمذجة', img: 'assets/img/3d-studio.webp' },
-    { img: '', gallery: [], cat: 'خدمات مساحية', tag: 'خدمات مساحية', title: 'أعمال مساحية وصكوك', desc: 'رفع مساحي وإصدار إقرارات، وتجزئة ودمج صكوك، وفرز وحدات عقارية لعملاء أفراد ومطوّرين.', loc: 'الرياض · بيشة · مكة المكرمة', scope: 'رفع مساحي وفرز', img: 'assets/img/work/w03.webp' }
+    { img: '', gallery: [], cat: 'خدمات مساحية', tag: 'خدمات مساحية', title: 'أعمال مساحية وصكوك', desc: 'رفع مساحي وإصدار إقرارات، وتجزئة ودمج صكوك، وفرز وحدات عقارية لعملاء أفراد ومطوّرين.', loc: 'الرياض · بيشة · مكة المكرمة', scope: 'رفع مساحي وفرز', img: 'assets/img/work/w03.webp' },
+    ...NEW_PRJ,
+    PLANS_PRJ
   ],
+  workGroups: [
+    { key: 'المساحة', title: 'المساحة', sub: 'رفع مساحي وتحديد أراضي من الميدان', img: 'assets/img/work/w05.webp' },
+    { key: 'السلامة', title: 'السلامة', sub: 'أنظمة سلامة معتمدة لمنشآت تجارية وسكنية وخدمية', img: 'assets/img/projects/s-jawaher.webp' },
+    { key: 'المخططات', title: 'المخططات', sub: 'مخططات معمارية وإنشائية تنفيذية', img: 'assets/img/floor-plan.webp' },
+    { key: 'الواجهات', title: 'الواجهات', sub: 'تصاميم واجهات ثلاثية الأبعاد', img: 'assets/img/projects/r3d-villa.webp' },
+    { key: 'التصميم الداخلي', title: 'التصميم الداخلي', sub: 'مجالس وغرف نوم ومعيشة وحمامات', img: 'assets/img/projects/r3d-31.webp' }
+  ],
+  reviews: { on: true, title: 'آراء عملائنا', sub: 'تقييمات حقيقية من عملاء تعاملوا معنا — بتتنشر بعد مراجعة الإدارة.' },
+  occasion: { active: 'none', auto: false, until: '', text: '', fx: true },
   confidential: 'كثير من أعمالنا يخضع لاتفاقيات سرية مع جهات مصرفية وصحية ومطوّرين عقاريين، ولا يُنشر إلا بإذن كتابي من المالك. نفضّل ذكر النطاق الفعلي للعمل بدل نشر صور لا تخصّنا. ملف الأعمال الكامل متاح عند الطلب.',
   gallery: [
     { img: 'assets/img/work/w05.webp', title: 'قسم المساحة', sub: 'رفع ميداني بمحطة رصد متكاملة' },
@@ -173,15 +224,16 @@ export const DEFAULT = {
   popup: { on: false, title: '', text: '', btn: 'تواصل الآن', link: '', img: '', delay: 6 },
   support: { on: true, depts: ['استفسار عام', 'التصميم', 'الرخص والمعاملات', 'المساحة', 'الإشراف', 'السلامة', 'إدارة المشاريع', 'تصميم 3D', 'شكوى أو ملاحظة'] },
   offer: { on: false, title: 'عرض خاص لفترة محدودة', text: 'خصم على باقات الإشراف للعقود الموقعة هذا الشهر.', badge: 'عرض', img: '', until: '', btn: 'استفد من العرض', link: '#/request' },
-  design: { logo: '', font: 'kufi', logoSize: 100, heroLogo: true, heroLogoSize: 100, fontScale: 100, red: '#E1262B', gold: '#C9A24B', glass: true, cursorGlow: true, sections: ['offer', 'strip', 'gallery', 'stats', 'steps', 'packages', 'social', 'why', 'partners', 'faq', 'cta'] },
+  design: { logo: '', font: 'kufi', logoSize: 100, heroLogo: true, heroLogoSize: 100, fontScale: 100, red: '#E1262B', gold: '#C9A24B', glass: true, cursorGlow: true, sections: ['offer', 'trust', 'services', 'packages', 'feature', 'reviews', 'steps', 'portal', 'faq', 'cta'], homeStyle: 'v7' },
   media: { title: 'تابعنا على السوشيال ميديا', sub: 'شغلنا في الميدان يومياً — فيديوهات وصور من مواقع المشاريع.', youtubeKey: '', youtube: [], tiktok: [], instagram: [], snapchat: [], x: [] },
   seo: { keywords: 'مكتب هندسي الرياض، استشارات هندسية، رخصة بناء، تصميم فلل، إشراف هندسي، رفع مساحي، دفاع مدني، تصميم معماري، تصميم إنشائي، الكهروميكانيك، مخططات، شركة سعد الشمراني', title: 'شركة سعد الشمراني للاستشارات الهندسية | تصميم، رخص، مساحة، إشراف، سلامة', desc: 'شركة استشارات هندسية مرخّصة في الرياض منذ 2016: تصميم معماري وإنشائي، رخص بناء، رفع مساحي، إشراف هندسي، وأنظمة سلامة — تحت سقف واحد.' }
 };
 
 /* بلوكات كل صفحة (لقسم «الصفحات» في لوحة التحكم). الرئيسية بتتحكم في ترتيبها من design.sections */
 export const PAGE_BLOCKS = {
-  home: { t: 'الرئيسية', hash: '', blocks: { hero: 'الفيديو والعنوان', offer: 'العرض الحالي', strip: 'شريط الخدمات المتحرك', gallery: 'معرض صور الأعمال', stats: 'الأرقام (العدّاد)', services: 'كروت الخدمات', steps: 'آلية العمل', packages: 'الباقات', social: 'السوشيال ميديا', why: 'ليش الشمراني + كلمة المدير', partners: 'الشركاء', faq: 'الأسئلة الشائعة', cta: 'صندوق دعوة التواصل' } },
+  home: { t: 'الرئيسية', hash: '', blocks: { hero: 'الفيديو والعنوان والأرقام', offer: 'العرض الحالي', trust: 'شريط الجهات (نتعامل مع)', services: 'أقسامنا (قائمة مترقمة)', feature: 'من أعمالنا (كروت المساحة/السلامة/المخططات/الواجهات)', reviews: 'آراء العملاء', steps: 'آلية العمل', portal: 'تابع مشروعك', packages: 'الباقات', faq: 'الأسئلة الشائعة', cta: 'ابدأ مشروعك + التواصل', strip: 'شريط الخدمات المتحرك', gallery: 'معرض صور الأعمال (متحرك)', stats: 'الأرقام (منفصلة)', social: 'السوشيال ميديا', why: 'ليش الشمراني' } },
   services: { t: 'الخدمات', hash: 'services', blocks: { head: 'العنوان', strip: 'شريط الخدمات', grid: 'كروت الخدمات', cta: 'دعوة التواصل' } },
+  sub: { t: 'صفحة خدمة فرعية', hash: 'service/permits/0', blocks: { head: 'العنوان', body: 'التفاصيل والطلب', cta: 'دعوة التواصل' } },
   service: { t: 'صفحة خدمة', hash: 'service/design', blocks: { head: 'العنوان والوصف', body: 'الصورة والبنود والطلب', strip: 'شريط الخدمات', cta: 'دعوة التواصل' } },
   projects: { t: 'أعمالنا', hash: 'projects', blocks: { head: 'العنوان', stats: 'الأرقام', list: 'المشاريع', gallery: 'معرض الصور', cta: 'دعوة التواصل' } },
   packages: { t: 'الباقات', hash: 'packages', blocks: { head: 'العنوان', list: 'الباقات', cta: 'دعوة التواصل' } },
@@ -209,5 +261,40 @@ export function migrate(D, EN) {
   if (D.seo && D.seo.keywords === undefined) D.seo.keywords = DEFAULT.seo.keywords;
   D.design = D.design || {}; if (!D.design.pages) D.design.pages = {};
   if (!D._off) D._off = {};
+  // v7: الصفحة الرئيسية الجديدة + فيديو شمال الرياض (مرة واحدة)
+  if ((D._mig || 0) < 7) { D._mig = 7; D.design.sections = DEFAULT.design.sections.slice(); D.design.hidden = []; D.design.homeStyle = 'v7'; if (D.hero) { if (!D.hero.videoMobile) D.hero.videoMobile = DEFAULT.hero.videoMobile; if (!D.hero.poster || /hero-poster/.test(D.hero.poster)) D.hero.poster = DEFAULT.hero.poster; } }
+  // v9: صفحات الخدمات الفرعية + الباقات بعد الخدمات + صور المشاريع وأعمال الـ 3D (مرة واحدة)
+  syncSubs(D);
+  if ((D._mig || 0) < 8) {
+    D._mig = 8;
+    const sc = D.design.sections || (D.design.sections = DEFAULT.design.sections.slice());
+    const pi = sc.indexOf('packages'); if (pi >= 0) sc.splice(pi, 1);
+    const si = sc.indexOf('services'); sc.splice(si >= 0 ? si + 1 : sc.length, 0, 'packages');
+    const P = D.projects = D.projects || [];
+    P.forEach(p => { if (/الوعلان/.test(p.title || '') && /مكة/.test(p.title || '')) p.title = 'المعادن — طريق مكة'; if (/المينيا/.test(p.title || '')) p.title = 'المدرسة الأمريكية العالمية'; });
+    DEFAULT.projects.forEach(dp => {
+      const p = P.find(x => (x.title || '').trim() === dp.title);
+      if (p) { if (!p.img && dp.img) p.img = dp.img; if ((!p.gallery || !p.gallery.length) && dp.gallery && dp.gallery.length) p.gallery = JSON.parse(JSON.stringify(dp.gallery)); }
+      else if (NEW_PRJ.includes(dp)) P.push(JSON.parse(JSON.stringify(dp)));
+    });
+    if (Array.isArray(D.cats) && !D.cats.some(c => /3D/i.test(c))) D.cats.push('تصميم 3D');
+  }
+  if ((D._mig || 0) < 9) {
+    D._mig = 9;
+    const sc = D.design.sections; if (Array.isArray(sc) && !sc.includes('reviews')) { const fi = sc.indexOf('feature'); sc.splice(fi >= 0 ? fi + 1 : sc.length, 0, 'reviews'); }
+    const P = D.projects = D.projects || [];
+    P.forEach(p => { if (p.grp === undefined) p.grp = grpOf(p); if (/مساح/.test(p.cat || '') && !(p.gallery || []).length) p.gallery = SURVEY_GAL.map(x => ({ ...x })); });
+    if (!P.some(p => p.title === PLANS_PRJ.title)) P.push(JSON.parse(JSON.stringify(PLANS_PRJ)));
+  }
   return D;
 }
+/* لكل بند في الخدمة صفحة خاصة: تفاصيلها بتتعدّل من «الخدمات ← تفاصيل الخدمات الفرعية» */
+export const subBlank = name => ({ name, intro: '', docs: [], steps: [], dur: '', faq: [{ q: '', a: '' }] });
+function syncSubs(D) {
+  (D.services || []).forEach(s => {
+    if (!Array.isArray(s.subs)) s.subs = [];
+    (s.items || []).forEach(n => { if (!s.subs.some(x => x && x.name === n)) s.subs.push(subBlank(n)); });
+  });
+}
+syncSubs(DEFAULT);
+DEFAULT.projects.forEach(p => { if (p.grp === undefined) p.grp = grpOf(p); if (/مساح/.test(p.cat) && !(p.gallery || []).length) p.gallery = SURVEY_GAL.map(x => ({ ...x })); });

@@ -1,11 +1,12 @@
 // English overlay — same shape as DEFAULT; only text fields. Empty/missing → falls back to Arabic.
 export const EN = {
-  brand: { name: 'Saad M. Al-Shamrani Engineering Consultancy', short: 'Al-Shamrani Engineering', tagline: 'From plan to handover' },
+  brand: { name: 'Saad M. Al-Shamrani Engineering Consultancy', short: 'Al-Shamrani Engineering', tagline: 'From plan to handover', chatLabel: 'Chat with us' },
   contact: {
     address: 'Riyadh — Al-Arid District — Rayhana Bint Zaid St., 13338',
     hours: ['Saturday: 11 AM – 9 PM', 'Sunday – Wednesday: 9 AM – 9 PM', 'Thursday: 9 AM – 5 PM'],
     replyNote: 'We reply during working hours · Sat – Thu',
-    waText: 'Hello, I would like to request an engineering consultation.'
+    waText: 'Hello, I would like to request an engineering consultation.',
+    appLine: 'Get the app to follow your project'
   },
   hero: {
     eyebrow: 'Licensed engineering consultancy since 2016',
@@ -69,8 +70,31 @@ export const EN = {
     { tag: 'Services', title: 'Gas Retail Outlet', desc: 'Gas outlet with strict Civil Defence codes and dedicated alarm and fire-fighting systems.', loc: 'Riyadh', scope: 'Design & safety systems' },
     { tag: '3D Design', title: '3D Design — Architectural Models', desc: '3D models and perspectives showing the building and its finishes before construction starts.', loc: 'Riyadh', scope: 'Modelling & renders' },
     { tag: '3D Design', title: '3D Design — Restaurant', desc: 'Restaurant interior with 3D modelling of lighting, finishes and seating layout.', loc: 'Riyadh', scope: 'Interior design & modelling' },
-    { tag: 'Surveying', title: 'Surveying & Deeds', desc: 'Field surveys, survey reports, deed subdivision and merger, and unit sorting for individuals and developers.', loc: 'Riyadh · Bisha · Makkah', scope: 'Surveying & sorting' }
+    { tag: 'Surveying', title: 'Surveying & Deeds', desc: 'Field surveys, survey reports, deed subdivision and merger, and unit sorting for individuals and developers.', loc: 'Riyadh · Bisha · Makkah', scope: 'Surveying & sorting' },
+    { tag: 'Commercial · Retail', title: 'Zahrat Al-Tawfeer Markets', desc: 'Fire-safety systems design and approval follow-up for a retail store.', loc: 'Riyadh', scope: 'Safety systems design' },
+    { tag: 'Commercial · Retail', title: 'Abyat Markets', desc: 'Fire-safety systems design and approval follow-up for a retail store.', loc: 'Riyadh', scope: 'Safety systems design' },
+    { tag: 'Events', title: 'Mayadeen Company Event', desc: 'Safety requirements for a temporary event site.', loc: 'Riyadh', scope: 'Safety & security' },
+    { tag: 'Residential · Commercial', title: 'Mixed-use Building', desc: 'Mixed-use building (shops and apartments) with safety requirements for each use.', loc: 'Riyadh', scope: 'Safety & security' },
+    { tag: '3D · Facades', title: 'Classic Villa — “A villa telling Riyadh’s beauty”', desc: '3D facade design for a classic-style villa with architectural lighting.', loc: 'Riyadh', scope: '3D facade design' },
+    { tag: '3D · Facades', title: 'Modern Villa Facades', desc: 'A set of modern residential villa facade designs.', loc: 'Riyadh', scope: '3D facade design' },
+    { tag: '3D · Facades', title: 'Modern Residential Buildings', desc: 'Facade designs for multi-storey residential buildings.', loc: 'Riyadh', scope: '3D facade design' },
+    { tag: '3D · Facades', title: 'Classic Residential Buildings', desc: 'Residential building facades in a classic style.', loc: 'Riyadh', scope: '3D facade design' },
+    { tag: '3D · Facades', title: 'Mixed-use Building', desc: 'Ground-floor shops with apartments above.', loc: 'Riyadh', scope: '3D facade design' },
+    { tag: '3D · Facades', title: 'Commercial Building — Shop Row', desc: 'Commercial building with a row of shops and offices.', loc: 'Riyadh', scope: '3D facade design' },
+    { tag: '3D · Facades', title: 'Restaurant Facade', desc: 'Restaurant facade with upper-floor outdoor seating.', loc: 'Riyadh', scope: '3D facade design' },
+    { tag: '3D', title: 'Fuel Station', desc: '3D design of a fuel station and its canopy.', loc: 'Riyadh', scope: '3D design' },
+    { tag: '3D · Interior', title: 'Interior — Majlis', desc: 'Majlis interior with plan and colour palette.', loc: 'Riyadh', scope: '3D interior design' },
+    { tag: '3D · Interior', title: 'Interior — Living Area', desc: 'Living area interior with plan and colour palette.', loc: 'Riyadh', scope: '3D interior design' },
+    { tag: '3D · Interior', title: 'Interior — Villa Ground Floor', desc: 'Interior design of a villa ground floor.', loc: 'Riyadh', scope: '3D interior design' },
+    { tag: '3D · Interior', title: 'Interior — Master Bedrooms', desc: 'Master bedrooms with walk-in closets.', loc: 'Riyadh', scope: '3D interior design' },
+    { tag: '3D · Interior', title: 'Interior — Bedrooms', desc: 'A set of bedroom interior designs.', loc: 'Riyadh', scope: '3D interior design' },
+    { tag: '3D · Interior', title: 'Interior — Office', desc: 'Home office interior with plan and colour palette.', loc: 'Riyadh', scope: '3D interior design' },
+    { tag: '3D · Interior', title: 'Interior — Bathrooms', desc: 'Bathroom interior designs.', loc: 'Riyadh', scope: '3D interior design' },
+    { tag: 'Drawings', title: 'Architectural & Structural Drawings', desc: 'Construction architectural drawings and structural models with approved dimensions.', loc: 'Riyadh', scope: 'Architectural & structural design' }
   ],
+  workGroups: [{ title: 'Surveying', sub: 'Field surveys and land setting-out' }, { title: 'Fire safety', sub: 'Approved safety systems for commercial, residential and service buildings' }, { title: 'Drawings', sub: 'Construction architectural and structural drawings' }, { title: 'Facades', sub: '3D facade designs' }, { title: 'Interior design', sub: 'Majlis, bedrooms, living areas and bathrooms' }],
+  reviews: { title: 'What our clients say', sub: 'Real reviews from our clients — published after management review.' },
+  occasion: { text: '' },
   confidential: 'Much of our work is covered by confidentiality agreements with banks, healthcare providers and developers, and is published only with the owner\'s written consent. We prefer to state the actual scope rather than publish images that are not ours. The full portfolio is available on request.',
   gallery: [
     { title: 'Surveying Department', sub: 'Field survey with a total station' }, { title: 'Land Staking', sub: 'Fixing boundary points on site' },
