@@ -85,7 +85,7 @@ export const DEFAULT = {
       desc: 'ستّ عشرة خدمة ترخيصية نتولّاها بالكامل نيابةً عنك — من فتح المعاملة حتى صدور الرخصة أو شهادة الإشغال، دون أن تراجع أي جهة بنفسك.',
       items: ['إصدار رخص بناء', 'إصدار رخص هدم', 'إصدار رخص الترميم', 'تجديد رخص البناء', 'إضافة وتعديل مكونات البناء', 'إصدار شهادة الإشغال', 'رخص تسوير وملاحق', 'نقل ملكية رخصة البناء', 'إصدار رخصة تصحيح وضع مبنى قائم', 'إصدار تقرير فني', 'إصدار شهادة إتمام بناء', 'تجزئة ودمج الصكوك', 'إصدار رخصة تجهيز موقع', 'إصدار رخصة حفر بئر', 'تعديل الصكوك الإلكترونية', 'تحديث الصكوك الورقية'],
       fit: 'جميع المباني السكنية والتجارية داخل نطاق أمانات الرياض وعسير والعاصمة المقدسة' },
-    { id: 'survey', no: '03', title: 'الأعمال المساحية وتخطيط الأراضي', img: 'assets/img/work/w05.webp',
+    { id: 'survey', no: '03', title: 'الأعمال المساحية وتخطيط الأراضي', img: 'assets/img/work/w17.webp',
       short: 'إقرارات مساحية، رفع مساحي، تجزئة أراضٍ وفرز وحدات عقارية.',
       desc: 'رفع مساحي دقيق ومعاملات أراضٍ مكتملة — من الإقرار المساحي حتى فرز الوحدات العقارية.',
       items: ['إصدار إقرارات مساحية', 'أعمال الرفع المساحي', 'تجزئة الأراضي', 'فرز الوحدات العقارية'],
@@ -142,7 +142,7 @@ export const DEFAULT = {
     PLANS_PRJ
   ],
   workGroups: [
-    { key: 'المساحة', title: 'المساحة', sub: 'رفع مساحي وتحديد أراضي من الميدان', img: 'assets/img/work/w05.webp' },
+    { key: 'المساحة', title: 'المساحة', sub: 'رفع مساحي وتحديد أراضي من الميدان', img: 'assets/img/work/w17.webp' },
     { key: 'السلامة', title: 'السلامة', sub: 'أنظمة سلامة معتمدة لمنشآت تجارية وسكنية وخدمية', img: 'assets/img/projects/s-jawaher.webp' },
     { key: 'المخططات', title: 'المخططات', sub: 'مخططات معمارية وإنشائية تنفيذية', img: 'assets/img/floor-plan.webp' },
     { key: 'الواجهات', title: 'الواجهات', sub: 'تصاميم واجهات ثلاثية الأبعاد', img: 'assets/img/projects/r3d-villa.webp' },
@@ -224,7 +224,7 @@ export const DEFAULT = {
   popup: { on: false, title: '', text: '', btn: 'تواصل الآن', link: '', img: '', delay: 6 },
   support: { on: true, depts: ['استفسار عام', 'التصميم', 'الرخص والمعاملات', 'المساحة', 'الإشراف', 'السلامة', 'إدارة المشاريع', 'تصميم 3D', 'شكوى أو ملاحظة'] },
   offer: { on: false, title: 'عرض خاص لفترة محدودة', text: 'خصم على باقات الإشراف للعقود الموقعة هذا الشهر.', badge: 'عرض', img: '', until: '', btn: 'استفد من العرض', link: '#/request' },
-  design: { logo: '', font: 'kufi', logoSize: 100, heroLogo: true, heroLogoSize: 100, fontScale: 100, red: '#E1262B', gold: '#C9A24B', glass: true, cursorGlow: true, sections: ['offer', 'trust', 'services', 'packages', 'feature', 'reviews', 'steps', 'portal', 'faq', 'cta'], homeStyle: 'v7' },
+  design: { logo: '', font: 'kufi', logoSize: 100, heroLogo: true, heroLogoSize: 100, fontScale: 100, red: '#E1262B', gold: '#C9A24B', glass: true, cursorGlow: true, sections: ['offer', 'trust', 'services', 'packages', 'feature', 'reviews', 'steps', 'portal', 'faq', 'social', 'cta'], homeStyle: 'v7' },
   media: { title: 'تابعنا على السوشيال ميديا', sub: 'شغلنا في الميدان يومياً — فيديوهات وصور من مواقع المشاريع.', youtubeKey: '', youtube: [], tiktok: [], instagram: [], snapchat: [], x: [] },
   seo: { keywords: 'مكتب هندسي الرياض، استشارات هندسية، رخصة بناء، تصميم فلل، إشراف هندسي، رفع مساحي، دفاع مدني، تصميم معماري، تصميم إنشائي، الكهروميكانيك، مخططات، شركة سعد الشمراني', title: 'شركة سعد الشمراني للاستشارات الهندسية | تصميم، رخص، مساحة، إشراف، سلامة', desc: 'شركة استشارات هندسية مرخّصة في الرياض منذ 2016: تصميم معماري وإنشائي، رخص بناء، رفع مساحي، إشراف هندسي، وأنظمة سلامة — تحت سقف واحد.' }
 };
@@ -285,6 +285,12 @@ export function migrate(D, EN) {
     const P = D.projects = D.projects || [];
     P.forEach(p => { if (p.grp === undefined) p.grp = grpOf(p); if (/مساح/.test(p.cat || '') && !(p.gallery || []).length) p.gallery = SURVEY_GAL.map(x => ({ ...x })); });
     if (!P.some(p => p.title === PLANS_PRJ.title)) P.push(JSON.parse(JSON.stringify(PLANS_PRJ)));
+  }
+  if ((D._mig || 0) < 10) {
+    D._mig = 10;
+    const sc = D.design.sections; if (Array.isArray(sc)) { const si = sc.indexOf('social'); if (si >= 0) sc.splice(si, 1); const ci = sc.indexOf('cta'); sc.splice(ci >= 0 ? ci : sc.length, 0, 'social'); (D.design.hidden || []).includes('social') && (D.design.hidden = D.design.hidden.filter(x => x !== 'social')); }
+    const sv = (D.services || []).find(x => x.id === 'survey'); if (sv && (!sv.img || /work\/w05/.test(sv.img))) sv.img = 'assets/img/work/w17.webp';
+    const wg = (D.workGroups || []).find(x => x.key === 'المساحة'); if (wg && (!wg.img || /work\/w05/.test(wg.img))) wg.img = 'assets/img/work/w17.webp';
   }
   return D;
 }

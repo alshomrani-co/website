@@ -212,7 +212,7 @@ function offerBlock() {
     <a class="btn btn-gold" href="${esc(o.link || '#/request')}" ${ext(o.link || '')}>${esc(o.btn || t('request'))} ${I.arrow}</a></div></div></section>`;
 }
 const socialBlock = () => { const s = V().socials, m = V().media; const list = SOC.filter(x => s[x[0]]); if (!list.length) return '';
-  return `<section class="sec social-sec"><div class="wrap">${head(t('socialEy'), esc(m.title), m.sub)}<div class="soc-grid">${list.map((x, i) => `<a class="soc-tile s-${x[0]} rv d${i % 4}" href="${esc(s[x[0]])}" target="_blank" rel="noopener" data-ev="soc:${x[0]}"><span class="si">${I[x[1]]}</span><b>${socName(x)}</b><small>${esc(t('followOn', { p: socName(x) }))} ${I.arrow}</small></a>`).join('')}</div></div></section>`; };
+  return `<section class="sec social-sec compact"><div class="wrap">${head(t('socialEy'), esc(m.title), m.sub)}<div class="soc-grid">${list.map((x, i) => `<a class="soc-tile s-${x[0]} rv d${i % 4}" href="${esc(s[x[0]])}" target="_blank" rel="noopener" data-ev="soc:${x[0]}"><span class="si">${I[x[1]]}</span><b>${socName(x)}</b><small>${LANG === 'en' ? 'Tap here to open' : 'اضغط هنا للانتقال'} ${I.arrow}</small></a>`).join('')}</div></div></section>`; };
 const faqItem = (f) => `<details class="glass rv"><summary>${esc(f.q)}${f.cat ? `<span class="cat">${esc(f.cat)}</span>` : ''}</summary><div class="ans">${nl(f.a)}</div></details>`;
 
 /* ---------- pages ---------- */
@@ -244,26 +244,43 @@ function workCards() {
 }
 /* الأقسام بتقلّب لوحدها كل ٥ ثواني، وتقف لما العميل يلمسها */
 let xTimer = null;
+const xDur = sv => 1.7 + ((sv && sv.items) || []).length * .5; // كل الخدمات المشمولة تنوّر واحدة واحدة وبعدها ثانية
 function wireX() {
   clearInterval(xTimer); const sec = $('#services'), p = $('#h7X'); if (!sec || !p || !$('.h7-xi')) return;
-  const mob = () => matchMedia('(max-width:860px)').matches; let vis = false, hold = 0;
+  const mob = () => matchMedia('(max-width:860px)').matches; let vis = false, hold = 0, nextAt = Infinity, seen = false;
+  const arm = (el) => { const sv = V().services[+el.dataset.xi], d = xDur(sv); el.style.setProperty('--xd', d + 's'); el.classList.remove('run'); if (!hold) { void el.offsetWidth; el.classList.add('run'); } nextAt = Date.now() + d * 1000; };
   const show = (el, user) => { const i = +el.dataset.xi, sv = V().services[i]; if (!sv) return; $$('.h7-xi').forEach(x => { x.classList.toggle('on', x === el); x.setAttribute('aria-selected', x === el); x.classList.remove('run'); });
-    if (!user && !hold) { void el.offsetWidth; el.classList.add('run'); }
-    p.classList.add('sw'); setTimeout(() => { p.innerHTML = svcPanel(sv, i); if (user && mob()) { el.after(p); el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } p.classList.remove('sw'); }, mob() && user ? 0 : 180); };
+    p.classList.add('sw'); setTimeout(() => { p.innerHTML = svcPanel(sv, i); if (user && mob()) { el.after(p); el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } p.classList.remove('sw'); arm(el); }, mob() && user ? 0 : 180); };
   $$('.h7-xi').forEach(el => el.onclick = () => { hold = Date.now(); if (!el.classList.contains('on') || mob()) show(el, 1); });
-  sec.addEventListener('mouseenter', () => { hold = hold || 1; $$('.h7-xi.run').forEach(x => x.classList.remove('run')); }); sec.addEventListener('mouseleave', () => { if (hold === 1) hold = 0; });
+  sec.addEventListener('mouseenter', () => { if (!hold) hold = 1; $$('.h7-xi.run').forEach(x => x.classList.remove('run')); });
+  sec.addEventListener('mouseleave', () => { if (hold === 1) { hold = 0; const on = $('.h7-xi.on'); if (on) arm(on); } });
   { const on = $('.h7-xi.on'); if (on && mob()) on.after(p); }
-  try { new IntersectionObserver(e => { const was = vis; vis = e[0].isIntersecting; sec.classList.toggle('xin', vis || sec.classList.contains('xin')); if (vis && !was && !hold) { const on = $('.h7-xi.on'); on && (on.classList.remove('run'), void on.offsetWidth, on.classList.add('run')); } }, { threshold: .25 }).observe(sec); } catch (e) { vis = true; sec.classList.add('xin'); }
+  const start = () => { const on = $('.h7-xi.on'); if (!on) return; const i = +on.dataset.xi; p.innerHTML = svcPanel(V().services[i], i); arm(on); };
+  try { new IntersectionObserver(e => { vis = e[0].isIntersecting; if (vis) sec.classList.add('xin'); if (vis && !seen) { seen = true; start(); } }, { threshold: .25 }).observe(sec); } catch (e) { vis = true; sec.classList.add('xin'); seen = true; start(); }
   xTimer = setInterval(() => {
     if (!document.body.contains(sec)) return clearInterval(xTimer);
-    if (hold > 1 && Date.now() - hold > 10000) hold = 0;
-    if (!vis || hold || document.hidden) return;
+    if (hold > 1 && Date.now() - hold > 10000) { hold = 0; const on = $('.h7-xi.on'); if (on) arm(on); }
+    if (!vis || hold || document.hidden) { nextAt += 200; return; }
+    if (Date.now() < nextAt) return;
     const all = $$('.h7-xi'), cur = all.findIndex(x => x.classList.contains('on')); show(all[(cur + 1) % all.length]);
-  }, 5000);
+  }, 200);
 }
 let instEv = null;
 addEventListener('beforeinstallprompt', e => { e.preventDefault(); instEv = e; });
 addEventListener('appinstalled', () => { instEv = null; toast(LANG === 'en' ? 'App installed ✓' : 'التطبيق اتثبت ✓'); });
+// شريط «تثبيت التطبيق» تحت الشاشة على الجوال (بيرجع يظهر بعد ٣ أيام لو اتقفل)
+function initInstBar() {
+  const phone = document.documentElement.classList.contains('m-desk') || matchMedia('(pointer:coarse) and (max-width:900px)').matches;
+  if (!phone || PREVIEW || matchMedia('(display-mode: standalone)').matches || navigator.standalone) return;
+  let x = 0; try { x = +localStorage.getItem('sh.ibX') || 0; } catch (e) { } if (Date.now() - x < 3 * 864e5) return;
+  const en = LANG === 'en', ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const b = document.createElement('div'); b.className = 'inst-bar'; b.id = 'instBar';
+  b.innerHTML = `<button class="ib-x" aria-label="×">×</button><img src="assets/img/icon-192.png" alt=""><div><b>${en ? 'Al-Shamrani Engineering' : 'الشمراني للاستشارات الهندسية'}</b><small>${en ? 'Follow your project & chat with your engineer' : 'تابع مشروعك وكلّم المهندس من جوالك'}</small></div><button class="ib-go">${en ? 'Install' : 'تثبيت'}</button>`;
+  document.body.appendChild(b); document.documentElement.classList.add('has-ib');
+  $('.ib-go', b).onclick = () => { track('app:bar'); doInstall(ios ? 'ios' : 'android'); };
+  $('.ib-x', b).onclick = () => { try { localStorage.setItem('sh.ibX', String(Date.now())); } catch (e) { } b.remove(); document.documentElement.classList.remove('has-ib'); };
+  addEventListener('appinstalled', () => { b.remove(); document.documentElement.classList.remove('has-ib'); });
+}
 async function doInstall(k) {
   const en = LANG === 'en', ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   if (matchMedia('(display-mode: standalone)').matches) return toast(en ? 'The app is already installed ✓' : 'التطبيق متثبت عندك بالفعل ✓');
@@ -557,35 +574,37 @@ function paintWiz() {
   const depts = [...V().services.map(v => v.title), t('general')];
   let h = '';
   if (st === 0) h = `<h3>${t('q1')}</h3><div class="opts">${depts.map(d => `<button class="opt ${wiz.s === d ? 'on' : ''}" data-v="${esc(d)}" data-k="s">${esc(d)}</button>`).join('')}</div>`;
-  if (st === 1) h = `<h3>${t('q2')}</h3><div class="opts">${t('types').map(d => `<button class="opt ${wiz.type === d ? 'on' : ''}" data-v="${esc(d)}" data-k="type">${esc(d)}</button>`).join('')}</div><div class="fld" style="margin-top:16px"><label>${t('cityL')}</label><input id="wCity" value="${esc(wiz.city)}" placeholder="${t('cityP')}"></div>`;
+  const TY = t('types'), OTH = TY[TY.length - 1];
+  if (st === 1) h = `<h3>${t('q2')}</h3><div class="opts">${TY.map(d => `<button class="opt ${wiz.type === d ? 'on' : ''}" data-v="${esc(d)}" data-k="type">${esc(d)}</button>`).join('')}</div>${wiz.type === OTH ? `<div class="fld wz-oth"><label>${LANG === 'en' ? 'What type of project?' : 'اكتب نوع مشروعك'}</label><input id="wOther" maxlength="80" value="${esc(wiz.other || '')}" placeholder="${LANG === 'en' ? 'e.g. mosque, farm, rest house…' : 'مثلاً: مسجد، مزرعة، استراحة…'}"></div>` : ''}<div class="fld" style="margin-top:16px"><label>${t('cityL')}</label><input id="wCity" value="${esc(wiz.city)}" placeholder="${t('cityP')}"></div>`;
   if (st === 2) h = `<h3>${t('q3')}</h3><div class="form"><div class="fld"><label>${t('msgL')}</label><textarea id="wMsg" rows="4" maxlength="1500" placeholder="${t('msgP')}">${esc(wiz.msg)}</textarea></div>
     <div class="drop" id="wDrop">${wiz.img ? `<img src="${wiz.img}" alt="">${t('changeImg')}` : t('attach')}<input type="file" accept="image/*" id="wFile"></div></div>`;
   if (st === 3) h = `<h3>${t('q4')}</h3><div class="form"><div class="row"><div class="fld"><label>${t('nameL')}</label><input id="wName" value="${esc(wiz.name)}" maxlength="80" autocomplete="name"></div><div class="fld"><label>${t('phoneL')}</label><input id="wPhone" value="${esc(wiz.phone)}" inputmode="tel" dir="ltr" maxlength="15" placeholder="05xxxxxxxx" autocomplete="tel"><span class="hint">${t('phoneH')}</span></div></div>
-    <div class="fld" style="background:var(--paper2);border-radius:14px;padding:14px;font-size:14px"><b>${t('summary')}</b> ${esc(wiz.s)} · ${esc(wiz.type || '—')} · ${esc(wiz.city || '—')}</div></div><p class="err" id="wErr"></p>`;
+    <div class="fld" style="background:var(--paper2);border-radius:14px;padding:14px;font-size:14px"><b>${t('summary')}</b> ${esc(wiz.s)} · ${esc(wiz.type === OTH && wiz.other ? wiz.other : (wiz.type || '—'))} · ${esc(wiz.city || '—')}</div></div><p class="err" id="wErr"></p>`;
   if (st === 4) h = `<div class="ticket-ok"><svg class="check-anim" viewBox="0 0 84 84"><circle cx="42" cy="42" r="38"/><path d="M26 43l11 11 21-23"/></svg><h3 style="margin:0">${t('gotIt')}</h3><p style="color:var(--mut)">${t('yourNo')}</p><div class="code">${esc(wiz.code)}</div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:8px"><button class="btn btn-ghost sm" id="cpCode">${t('copyNo')}</button><a class="btn btn-red sm" href="${wa(`${t('aboutReq')}${wiz.code}\n${wiz.s}\n${wiz.type} — ${wiz.city}\n${wiz.msg}`)}" target="_blank" rel="noopener">${I.wa} ${t('sendWaToo')}</a><a class="btn btn-ink sm" href="#/track?c=${esc(wiz.code)}">${t('trackIt')}</a></div></div>`;
   w.innerHTML = (st < 4 ? bar : '') + h + (st < 4 ? `<div class="wiz-acts">${st ? `<button class="btn btn-ghost sm" id="wBack">${t('back')}</button>` : '<span></span>'}<button class="btn btn-red" id="wNext">${st === 3 ? t('send') : t('nextB')}</button></div>` : '');
-  $$('.opt', w).forEach(b => b.onclick = () => { wiz[b.dataset.k] = b.dataset.v; if (st === 0) wiz.step = 1; paintWiz(); });
+  $$('.opt', w).forEach(b => b.onclick = () => { save(); wiz[b.dataset.k] = b.dataset.v; if (st === 0) wiz.step = 1; paintWiz(); if (b.dataset.v === OTH) setTimeout(() => { const o = $('#wOther'); if (o) o.focus(); }, 30); });
   const f = $('#wFile'); if (f) f.onchange = async () => { if (!f.files[0]) return; const F = await fb(); wiz.img = await F.compressImage(f.files[0], 1400, .72); paintWiz(); };
   const back = $('#wBack'); if (back) back.onclick = () => { save(); wiz.step--; paintWiz(); };
   const nx = $('#wNext'); if (nx) nx.onclick = async () => {
     save();
     if (st === 0 && !wiz.s) return toast(t('pickSvc'));
     if (st === 1 && !wiz.type) return toast(t('pickType'));
+    if (st === 1 && wiz.type === OTH && !(wiz.other || '').trim()) { const o = $('#wOther'); if (o) o.focus(); return toast(LANG === 'en' ? 'Write your project type' : 'اكتب نوع مشروعك'); }
     if (st === 2 && wiz.msg.trim().length < 3 && !wiz.img) return toast(t('writeDet'));
     if (st === 3) {
       const ph = toEnDigits(wiz.phone).replace(/\D/g, '');
       if (wiz.name.trim().length < 2) return $('#wErr').textContent = t('writeName');
       if (ph.length < 9) return $('#wErr').textContent = t('writePhone');
       nx.disabled = true; nx.textContent = t('sending');
-      try { wiz.code = await createTicket({ name: wiz.name.trim(), phone: ph, dept: wiz.s, ptype: wiz.type, city: wiz.city, msg: wiz.msg.trim(), img: wiz.img }); wiz.step = 4; paintWiz(); }
+      try { wiz.code = await createTicket({ name: wiz.name.trim(), phone: ph, dept: wiz.s, ptype: wiz.type === OTH ? `${wiz.type}: ${(wiz.other || '').trim()}` : wiz.type, city: wiz.city, msg: wiz.msg.trim(), img: wiz.img }); wiz.step = 4; paintWiz(); }
       catch (e) { $('#wErr').innerHTML = `${t('sendFail')} <a style="color:var(--red)" target="_blank" href="${wa(`${wiz.s}\n${wiz.type} — ${wiz.city}\n${wiz.msg}\n${wiz.name} ${wiz.phone}`)}">${t('sendFail2')}</a>`; nx.disabled = false; nx.textContent = t('send'); }
       return;
     }
     wiz.step++; paintWiz(); $('#wiz').scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
   const cp = $('#cpCode'); if (cp) cp.onclick = () => copy(wiz.code);
-  function save() { const g = id => $('#' + id); if (g('wCity')) wiz.city = g('wCity').value; if (g('wMsg')) wiz.msg = g('wMsg').value; if (g('wName')) wiz.name = g('wName').value; if (g('wPhone')) wiz.phone = g('wPhone').value; }
+  function save() { const g = id => $('#' + id); if (g('wCity')) wiz.city = g('wCity').value; if (g('wOther')) wiz.other = g('wOther').value; if (g('wMsg')) wiz.msg = g('wMsg').value; if (g('wName')) wiz.name = g('wName').value; if (g('wPhone')) wiz.phone = g('wPhone').value; }
 }
 const toEnDigits = s => String(s || '').replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
 const ALPH = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -1003,12 +1022,25 @@ function paintChat() {
   const add = (cls, html) => { const el = document.createElement('div'); el.className = 'bm ' + cls; el.innerHTML = html; box.appendChild(el); };
   const tk = (c, ttl) => `<i class="tk" title="${ttl}">${c === '✓' ? '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3 3 7-7"/></svg>' : '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5"/></svg>'}</i>`;
   if (!serverMsgs.some(x => x.from === 's')) add('bt', esc(ENG_HI()));
-  serverMsgs.filter(x => !x.sys).forEach(x => x.from === 'c' ? add('me', tk('✓', '') + fileHtml(x.file) + (x.text ? nl(x.text) : '')) : add('bt staff', `<b class="who">${esc(x.by || t('team'))}</b>` + fileHtml(x.file) + (x.text ? nl(x.text) : '')));
+  const en = LANG === 'en', DEL = `<i class="m-del">🚫 ${en ? 'This message was deleted' : 'تم حذف هذه الرسالة'}</i>`, ED = `<small class="m-ed">${en ? 'edited' : 'معدّلة'}</small>`;
+  serverMsgs.filter(x => !x.sys).forEach(x => { if (x.del) return add((x.from === 'c' ? 'me' : 'bt staff') + ' deleted', DEL); const body = fileHtml(x.file) + (x.text ? nl(x.text) : '') + (x.ed ? ED : '');
+    if (x.from === 'c') { add('me mine', tk('✓', '') + body + `<button type="button" class="m-x" data-del="${x.at}">🗑 ${en ? 'Delete' : 'حذف'}</button>`); box.lastChild.dataset.at = x.at; } else add('bt staff', `<b class="who">${esc(x.by || t('team'))}</b>` + body); });
   chatQ().forEach(x => add('me pend', tk('⏳', LANG === 'en' ? 'Sending…' : 'جارٍ الإرسال') + fileHtml(x.file, 1) + (x.text ? nl(x.text) : '')));
   $$('.cm-img[data-mid]:not([src])', box).forEach(async im => { try { const m = await mediaGet(im.dataset.mid); if (m) im.src = m.data; } catch (e) { } });
-  $$('.cm-img', box).forEach(im => im.onclick = () => im.src && lbOpen([{ src: im.src, cap: '' }], 0));
+  $$('.cm-img', box).forEach(im => im.onclick = e => { e.stopPropagation(); im.src && lbOpen([{ src: im.src, cap: '' }], 0); });
+  $$('.bm.mine', box).forEach(el => el.onclick = e => { if (e.target.closest('.m-x,.cm-pdf,.cm-img')) return; const on = el.classList.contains('sel'); $$('.bm.sel', box).forEach(x => x.classList.remove('sel')); if (!on) el.classList.add('sel'); });
+  $$('.m-x', box).forEach(b => b.onclick = e => { e.stopPropagation(); if (confirm(LANG === 'en' ? 'Delete this message for everyone?' : 'تحذف الرسالة دي عندك وعند المهندس؟')) delMsg(+b.dataset.del); });
   $$('.cm-pdf', box).forEach(b => b.onclick = async () => { try { const m = await mediaGet(b.dataset.mid); if (!m) return; const bl = await (await fetch(m.data)).blob(); window.open(URL.createObjectURL(bl), '_blank'); } catch (e) { toast(t('connErr')); } });
   box.scrollTop = 1e6;
+}
+// العميل بيحذف رسالته (بتتمسح عند الكل)
+async function delMsg(at) {
+  try { const F = await fb(), ref = F.doc(F.db, 'chats', chatId);
+    let mid = null;
+    await F.runTransaction(F.db, async tx => { const d = await tx.get(ref); if (!d.exists()) return; const msgs = (d.data().msgs || []).map(m => { if (m.from === 'c' && m.at === at && !m.sys) { if (m.file) mid = m.file.id; return { from: 'c', at, del: true, text: '' }; } return m; }); tx.update(ref, { msgs, upd: F.serverTimestamp() }); });
+    serverMsgs = serverMsgs.map(m => m.from === 'c' && m.at === at ? { from: 'c', at, del: true, text: '' } : m); paintChat();
+    if (mid) F.deleteDoc(F.doc(F.db, 'chatmedia', mid)).catch(() => { });
+  } catch (e) { toast(t('connErr')); }
 }
 function fabBadge() { const f = $('#botFab'); if (!f) return; f.dataset.n = unreadC || ''; f.classList.toggle('has-n', !!unreadC); if ($('#botMini')) botMini(true); }
 let snapOn = false;
@@ -1086,7 +1118,7 @@ function boot() {
   $('#lb').insertAdjacentHTML('beforeend', `<button class="lb-nav p" aria-label="prev">${I.prev}</button><button class="lb-nav n" aria-label="next">${I.next}</button>`); $('#lb .lb-nav.p').onclick = () => lbStep(LANG === 'en' ? -1 : 1); $('#lb .lb-nav.n').onclick = () => lbStep(LANG === 'en' ? 1 : -1);
   { let sx = 0; $('#lb').addEventListener('touchstart', e => { sx = e.touches[0].clientX; }, { passive: true }); $('#lb').addEventListener('touchend', e => { const dx = e.changedTouches[0].clientX - sx; if (Math.abs(dx) > 50) lbStep(dx > 0 ? 1 : -1); }); }
   document.addEventListener('touchstart', () => { }, { passive: true }); // يفعّل تأثير الضغط :active على الآيفون
-  chrome(); render(); initBot(); initTease(); initHold(); popup(); initGlow(); initWa(); initStats();
+  chrome(); render(); initBot(); initTease(); initHold(); popup(); initGlow(); initWa(); initStats(); initInstBar();
   loadRemote();
 }
 boot();

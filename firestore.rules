@@ -222,6 +222,7 @@ service cloud.firestore {
     match /stats/{day} {
       allow read: if hasMod('cms');
       allow create, update: if request.resource.data.size() < 40;
+      allow delete: if isOwner();
     }
     match /presence/{sid} {
       allow read: if hasMod('cms');
@@ -240,7 +241,10 @@ service cloud.firestore {
         || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['msgs', 'upd', 'unread'])
             && request.resource.data.msgs.size() == resource.data.msgs.size() + 1
             && request.resource.data.msgs.size() <= 400)
-        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['seenAt']);
+        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['seenAt'])
+        // العميل بيحذف رسالته (نفس عدد الرسايل)
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['msgs', 'upd'])
+            && request.resource.data.msgs.size() == resource.data.msgs.size());
     }
     match /clients/{no} {
       allow read: if hasMod('report') || hasMod('reports');
@@ -255,7 +259,8 @@ service cloud.firestore {
   
     match /chatmedia/{id} {
       allow get: if true;
-      allow list, delete: if hasMod('support');
+      allow list: if hasMod('support');
+      allow delete: if hasMod('support') || resource.data.by == 'c';
       allow create: if request.resource.data.data is string && request.resource.data.data.size() < 1000000
         && request.resource.data.chat is string
         && exists(/databases/$(database)/documents/chats/$(request.resource.data.chat))
