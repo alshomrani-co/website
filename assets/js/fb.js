@@ -4,14 +4,14 @@ const { firebaseConfig, OWNER_UID, EMAIL_DOMAIN } = CFG;
 export const OWNER_UIDS = [OWNER_UID, ...((CFG.OWNER_UIDS || []).filter(Boolean))];
 export const isOwnerUid = uid => !!uid && OWNER_UIDS.includes(uid);
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, setPersistence, indexedDBLocalPersistence, browserSessionPersistence, updatePassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, sendPasswordResetEmail, updateProfile, EmailAuthProvider, linkWithCredential, fetchSignInMethodsForEmail } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, setPersistence, indexedDBLocalPersistence, browserSessionPersistence, updatePassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, sendPasswordResetEmail, updateProfile, EmailAuthProvider, linkWithCredential, fetchSignInMethodsForEmail, reauthenticateWithCredential, reauthenticateWithPopup } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { initializeFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, collection, getDocs, query, where, orderBy, limit, onSnapshot, serverTimestamp, arrayUnion, Timestamp, increment, runTransaction, writeBatch, deleteField } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 // الاتصال بيتحوّل لوحده لطريقة بديلة لو المتصفح (زي متصفح واتساب الداخلي) قاطع الاتصال المباشر
 export const db = initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
-export { GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, sendPasswordResetEmail, updateProfile, EmailAuthProvider, linkWithCredential, fetchSignInMethodsForEmail };
+export { reauthenticateWithCredential, reauthenticateWithPopup, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, sendPasswordResetEmail, updateProfile, EmailAuthProvider, linkWithCredential, fetchSignInMethodsForEmail };
 export { OWNER_UID, EMAIL_DOMAIN, onAuthStateChanged, signInWithEmailAndPassword, signOut, createUserWithEmailAndPassword, setPersistence, indexedDBLocalPersistence, browserSessionPersistence, updatePassword,
   doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc, collection, getDocs, query, where, orderBy, limit, onSnapshot, serverTimestamp, arrayUnion, Timestamp, increment, runTransaction, writeBatch, deleteField };
 

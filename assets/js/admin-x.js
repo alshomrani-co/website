@@ -150,6 +150,31 @@ const DEV = { iphone: '📱 آيفون', android: '🤖 أندرويد', ipad: '
 const PAGES = { home: 'الرئيسية', services: 'الخدمات', service: 'صفحة خدمة', projects: 'أعمالنا', packages: 'الباقات', about: 'من نحن', contact: 'تواصل معنا', support: 'الدعم الفني', request: 'اطلب خدمة', track: 'تتبع طلب', media: 'السوشيال' };
 const EVS = { wa: '💬 ضغط واتساب', call: '📞 ضغط اتصال', bot: '🤖 فتح المساعد', chat: '🧑‍💼 بدأ محادثة مع موظف', 'soc:youtube': 'يوتيوب', 'soc:tiktok': 'تيك توك', 'soc:instagram': 'إنستجرام', 'soc:snapchat': 'سناب شات', 'soc:x': 'إكس' };
 const dk = d => new Date(d.getTime() + 3 * 3600e3).toISOString().slice(0, 10);
+/* تصفير كل الإحصائيات: بيتطلب باسورد حساب المالك، وبينزّل نسخة احتياطية قبل المسح */
+function resetStats(c, done) {
+  const F = c.F, u = F.auth.currentUser; if (!u) return;
+  if (!c.isOwner()) return c.toast('التصفير للمالك بس', 1);
+  const pw = (u.providerData || []).some(p => p.providerId === 'password');
+  const box = document.createElement('div'); box.className = 'modal-back'; box.innerHTML = `<div class="card rs-card"><h3>🔒 تصفير كل الإحصائيات</h3><p class="desc" style="margin:6px 0 12px">هيتمسح كل اللي في الصفحة: الزيارات والدول والمدن والأجهزة والمصادر والصفحات والتفاعل، وتبدأ العدّ من الصفر. قبل المسح هتنزل عندك نسخة احتياطية (ملف JSON).</p>${pw ? `<div class="fld"><label>اكتب باسورد حسابك للتأكيد</label><input type="password" id="rsPw" autocomplete="current-password"></div>` : '<p class="hint">هيطلب منك تأكيد الدخول بحساب جوجل.</p>'}<p class="err" id="rsErr" style="color:#c0262b;min-height:18px"></p><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn btn-ghost sm" id="rsNo">إلغاء</button><button class="btn btn-red sm" id="rsGo">تصفير الكل</button></div></div>`;
+  document.body.appendChild(box); const close = () => box.remove(); $('#rsNo', box).onclick = close; box.onclick = e => { if (e.target === box) close(); };
+  const pi = $('#rsPw', box); if (pi) { pi.focus(); pi.onkeydown = e => { if (e.key === 'Enter') $('#rsGo', box).click(); }; }
+  $('#rsGo', box).onclick = async () => {
+    const b = $('#rsGo', box), er = $('#rsErr', box); er.textContent = ''; b.disabled = true; b.textContent = 'جارٍ التأكد…';
+    try {
+      if (pw) { const v = pi.value; if (!v) throw { code: 'empty' }; await F.reauthenticateWithCredential(u, F.EmailAuthProvider.credential(u.email, v)); pi.value = ''; }
+      else await F.reauthenticateWithPopup(u, new F.GoogleAuthProvider());
+    } catch (e) { b.disabled = false; b.textContent = 'تصفير الكل'; er.textContent = e && e.code === 'empty' ? 'اكتب الباسورد' : (/wrong-password|invalid-credential|invalid-login/.test((e && e.code) || '') ? 'الباسورد غلط' : F.authMsg(e)); return; }
+    b.textContent = 'جارٍ المسح…';
+    try {
+      const st = await F.getDocs(F.collection(c.db, 'stats')), pr = await F.getDocs(F.collection(c.db, 'presence'));
+      const backup = {}; st.docs.forEach(d => { const x = { ...d.data() }; delete x.upd; backup[d.id] = x; });
+      try { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(backup, null, 1)], { type: 'application/json' })); a.download = 'shamrani-stats-backup-' + new Date().toISOString().slice(0, 10) + '.json'; document.body.appendChild(a); a.click(); a.remove(); } catch (x) { }
+      await Promise.all([...st.docs.map(d => F.deleteDoc(F.doc(c.db, 'stats', d.id))), ...pr.docs.map(d => F.deleteDoc(F.doc(c.db, 'presence', d.id)).catch(() => { }))]);
+      await F.setDoc(F.doc(c.db, 'site', 'stats'), { from: '', resetAt: F.serverTimestamp(), at: F.serverTimestamp() });
+      close(); c.toast('اتصفّر كل حاجة ✓ — الأرقام هتبدأ من جديد'); done();
+    } catch (e) { b.disabled = false; b.textContent = 'تصفير الكل'; er.textContent = F.authMsg(e); }
+  };
+}
 async function vStats(mp, c, days = 30) {
   const F = c.F;
   mp.innerHTML = `<h2>الإحصائيات والزوار</h2><p class="desc">الزوار مجهولين الهوية: بنعرف الدولة والمدينة والجهاز والمصدر بس. زيارات الموظفين مش بتتحسب.</p>
@@ -157,8 +182,8 @@ async function vStats(mp, c, days = 30) {
   $('#per').onclick = e => { const b = e.target.closest('button'); if (b) vStats(mp, c, +b.dataset.n); };
   // تصفير العدّاد: الأرقام بتبدأ من تاريخ معيّن، والقديمة بتستخبى من غير ما تتمسح
   let from = ''; try { const s = await F.getDoc(F.doc(c.db, 'site', 'stats')); from = s.exists() ? (s.data().from || '') : ''; } catch (e) { }
-  $('#per').insertAdjacentHTML('afterend', `<div style="display:flex;gap:8px;flex-wrap:wrap;margin:-6px 0 14px;align-items:center">${from ? `<span class="chip warn">العدّاد متصفّر من ${c.esc(from)}</span><button class="btn btn-ghost sm" id="stUndo">↩ إظهار الأرقام القديمة</button>` : ''}<button class="btn btn-ghost sm" id="stReset" style="color:var(--red)">🔄 تصفير عدّاد الزوار</button></div>`);
-  $('#stReset').onclick = async () => { if (!confirm('تصفّر عدّاد الزوار وتبدأ العدّ من النهارده؟\n\nالأرقام القديمة مش هتتمسح — تقدر ترجّعها بزرار «إظهار الأرقام القديمة».')) return; try { await F.setDoc(F.doc(c.db, 'site', 'stats'), { from: dk(new Date()), at: F.serverTimestamp() }); c.toast('اتصفّر ✓'); vStats(mp, c, days); } catch (e) { c.toast(F.authMsg(e), 1); } };
+  $('#per').insertAdjacentHTML('afterend', `<div style="display:flex;gap:8px;flex-wrap:wrap;margin:-6px 0 14px;align-items:center">${from ? `<span class="chip warn">العدّاد متصفّر من ${c.esc(from)}</span><button class="btn btn-ghost sm" id="stUndo">↩ إظهار الأرقام القديمة</button>` : ''}<button class="btn btn-ghost sm" id="stReset" style="color:var(--red)">🔒 تصفير كل الإحصائيات</button></div>`);
+  $('#stReset').onclick = () => resetStats(c, () => vStats(mp, c, days));
   const su = $('#stUndo'); if (su) su.onclick = async () => { try { await F.setDoc(F.doc(c.db, 'site', 'stats'), { from: '', at: F.serverTimestamp() }); c.toast('رجعت ✓'); vStats(mp, c, days); } catch (e) { c.toast(F.authMsg(e), 1); } };
   const now = new Date(), keys = []; for (let i = days - 1; i >= 0; i--) { const k = dk(new Date(now.getTime() - i * 864e5)); if (!from || k >= from) keys.push(k); }
   let docs;

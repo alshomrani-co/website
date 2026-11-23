@@ -1053,11 +1053,9 @@ html[dir=ltr] .h7-xi .ar svg,html[dir=ltr] .h7-x-ul svg,html[dir=ltr] .sub-rel s
 .sub-f .btn{width:100%;justify-content:center}
 @media (max-width:860px){
  /* الموبايل: اللوجو والاسم ظاهرين دايماً يمين، والروابط في الصف التاني */
- .hdr:not(.scrolled) .brand{max-width:none;opacity:1;pointer-events:auto}
  .hdr .brand .mark img{width:34px;height:auto}
  .nav .nav-pk{display:none}
  .nav{justify-content:flex-start}
- .h7-logo{display:none}
  .h7-app{margin-top:20px;gap:10px}
  .h7-app-t{width:100%;font-size:14px}
  .h7-store{padding:6px 12px}
@@ -1240,3 +1238,42 @@ html[dir=rtl] .bot-mini{left:22px}html[dir=ltr] .bot-mini{right:22px}
 html[data-occ] .h7-h1 em{color:var(--gold)}
 @media (max-width:860px){.ct-a b.ct-mail{font-size:14px;word-break:break-all}.ct-c.wide .ct-a{min-width:0}}
 @media (max-width:860px){.occ-fx .ln{display:none}.occ-fx .cr{top:auto;bottom:150px;inset-inline-end:6%;width:40px}}
+/* v11: الأقسام تنزل بعد ما كل الخدمات المشمولة تنوّر */
+.h7-xi.run::after{animation:chipBar var(--xd,5s) linear forwards}
+.h7-x-ul li a{animation:itGlow .95s calc(.3s + var(--gi) * .5s) ease-in-out 1 both}
+.h7-x-ul li a span{animation:arNudge .95s calc(.3s + var(--gi) * .5s) ease-in-out 1}
+html[dir=ltr] .h7-x-ul li a span{animation-name:arNudgeL}
+@keyframes itGlow{0%{box-shadow:none}40%{border-color:var(--red);box-shadow:0 0 0 3px color-mix(in srgb,var(--red) 25%,transparent),0 0 20px color-mix(in srgb,var(--red) 40%,transparent);color:var(--red);transform:translateY(-1px)}100%{box-shadow:none;transform:none}}
+/* السوشيال: أصغر ومكانها تحت */
+.social-sec.compact{padding:56px 0}
+.social-sec.compact .soc-grid{gap:12px;max-width:980px;margin-inline:auto}
+.social-sec.compact .soc-tile{padding:18px 12px 16px;border-radius:20px;gap:6px}
+.social-sec.compact .soc-tile .si{width:50px;height:50px;border-radius:15px}
+.social-sec.compact .soc-tile .si svg{width:26px;height:26px}
+.social-sec.compact .soc-tile b{font-size:15px}
+.social-sec.compact .soc-tile small{font-size:12px;background:rgba(255,255,255,.18);padding:4px 10px;border-radius:999px}
+.s-snapchat.soc-tile small{background:rgba(0,0,0,.08)}
+.wz-oth{margin-top:14px;animation:h7up .3s both}
+.bm.mine{cursor:pointer}
+.bm .m-x{display:none;margin-top:6px;border:0;background:rgba(255,255,255,.22);color:inherit;border-radius:999px;padding:4px 10px;font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.bm.sel .m-x{display:inline-block}
+.bm.deleted{opacity:.75}.m-del{font-style:italic;font-size:13px}
+.m-ed{display:block;font-size:10.5px;opacity:.65;margin-top:2px}
+/* v11: الجوال = شكل الكمبيوتر مصغّر، والعناصر العائمة بحجم الصباع */
+html.m-desk :is(.bot-fab,.wa-fab,.top-btn,.bot-mini,.bot-tease,.toast,.hold-hint,.inst-bar){zoom:var(--mk)}
+html.m-desk .bot{zoom:var(--mk);width:calc(var(--mw) * 1px - 20px);height:calc(var(--mh) * 1px - 90px);bottom:10px}
+html[dir=rtl].m-desk .bot{left:10px}html[dir=ltr].m-desk .bot{right:10px}
+html.m-desk .modal-card{zoom:var(--mk);max-width:calc(var(--mw) * 1px - 24px)}
+html.m-desk .more-panel{zoom:var(--mk);width:calc(var(--mw) * 1px - 20px)}
+html.m-desk .modal{padding:10px}
+/* شريط تثبيت التطبيق (الجوال بس) */
+.inst-bar{position:fixed;inset-inline:0;bottom:0;z-index:80;display:flex;align-items:center;gap:10px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:color-mix(in srgb,var(--paper) 92%,transparent);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border-top:1px solid var(--line);box-shadow:0 -10px 30px -18px rgba(0,0,0,.35);animation:ibIn .45s cubic-bezier(.2,.8,.2,1) both}
+@keyframes ibIn{from{transform:translateY(100%)}to{transform:none}}
+.inst-bar img{width:44px;height:44px;border-radius:12px;flex:none;box-shadow:0 4px 10px -6px rgba(0,0,0,.4)}
+.inst-bar div{flex:1;min-width:0;display:grid;gap:1px}
+.inst-bar b{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.inst-bar small{font-size:11.5px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.inst-bar .ib-go{flex:none;background:var(--red);color:#fff;border:0;border-radius:999px;padding:9px 16px;font:inherit;font-weight:800;font-size:14px;cursor:pointer}
+.inst-bar .ib-x{flex:none;width:30px;height:30px;border-radius:50%;border:0;background:rgba(127,127,127,.15);font-size:16px;cursor:pointer;color:inherit}
+html.has-ib .bot-fab{bottom:158px}html.has-ib .wa-fab,html.has-ib .top-btn{bottom:88px}html.has-ib .bot-mini{bottom:158px}
+html.has-ib .bot-tease{bottom:228px}
