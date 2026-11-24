@@ -1,46 +1,26 @@
-// قسم المعماري: ملف المشروع (من الرخصة والصك) ← المستندات (تقرير فني، تعهد المالك، …) ← مراجعة إجبارية ← PDF
+// قسم المعماري: ملف المشروع ← 10 مستندات منفصلة، كل واحد بشكل ورقته الأصلية ← مراجعة إجبارية ← PDF
 import './click.js';
 import * as F from './fb.js';
-import { readDoc, pdfPages, nk, num } from './docread.js';
+import { readDoc, fileToImages, fileURL, shrink, isPdf, aiRead, aiReady, fromAI, nk, num } from './docread.js';
 import { hijri, greg } from './geo.js';
-const { auth, db } = F;
+import { initAI, aiBox, wireAiBox, pdfBar, autoPrint } from './deptcommon.js';
+import * as D from './archdocs.js';
+const { auth, db } = F, { DOCS, NEEDS, LABELS, DIRS, TXT } = D;
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const root = $('#root');
-function toast(t, bad) { const e = $('#toast'); e.textContent = t; e.className = 'toast on' + (bad ? ' bad' : ''); clearTimeout(e._t); e._t = setTimeout(() => e.className = 'toast', 3000); }
-const f2 = v => isFinite(v) && v !== '' ? (+v).toFixed(2) : '';
-const DIRS = { N: 'شمال', S: 'جنوب', E: 'شرق', W: 'غرب' };
-const DAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-
+function toast(t, bad) { const e = $('#toast'); e.textContent = t; e.className = 'toast on' + (bad ? ' bad' : ''); clearTimeout(e._t); e._t = setTimeout(() => e.className = 'toast', 3200); }
+const f2 = v => isFinite(num(v)) && v !== '' ? num(v).toFixed(2) : '';
 let me = null, emp = null, isOwner = false, S = null;
 const can = m => isOwner || (emp && emp.active !== false && Array.isArray(emp.mods) && emp.mods.includes(m));
 
-/* المستندات: الاتنين الأولين جاهزين للموافقة على التصميم، والباقي بعد الاعتماد */
-export const DOCS = [
-  { k: 'tech', t: 'التقرير الفني', ready: 1 },
-  { k: 'owner', t: 'تعهد المالك', ready: 1 },
-  { k: 'facade', t: 'نموذج الواجهات' }, { k: 'loads', t: 'شهادة الأحمال' }, { k: 'letter', t: 'خطاب تعديل / تجديد' },
-  { k: 'insurance', t: 'تعهد التأمين' }, { k: 'waste', t: 'تعهد المخلفات' }, { k: 'office', t: 'تعهد المكتب المشرف' },
-  { k: 'decl', t: 'إقرار المكتب' }, { k: 'fence', t: 'تعهد السور' }
-];
-const PLEDGE = [
-  'التعاقد مع مكتب هندسي مصمم ومشرف معتمد ومقاول نظامي معتمد لدى الهيئة السعودية للمقاولين، وأتحمل المسؤولية الكاملة في حالة حدوث أي مخالفة أو عدم الالتزام بالشروط والأنظمة، وأتعهد بإيقاف العمل بالمشروع فوراً، وللأمانة اتخاذ الإجراءات التي تراها مناسبة ضدي وتطبيق ما تقتضي به الأنظمة المعمول بها ومنها لائحة تصنيف مخالفات كود البناء السعودي ولائحة الغرامات والجزاءات عن المخالفات البلدية الصادرة المحدثة بتاريخ 1444/11/26هـ، ونظام مكافحة التزوير والغرامات المالية.',
-  'التعاقد فيما يخص أعمال تنفيذ المصاعد الكهربائية وأعمال الوقاية والحماية من الحريق مع مؤسسات وشركات معتمدة من المديرية العامة للدفاع المدني وهيئة الأمن الصناعي.',
-  'التعاون الكامل مع المكتب الهندسي المشرف والمقاول لضمان مطابقة جميع الأعمال في المشروع لمتطلبات واشتراطات كود البناء السعودي ولائحته التنفيذية، وأتحمل المسؤولية النظامية في حال مخالفة ذلك.',
-  'الالتزام بتوفير جميع المستندات والبيانات المطلوبة من الجهات المختصة لضمان تنفيذ المشروع وفقاً للأنظمة والاشتراطات المعتمدة.',
-  'التعاون الكامل مع المكتب الهندسي المشرف والمقاول لضمان تنفيذ جميع متطلبات السلامة والصحة المهنية في موقع العمل طبقاً لكود البناء السعودي، وتسوير الموقع طبقاً لدليل اشتراطات تسوير المواقع الإنشائية، ودليل تغطية المباني تحت الإنشاء.',
-  'التعاون الكامل مع المكتب الهندسي المشرف والمقاول لضمان تطبيق العزل الحراري في جميع المباني الجديدة وفقاً للأمر السامي الكريم رقم (م ب/6927) وتاريخ 1431/09/22هـ، وأتحمل المسؤولية النظامية في حالة مخالفة ذلك.',
-  'توفير جميع التسهيلات والمعلومات اللازمة للمكتب الهندسي المشرف والمقاول لضمان تنفيذ المشروع بفعالية.',
-  'إبلاغ المكتب الهندسي المشرف والمقاول بأي تغييرات أو تعديلات أرغب في تنفيذها في المشروع، والحصول على الموافقات اللازمة من الجهات ذات العلاقة قبل التنفيذ.',
-  'عدم إشغال المبنى دون إصدار شهادة الإشغال، وذلك طبقاً لما ورد في نظام تطبيق الكود السعودي الصادر بالمرسوم الملكي رقم (م/43) وتاريخ 1438/4/26هـ والمعدل بالمرسوم الملكي رقم (م/15) وتاريخ 1441/1/19هـ والمرسوم الملكي رقم (م/88) وتاريخ 1446/4/10هـ، واللائحة التنفيذية لنظام تطبيق كود البناء السعودي الصادرة بالقرار الوزاري رقم (1213ق/أع/39) وتاريخ 1439/10/14هـ والمعدلة بالقرار الوزاري (304) وتاريخ 1444/7/8هـ، ونظام إجراءات التراخيص البلدية ولائحته التنفيذية. وفي حال ثبوت عدم إصدار شهادة الإشغال يتم تطبيق الإجراءات والغرامات الواردة في لائحة تصنيف مخالفات كود البناء السعودي.',
-  'تبليغ الأمانة / البلدية والجهات ذات العلاقة في حال وجود أي مخالفة يرتكبها أحد الأطراف.'
-];
 const DEF_S = {
-  office: { name: 'شركة سعد مفرح الشمراني للاستشارات الهندسية', short: 'مكتب سعد مفرح الشمراني', sub: 'للاستشارات الهندسية', addr: '2837 - حي العارض - الرياض 13338 - 8161', nat: 'RRRB2837', phone: '0570086833', cr: '1010786222', lic: '5110104772', email: 's3adalshomrani2022@gmail.com', web: 'alshomrani-co.github.io/website', handle: '@alshomrani.co' },
-  mgr: 'م/ سعد مفرح الشمراني', mgrTitle: 'المدير العام', mgrSig: '', stamp: '', amanahLogo: '',
-  amanah: ['أمانة منطقة الرياض', 'الوكالة المساعدة للتعمير', 'الإدارة العامة لرقابة المباني'],
-  pledge: PLEDGE, techNotes: ['تم إعداد هذا التقرير بناءً على المخططات المقترحة والمعاينة الميدانية للموقع.'], projTypes: ['سكني', 'سكني تجاري', 'تجاري', 'دبلكس', 'فيلا', 'عمارة سكنية'], reqs: ['تعديل مكونات الرخصة', 'تجديد الرخصة', 'إصدار رخصة', 'إضافة أدوار', 'ترميم']
+  office: { name: 'مكتب سعد مفرح الشمراني للاستشارات الهندسية', short: 'مكتب سعد مفرح الشمراني', sub: 'للاستشارات الهندسية', addr: '2837 – حي العارض – الرياض 13338 – 8161', nat: 'RRRB2837', phone: '0570086833', cr: '1010786222', lic: '5110104772', email: 's3adalshomrani2022@gmail.com' },
+  mgr: 'م/ سعد مفرح الشمراني', mgrFull: 'سعد مفرح مبارك الشمراني', mgrTitle: 'المدير العام', mgrSig: '', stamp: '', amanahLogo: '',
+  amanah: ['أمــــانة منطــــقة الريــــاض', 'الوكــالة المساعـدة للتعمـير', 'الإدارة العامة لرقابة المباني'],
+  pledge: TXT.owner, officeTxt: TXT.office, declOwner: TXT.declOwner, declOffice: TXT.declOffice, insurance: TXT.insurance, waste: TXT.waste, fence: TXT.fence, letter: TXT.letter, philo: TXT.philo, techNotes: [],
+  projTypes: ['سكني', 'سكني تجاري', 'تجاري', 'عمارة سكنية', 'فيلا سكنية', 'دبلكس'], reqs: ['تعديل مكونات الرخصة', 'تجديد الرخصة', 'إصدار رخصة', 'إضافة أدوار', 'ترميم']
 };
 async function loadS() { try { const s = await F.getDoc(F.doc(db, 'archSettings', 'main')); S = Object.assign(structuredClone(DEF_S), s.exists() ? s.data() : {}); S.office = Object.assign({}, DEF_S.office, S.office || {}); } catch (e) { S = structuredClone(DEF_S); } return S; }
 
@@ -48,156 +28,181 @@ const top = () => `<header class="top"><div class="top-in"><a class="brand" href
 const back = (href, label = 'رجوع') => `<a class="glass-back" href="${href}">→ ${label}</a>`;
 function frame(html) { root.innerHTML = top() + `<main class="shell sv">${html}</main>`; $('#lo').onclick = () => F.signOut(auth); }
 
-function vHome() {
-  frame(`${back('portal.html', 'البوابة')}<h1 class="sv-h">قسم المعماري</h1><p class="desc">ملف المشروع من الرخصة والصك، وكل المستندات منه بتنسيق موحّد.</p>
-  <div class="tiles"><a class="tile" href="#new"><span class="ic">＋</span><h3>مشروع جديد</h3><p>ارفع الرخصة والصك والمخططات</p></a><a class="tile" href="#list"><span class="ic">▤</span><h3>كل المشاريع</h3><p>المستندات والطباعة</p></a><a class="tile" href="#ctl"><span class="ic">⚙</span><h3>غرفة التحكم</h3><p>بيانات المكتب، التوقيع والختم، النصوص</p></a></div>`);
+/* ---------- الصور (archMedia — أي حجم بيدخل، بيتصغّر لوحده) ---------- */
+const imgCache = {};
+async function fit(d) { let q = .85, m = 1800, out = await shrink(d, m, q); while (out.length > 940000 && m > 600) { m -= 300; q -= .08; out = await shrink(d, m, Math.max(.5, q)); } return out; }
+async function putImg(data) { const d = await fit(data); const ref = await F.addDoc(F.collection(db, 'archMedia'), { img: d, by: me.uid, at: F.serverTimestamp() }); imgCache[ref.id] = d; return ref.id; }
+async function getImg(id) { if (!id) return ''; if (imgCache[id]) return imgCache[id]; try { const s = await F.getDoc(F.doc(db, 'archMedia', id)); return imgCache[id] = s.exists() ? s.data().img : ''; } catch (e) { return ''; } }
+const I = async id => id ? `<img src="${await getImg(id)}" alt="">` : '';
+function busy(on, t = 'جارٍ التجهيز…') { let b = $('#busy'); if (on) { if (!b) { b = document.createElement('div'); b.id = 'busy'; b.className = 'pdf-busy'; document.body.appendChild(b); } b.innerHTML = `<div><span class="spinner"></span><b>${t}</b></div>`; } else if (b) b.remove(); }
+
+/* ---------- المشروع ---------- */
+let P = null;
+const blankP = () => ({ owner: '', ownerId: '', nationality: 'سعودي', ownerPhone: '', plot: '', plan: '', district: '', city: 'الرياض', sector: '', streetWidth: '', licNo: '', licType: '', licDate: '', deedNo: '', deedDate: '', deedArea: '', projType: 'سكني', req: 'تعديل مكونات الرخصة', transNo: '', buildCoef: '', designGuide: '', wasteQty: '', buildingDesc: '', serviceNo: '', reqYear: '1447', letterType: 'تعديل', letterReq: '', st: {}, compsOld: [], compsNew: [], bounds: { N: {}, S: {}, E: {}, W: {} }, plans: [], facade: '', site: [], siteNote: 'ارض فضاء', system: '', notes: [], fz: {}, fenceImg: '', tray: [], docs: {} });
+async function loadP(id) { const s = await F.getDoc(F.doc(db, 'archProjects', id)); if (!s.exists()) throw new Error('المشروع مش موجود'); P = Object.assign(blankP(), s.data(), { id }); P.bounds = Object.assign({ N: {}, S: {}, E: {}, W: {} }, P.bounds || {}); P.fz = P.fz || {}; return P; }
+async function saveP(quiet) {
+  const { id, ...data } = P; data.upd = F.serverTimestamp();
+  if (id) await F.updateDoc(F.doc(db, 'archProjects', id), data);
+  else { data.by = me.uid; data.byName = isOwner ? 'المالك' : (emp && emp.name) || ''; data.at = F.serverTimestamp(); const r = await F.addDoc(F.collection(db, 'archProjects'), data); P.id = r.id; }
+  if (!quiet) toast('اتحفظ ✓');
 }
 
-/* ---------- الصور: بتتحفظ في archMedia (كل صورة مستند لوحدها) ---------- */
-const imgCache = {};
-const toWebp = (src, max = 1800, q = .82) => new Promise(r => { const im = new Image(); im.onload = () => { const k = Math.min(1, max / Math.max(im.width, im.height)), c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(im, 0, 0, c.width, c.height); let d = c.toDataURL('image/webp', q); if (d.length > 950000) d = c.toDataURL('image/webp', .6); r(d); }; im.onerror = () => r(''); im.src = src; });
-const fileURL = f => new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(f); });
-async function fileImgs(f) { if (/pdf/i.test(f.type) || /\.pdf$/i.test(f.name)) return Promise.all((await pdfPages(f, 2)).map(d => toWebp(d))); return [await toWebp(await fileURL(f))]; }
-async function putImg(data) { const ref = await F.addDoc(F.collection(db, 'archMedia'), { img: data, by: me.uid, at: F.serverTimestamp() }); imgCache[ref.id] = data; return ref.id; }
-async function getImg(id) { if (!id) return ''; if (imgCache[id]) return imgCache[id]; try { const s = await F.getDoc(F.doc(db, 'archMedia', id)); return imgCache[id] = s.exists() ? s.data().img : ''; } catch (e) { return ''; } }
+function vHome() {
+  frame(`${back('portal.html', 'البوابة')}<h1 class="sv-h">قسم المعماري</h1><p class="desc">افتح مشروع، ارفع الورق مرة واحدة، وكل مستند من الـ 10 يطلع بشكل ورقته.</p>
+  <div class="tiles"><a class="tile" href="#new"><span class="ic">＋</span><h3>مشروع جديد</h3><p>ارفع الصك والرخصة والمخططات والصور</p></a><a class="tile" href="#list"><span class="ic">▤</span><h3>كل المشاريع</h3><p>افتح مشروع وطلّع أي مستند</p></a><a class="tile" href="#ctl"><span class="ic">⚙</span><h3>غرفة التحكم</h3><p>بيانات المكتب، التوقيع والختم، نصوص النماذج</p></a></div>`);
+}
+async function vNew() { await loadS(); P = blankP(); busy(1, 'بنفتح مشروع جديد…'); try { await saveP(true); location.replace('#p/' + P.id); } catch (e) { toast(F.authMsg(e), 1); } busy(0); }
 
-/* ---------- ملف المشروع ---------- */
-let P = null;
-const blankP = () => ({ owner: '', ownerId: '', plot: '', plan: '', district: '', city: 'الرياض', sector: '', licNo: '', licType: '', licDate: '', deedNo: '', deedDate: '', deedArea: '', projType: 'سكني', req: 'تعديل مكونات الرخصة', street: '', st: {}, compsOld: [], compsNew: [], bounds: { N: {}, S: {}, E: {}, W: {} }, plans: [], facade: '', site: [], system: '', notes: [], color: [], docs: {} });
-async function vEdit(id, keep) {
-  await loadS();
-  if (!keep) { P = blankP(); if (id) { try { const s = await F.getDoc(F.doc(db, 'archProjects', id)); if (!s.exists()) return toast('المشروع مش موجود', 1); P = Object.assign(blankP(), s.data(), { id }); } catch (e) { return toast(F.authMsg(e), 1); } } }
-  const fld = (k, l, ph = '', ltr) => `<div class="fld"><label>${l}</label><input data-k="${k}" class="${P.st[k] ? 'st-' + P.st[k] : ''}" value="${esc(P[k] || '')}" placeholder="${esc(ph)}" ${ltr ? 'dir="ltr"' : ''}>${P.st[k] === 'check' ? '<small class="rv">⚠ راجعها</small>' : ''}</div>`;
-  const sel = (k, l, L) => `<div class="fld"><label>${l}</label><select data-k="${k}">${[...new Set([...L, P[k]].filter(Boolean))].map(x => `<option ${x === P[k] ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></div>`;
-  const compT = w => `<div class="sv-tw"><table class="sv-t"><tr><th>المكوّن</th><th>عدد الوحدات</th><th>الاستخدام</th><th>المساحة م²</th><th>النسبة</th><th></th></tr>${(P[w] || []).map((c, i) => `<tr><td><input data-c="${w}|${i}|floor" value="${esc(c.floor)}"></td><td><input data-c="${w}|${i}|units" value="${esc(c.units)}" dir="ltr"></td><td><input data-c="${w}|${i}|use" value="${esc(c.use)}"></td><td><input data-c="${w}|${i}|area" value="${esc(c.area)}" dir="ltr"></td><td dir="ltr">${num(P.deedArea) && num(c.area) && !/سور|أسوار|اسوار/.test(c.floor) ? (num(c.area) / num(P.deedArea) * 100).toFixed(2) + '%' : ''}</td><td><button class="x" data-cx="${w}|${i}">×</button></td></tr>`).join('')}<tr class="tot"><td>الإجمالي</td><td></td><td></td><td dir="ltr">${f2((P[w] || []).filter(c => !/سور|أسوار|اسوار/.test(c.floor)).reduce((s, c) => s + (num(c.area) || 0), 0))}</td><td></td><td></td></tr></table></div><button class="btn btn-ghost sm" data-ca="${w}">＋ صف</button>`;
-  const thumbs = (arr, key) => `<div class="ar-th">${arr.map((x, i) => `<figure data-im="${esc(typeof x === 'string' ? x : '')}"><img alt=""><button class="x" data-rmimg="${key}|${i}">×</button></figure>`).join('')}</div>`;
-  frame(`${back(P.id ? '#p/' + P.id : '#', P.id ? 'ملف المشروع' : 'قسم المعماري')}<h1 class="sv-h">${P.id ? 'تعديل بيانات المشروع' : 'مشروع جديد'}</h1>
-  <section class="card sv-drop" id="drop"><div class="dz-ic">📄</div><b>اسحب الرخصة والصك هنا (PDF أو صورة) — ممكن أكتر من ملف</b><small>اللي اتقرا بثقة <span class="st-auto lg">أخضر</span>، واللي محتاج مراجعة <span class="st-check lg">أصفر</span>.</small><input type="file" id="docIn" accept="application/pdf,image/*" multiple hidden><button class="btn btn-ink sm" id="pick">اختار ملفات</button><p id="dzMsg" class="hint"></p></section>
-  <section class="card"><h3>بيانات المشروع</h3><div class="sv-grid">
-    ${fld('owner', 'المالك')}${fld('ownerId', 'هوية / سجل رقم', '', 1)}${fld('plot', 'رقم القطعة', '', 1)}${fld('plan', 'رقم المخطط', '', 1)}${fld('district', 'الحي')}${fld('city', 'المدينة')}${fld('sector', 'القطاع', 'قطاع جنوب مدينة الرياض')}${fld('street', 'الشارع (اختياري)')}
-    ${fld('licNo', 'رقم الرخصة', '', 1)}${fld('licType', 'نوع الطلب في الرخصة')}${fld('licDate', 'تاريخ الرخصة', '', 1)}${fld('deedNo', 'رقم الصك / العقار', '', 1)}${fld('deedDate', 'تاريخ الصك', '', 1)}${fld('deedArea', 'مساحة الأرض م²', '', 1)}
-    ${sel('projType', 'نوع المشروع', S.projTypes)}${sel('req', 'المطلوب', S.reqs)}
-  </div></section>
-  <section class="card"><h3>مكونات رخصة البناء السابقة</h3>${compT('compsOld')}</section>
-  <section class="card"><h3>مكونات رخصة البناء حسب المخطط المقترح</h3><button class="btn btn-ghost sm" id="cpy" style="margin-bottom:8px">نسخ من السابقة</button>${compT('compsNew')}</section>
-  <section class="card"><h3>الحدود والأطوال والارتدادات</h3><div class="sv-tw"><table class="sv-t"><tr><th>الجهة</th><th>حدود الأرض</th><th>الطول (م)</th><th>الارتداد (م)</th></tr>${Object.entries(DIRS).map(([k, l]) => `<tr><td><b>${l}</b></td><td><input data-b="${k}|desc" value="${esc(P.bounds[k].desc || '')}" class="${P.st['dd_' + k] ? 'st-check' : ''}"></td><td><input data-b="${k}|len" value="${esc(P.bounds[k].len ?? '')}" dir="ltr" class="${P.st['dl_' + k] ? 'st-check' : ''}"></td><td><input data-b="${k}|set" value="${esc(P.bounds[k].set ?? '')}" dir="ltr"></td></tr>`).join('')}</table></div></section>
-  <section class="card"><h3>المخططات (قبل / بعد التعديل)</h3><p class="hint">لكل دور: ارفع صورة أو PDF للمخطط قبل وبعد.</p><div id="plans">${(P.plans || []).map((pl, i) => `<div class="ar-pl"><input class="in" data-pt="${i}" value="${esc(pl.title)}" placeholder="الدور الأرضي"><div class="ar-ba">${['before', 'after'].map(w => `<div class="ar-slot" data-im="${esc(pl[w] || '')}"><b>${w === 'before' ? 'قبل التعديل' : 'بعد التعديل'}</b><img alt=""><input type="file" accept="image/*,application/pdf" data-pf="${i}|${w}" hidden><button class="btn btn-ghost sm" data-pu="${i}|${w}">${pl[w] ? 'تغيير' : 'رفع'}</button></div>`).join('')}</div><button class="x" data-px="${i}">×</button></div>`).join('')}</div><button class="btn btn-ghost sm" id="addPl">＋ دور</button></section>
-  <section class="card"><h3>الصور</h3><div class="ar-imgs">
-    <div><b>صورة الواجهة</b><div class="ar-slot" data-im="${esc(P.facade)}"><img alt=""><input type="file" accept="image/*,application/pdf" data-one="facade" hidden><button class="btn btn-ghost sm" data-oneu="facade">${P.facade ? 'تغيير' : 'رفع'}</button></div></div>
-    <div><b>نظام البناء المعتمد</b><div class="ar-slot" data-im="${esc(P.system)}"><img alt=""><input type="file" accept="image/*,application/pdf" data-one="system" hidden><button class="btn btn-ghost sm" data-oneu="system">${P.system ? 'تغيير' : 'رفع'}</button></div></div>
-    <div class="wide"><b>صور من الطبيعة</b>${thumbs(P.site || [], 'site')}<input type="file" accept="image/*" multiple id="siteIn" hidden><button class="btn btn-ghost sm" id="siteU">＋ صور</button></div>
-  </div></section>
-  <section class="card"><h3>ملاحظات التقرير الفني</h3><p class="hint">سطر لكل ملاحظة.</p><textarea class="in" id="notes" rows="4" placeholder="${esc((S.techNotes || []).join('\n'))}">${esc((P.notes || []).join('\n'))}</textarea></section>
-  <div class="sv-act sticky"><button class="btn btn-red" id="save">حفظ المشروع</button></div>`);
-  // تحميل الصور المحفوظة
-  $$('[data-im]').forEach(async el => { const id = el.dataset.im; if (!id) return; const im = $('img', el); im.src = await getImg(id); el.classList.add('has'); });
-  $$('[data-k]').forEach(el => el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', () => { const k = el.dataset.k; P[k] = el.value; if (P.st[k]) { delete P.st[k]; el.className = ''; const n = el.nextElementSibling; if (n && n.classList.contains('rv')) n.remove(); } }));
-  $$('[data-c]').forEach(el => el.onchange = () => { const [w, i, f] = el.dataset.c.split('|'); P[w][+i][f] = el.value; redraw(); });
+/* صفحة المشروع: الرفع الموحّد + كروت المستندات العشرة */
+const SLOTS = { before: 'مخطط قبل التعديل', after: 'مخطط بعد التعديل', facade: 'صورة الواجهة', site: 'صورة من الطبيعة', system: 'نظام البناء', fence: 'كروكي السور', aerial: 'صورة جوية (الواجهات)', skip: 'تجاهل' };
+async function vProject(id) {
+  await loadS(); try { await loadP(id); } catch (e) { return toast(e.message || F.authMsg(e), 1); }
+  frame(`${back('#list', 'كل المشاريع')}<div class="ar-head"><div><h1 class="sv-h">${esc(P.owner || 'مشروع جديد')}</h1><p class="desc">${P.plot ? `قطعة ${esc(P.plot)} — مخطط ${esc(P.plan)} — ${esc(P.district)}` : 'ارفع الصك والرخصة عشان البيانات تتملى'}${P.licNo ? ` — رخصة <span dir="ltr">${esc(P.licNo)}</span>` : ''}</p></div><a class="btn btn-ghost sm" href="#e/${id}">✎ البيانات المشتركة</a></div>
+  <section class="card sv-drop" id="drop"><div class="dz-ic">📥</div><b>ارفع كل الورق هنا مرة واحدة: الصك، الرخصة، المخططات، صور الواجهة والموقع</b><small>${aiReady() ? 'الـ AI بيعرف كل ورقة ويحطها في مكانها، وانت تقدر تغيّر.' : 'الـ PDF الإلكتروني بيتقرا لوحده. الصور اختار مكانها من القائمة (ولو وصّلت قارئ الـ AI هيختار لوحده).'}</small><input type="file" id="docIn" accept="application/pdf,image/*" multiple hidden><button class="btn btn-ink sm" id="pick">اختار ملفات</button><p id="dzMsg" class="hint"></p></section>
+  <div id="tray"></div>
+  <h3 style="margin:18px 0 10px">المستندات</h3><div class="ar-docs">${DOCS.map(d => `<a class="ar-doc ${d.soon ? 'off' : ''}" ${d.soon ? '' : `href="#f/${id}/${d.k}"`}><span class="i">${d.ic}</span><b>${d.t}</b><small>${d.soon ? 'ابعت نسخة منها عشان تتعمل' : (P.docs && P.docs[d.k] ? 'اتطبع ' + esc(P.docs[d.k].at || '') : 'جاهز')}</small></a>`).join('')}</div>`);
+  paintTray();
+  const din = $('#docIn'); $('#pick').onclick = () => din.click(); din.onchange = () => takeAll([...din.files]);
+  const dz = $('#drop'); ['dragover', 'dragenter'].forEach(t => dz.addEventListener(t, e => { e.preventDefault(); dz.classList.add('ov'); })); ['dragleave', 'drop'].forEach(t => dz.addEventListener(t, () => dz.classList.remove('ov'))); dz.addEventListener('drop', e => { e.preventDefault(); takeAll([...e.dataTransfer.files]); });
+}
+// دمج بيانات مقروءة في المشروع (من غير ما يمسح حاجة اتكتبت باليد)
+function merge(r) {
+  Object.entries(r.v).forEach(([k, v]) => {
+    if (k === '_comps') { if (v.length && !(P.compsOld || []).length) { P.compsOld = v.map(c => ({ floor: c.floor, units: c.units, use: c.use, area: c.area })); if (!(P.compsNew || []).length) P.compsNew = structuredClone(P.compsOld); } return; }
+    if (k.startsWith('_')) return;
+    const m = k.match(/^d([dls])_(\w)$/); if (m) { const f = { d: 'desc', l: 'len', s: 'set' }[m[1]]; if (!P.bounds[m[2]][f]) P.bounds[m[2]][f] = v; return; }
+    if (!(k in P) && !LABELS[k]) return;
+    if (!P[k] || (P.st[k] === 'check' && r.st[k] === 'auto')) { P[k] = v; P.st[k] = r.st[k] || 'check'; }
+  });
+  Object.keys(r.st).filter(k => /^d[dl]_/.test(k)).forEach(k => P.st[k] = 'check');
+}
+const kindToSlot = (k, stage) => k === 'plan' ? (stage === 'before' ? 'before' : 'after') : k === 'facade' ? 'facade' : k === 'site_photo' ? 'site' : k === 'building_system' ? 'system' : '';
+function place(it) { // يحط الصورة في مكانها حسب الاختيار
+  const id = it.img;
+  P.plans.forEach(p => { if (p.before === id) p.before = ''; if (p.after === id) p.after = ''; }); P.plans = P.plans.filter(p => p.before || p.after || p.title);
+  P.site = (P.site || []).filter(x => x !== id); if (P.facade === id) P.facade = ''; if (P.system === id) P.system = ''; if (P.fenceImg === id) P.fenceImg = ''; if (P.fz.aerial1 === id) P.fz.aerial1 = '';
+  const s = it.slot;
+  if (s === 'before' || s === 'after') { let pl = P.plans.find(p => (it.title && p.title === it.title) && !p[s]) || P.plans.find(p => !p[s]); if (!pl) { pl = { title: it.title || '', before: '', after: '' }; P.plans.push(pl); } pl[s] = id; if (it.title && !pl.title) pl.title = it.title; }
+  else if (s === 'facade') { P.facade = id; if (!P.fz.persp0) P.fz.persp0 = id; } else if (s === 'site') P.site.push(id); else if (s === 'system') P.system = id; else if (s === 'fence') P.fenceImg = id; else if (s === 'aerial') P.fz.aerial1 = id;
+}
+async function takeAll(files) {
+  const m = $('#dzMsg'); let n = 0, k = 0; busy(1, 'بنقرا الملفات…');
+  for (const f of files) {
+    k++; busy(1, `بنقرا ${k} من ${files.length}: ${esc(f.name)}`);
+    try {
+      let r = null;
+      if (isPdf(f)) { r = await readDoc(f, x => busy(1, x)); if (r.text) { merge(r); n += r.found; continue; } }
+      // صورة أو PDF متصوّر: لو الـ AI متوصّل يعرف نوعها، غير كده بيتحط في الصينية تختار مكانها
+      const imgs = r && r.images ? r.images : await fileToImages(f);
+      let kind = r ? r.kind : '', stage = r ? r.planStage : '', title = r ? r.planTitle : '';
+      if (!r && aiReady()) { try { const a = fromAI(await aiRead(imgs.slice(0, 2), 'حدد نوع الصورة: صك/رخصة/مخطط/واجهة/صورة موقع/نظام بناء')); kind = a.kind; stage = a.planStage; title = a.planTitle; if (/deed|license|survey/.test(kind)) { merge(a); n += a.found; continue; } } catch (e) { toast('الـ AI: ' + e.message, 1); } }
+      if (r && /deed|license|doc/.test(r.kind) && r.found > 2) { merge(r); n += r.found; continue; }
+      for (const im of imgs) { const id = await putImg(im); const it = { img: id, name: f.name, slot: kindToSlot(kind, stage) || (imgs.length > 1 ? 'after' : 'site'), title: title || '', ai: !!kind }; P.tray.push(it); place(it); }
+    } catch (e) { toast(f.name + ': ' + ((e && e.message) || e), 1); }
+  }
+  try { await saveP(true); } catch (e) { toast(F.authMsg(e), 1); }
+  busy(0); await vProject(P.id); $('#dzMsg').textContent = `اتقرا ${n} خانة${P.tray.length ? ' — والصور اتحطت تحت، راجع مكان كل واحدة' : ''}. راجع البيانات الصفرا في «البيانات المشتركة».`;
+}
+function paintTray() {
+  const t = $('#tray'); if (!t) return; if (!(P.tray || []).length) { t.innerHTML = ''; return; }
+  t.innerHTML = `<section class="card"><h3>الصور والمخططات المرفوعة — كل واحدة راحت فين</h3><div class="ar-tray">${P.tray.map((it, i) => `<figure data-im="${esc(it.img)}"><img alt=""><select data-ts="${i}">${Object.entries(SLOTS).map(([k, l]) => `<option value="${k}" ${it.slot === k ? 'selected' : ''}>${l}</option>`).join('')}</select>${/before|after/.test(it.slot) ? `<input class="in" data-tt="${i}" value="${esc(it.title || '')}" placeholder="اسم الدور">` : ''}${it.ai ? '<small>اختيار الـ AI</small>' : ''}</figure>`).join('')}</div></section>`;
+  $$('[data-im] img', t).forEach(async im => { im.src = await getImg(im.parentElement.dataset.im); });
+  $$('[data-ts]', t).forEach(s => s.onchange = async () => { const it = P.tray[+s.dataset.ts]; it.slot = s.value; it.ai = false; place(it); await saveP(true); paintTray(); });
+  $$('[data-tt]', t).forEach(s => s.onchange = async () => { const it = P.tray[+s.dataset.tt]; it.title = s.value; const pl = P.plans.find(p => p.before === it.img || p.after === it.img); if (pl) pl.title = s.value; await saveP(true); });
+}
+
+/* ---------- فورم البيانات (المشتركة أو بتاعة مستند واحد) ---------- */
+async function vForm(id, k) {
+  await loadS(); if (!P || P.id !== id) { try { await loadP(id); } catch (e) { return toast(e.message || F.authMsg(e), 1); } }
+  const d = DOCS.find(x => x.k === k), keys = k ? NEEDS[k] : Object.keys(LABELS);
+  const fld = key => key === 'projType' || key === 'req' || key === 'letterType' ? `<div class="fld"><label>${LABELS[key]}</label><select data-k="${key}">${[...new Set([...(key === 'projType' ? S.projTypes : key === 'req' ? S.reqs : ['تعديل', 'تجديد']), P[key]].filter(Boolean))].map(x => `<option ${x === P[key] ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select></div>`
+    : `<div class="fld"><label>${LABELS[key]}</label><input data-k="${key}" class="${P.st[key] ? 'st-' + P.st[key] : ''}" value="${esc(P[key] || '')}">${P.st[key] === 'check' ? '<small class="rv">⚠ راجعها</small>' : ''}</div>`;
+  let extra = '';
+  if (!k || k === 'tech') extra += compsHTML('compsOld', 'مكونات رخصة البناء السابقة') + compsHTML('compsNew', 'مكونات رخصة البناء حسب المخطط المقترح', true);
+  if (!k || k === 'tech' || k === 'fence') extra += boundsHTML();
+  if (k === 'tech') extra += plansHTML() + imgsHTML() + `<section class="card"><h3>ملاحظات التقرير</h3><textarea class="in" id="notes" rows="3">${esc((P.notes || []).join('\n'))}</textarea></section>`;
+  if (k === 'facade') extra += facadeHTML();
+  if (k === 'fence') extra += `<section class="card"><h3>كروكي السور</h3><p class="hint">بيترسم لوحده من الأطوال والارتدادات. ولو عندك كروكي جاهز ارفعه.</p><div class="ar-slot ${P.fenceImg ? 'has' : ''}" data-im="${esc(P.fenceImg)}"><img alt=""><input type="file" accept="image/*,application/pdf" data-one="fenceImg" hidden><button class="btn btn-ghost sm" data-oneu="fenceImg">${P.fenceImg ? 'تغيير' : 'رفع كروكي'}</button>${P.fenceImg ? '<button class="btn btn-ghost sm" data-clr="fenceImg">الرسم الأوتوماتيك</button>' : ''}</div></section>`;
+  if (k === 'letter') extra += `<section class="card"><div class="fld"><label>نص الطلب في الخطاب (اختياري)</label><input data-k="letterReq" value="${esc(P.letterReq || '')}" placeholder="${P.letterType === 'تجديد' ? 'تجديد رخصة بناء' : 'تعديل مكونات رخصة بناء'}"></div></section>`;
+  frame(`${back('#p/' + id, 'ملف المشروع')}<h1 class="sv-h">${d ? d.t : 'البيانات المشتركة'}</h1><p class="desc">${d ? 'البيانات المشتركة بتتملى في كل المستندات. اللي تعدله هنا بيتعدل في الكل.' : 'دي البيانات اللي بتتملى في الـ 10 مستندات.'}</p>
+  <section class="card"><div class="sv-grid">${keys.map(fld).join('')}</div></section>${extra}${pdfBar(d ? '📄 ' + d.t + ' PDF' : '📄 حفظ', `<button class="btn btn-ghost" id="svB">💾 حفظ</button>`)}`);
+  wireForm(k);
+  $('#svB').onclick = async () => { readForm(); try { await saveP(); } catch (e) { toast(F.authMsg(e), 1); } };
+  $('#pdfGo').onclick = async () => { readForm(); try { await saveP(true); } catch (e) { return toast(F.authMsg(e), 1); } if (d) review(k); else location.hash = 'p/' + id; };
+}
+function compsHTML(w, t, cpy) { return `<section class="card"><h3>${t}</h3>${cpy ? '<button class="btn btn-ghost sm" id="cpy" style="margin-bottom:8px">نسخ من السابقة</button>' : ''}<div class="sv-tw"><table class="sv-t"><tr><th>المكوّن</th><th>عدد الوحدات</th><th>الاستخدام</th><th>المساحة م²</th><th>النسبة</th><th></th></tr>${(P[w] || []).map((c, i) => `<tr><td><input data-c="${w}|${i}|floor" value="${esc(c.floor)}"></td><td><input data-c="${w}|${i}|units" value="${esc(c.units)}" dir="ltr"></td><td><input data-c="${w}|${i}|use" value="${esc(c.use)}"></td><td><input data-c="${w}|${i}|area" value="${esc(c.area)}" dir="ltr"></td><td dir="ltr">${num(P.deedArea) && num(c.area) && !/سور|أسوار|اسوار/.test(c.floor) ? (num(c.area) / num(P.deedArea) * 100).toFixed(2) + '%' : ''}</td><td><button class="x" data-cx="${w}|${i}">×</button></td></tr>`).join('')}</table></div><button class="btn btn-ghost sm" data-ca="${w}">＋ صف</button></section>`; }
+function boundsHTML() { return `<section class="card"><h3>الحدود والأطوال والارتدادات</h3><div class="sv-tw"><table class="sv-t"><tr><th>الجهة</th><th>حدود الأرض</th><th>الطول (م)</th><th>الارتداد (م)</th></tr>${Object.entries(DIRS).map(([k, l]) => `<tr><td><b>${l}</b></td><td><input data-b="${k}|desc" value="${esc(P.bounds[k].desc || '')}" class="${P.st['dd_' + k] ? 'st-check' : ''}"></td><td><input data-b="${k}|len" value="${esc(P.bounds[k].len ?? '')}" dir="ltr" class="${P.st['dl_' + k] ? 'st-check' : ''}"></td><td><input data-b="${k}|set" value="${esc(P.bounds[k].set ?? '')}" dir="ltr"></td></tr>`).join('')}</table></div></section>`; }
+const slot = (key, label, val) => `<div><b>${label}</b><div class="ar-slot ${val ? 'has' : ''}" data-im="${esc(val || '')}"><img alt=""><input type="file" accept="image/*,application/pdf" data-one="${key}" hidden><button class="btn btn-ghost sm" data-oneu="${key}">${val ? 'تغيير' : 'رفع'}</button></div></div>`;
+function plansHTML() { return `<section class="card"><h3>المخططات (قبل / بعد التعديل)</h3><p class="hint">الدور المضاف سيب «قبل» فاضي، وهيطلع «إضافة الدور…».</p><div id="plans">${(P.plans || []).map((pl, i) => `<div class="ar-pl"><input class="in" data-pt="${i}" value="${esc(pl.title)}" placeholder="الدور الأرضي"><div class="ar-ba">${['before', 'after'].map(w => `<div class="ar-slot ${pl[w] ? 'has' : ''}" data-im="${esc(pl[w] || '')}"><b>${w === 'before' ? 'قبل التعديل' : 'بعد التعديل'}</b><img alt=""><input type="file" accept="image/*,application/pdf" data-pf="${i}|${w}" hidden><button class="btn btn-ghost sm" data-pu="${i}|${w}">${pl[w] ? 'تغيير' : 'رفع'}</button></div>`).join('')}</div><button class="x" data-px="${i}">×</button></div>`).join('')}</div><button class="btn btn-ghost sm" id="addPl">＋ دور</button></section>`; }
+function imgsHTML() { return `<section class="card"><h3>الصور</h3><div class="ar-imgs">${slot('facade', 'صورة الواجهة', P.facade)}${slot('system', 'نظام البناء', P.system)}<div class="wide"><b>صور من الطبيعة</b> <input class="in" data-k="siteNote" value="${esc(P.siteNote || '')}" style="max-width:220px" placeholder="ارض فضاء"><div class="ar-th">${(P.site || []).map((x, i) => `<figure data-im="${esc(x)}"><img alt=""><button class="x" data-rmimg="site|${i}">×</button></figure>`).join('')}</div><input type="file" accept="image/*" multiple id="siteIn" hidden><button class="btn btn-ghost sm" id="siteU">＋ صور</button></div></div></section>`; }
+function facadeHTML() {
+  const z = P.fz, zs = (k, l) => slot('fz.' + k, l, z[k]);
+  return `<section class="card"><h3>صور نموذج الواجهات</h3><div class="ar-imgs three">${zs('site1', 'الموقع العام 1')}${zs('site2', 'الموقع العام 2')}${zs('aerial1', 'المصور الجوي 1')}${zs('aerial2', 'المصور الجوي 2 (المخطط)')}${zs('aerial3', 'المصور الجوي (تحديد الموقع)')}${zs('persp0', 'منظور التقديم الأولي')}${zs('swatch', 'لوحة الألوان والمواد')}${zs('mat1', 'صورة المواد 1')}${zs('mat2', 'صورة المواد 2')}${zs('identity', 'الهوية المحلية')}${zs('colorsImg', 'COLORS & MATERIALS')}${zs('solidImg', 'SOLID & VOIDS')}${zs('lightImg', 'ARTIFICAL LIGHT')}${zs('front', 'الواجهة الأمامية')}${zs('back', 'الواجهة الخلفية')}${zs('side1', 'الواجهة الجانبية 1')}${zs('side2', 'الواجهة الجانبية 2')}</div></section>
+  <section class="card"><h3>الألوان والمواد (بتكتبها انت)</h3><div id="cols">${(z.colors || []).map((c, i) => `<div class="sv-row"><input type="color" data-cc="${i}|hex" value="${esc(c.hex || '#d9b48f')}"><input class="in" data-cc="${i}|name" value="${esc(c.name || '')}" placeholder="اسم اللون / المادة"><input class="in" data-cc="${i}|code" value="${esc(c.code || '')}" placeholder="الكود" dir="ltr"><button class="x" data-cx2="${i}">×</button></div>`).join('')}</div><button class="btn btn-ghost sm" id="addCol">＋ لون / مادة</button>
+  <div class="sv-grid" style="margin-top:12px">${[['pPrimary', 'نسبة الألوان الأساسية %'], ['pSecondary', 'نسبة الألوان الثانوية %'], ['pSolid', 'نسبة المصمت %'], ['pOpen', 'نسبة الفتحات %']].map(([k, l]) => `<div class="fld"><label>${l}</label><input data-z="${k}" value="${esc(z[k] || '')}" dir="ltr"></div>`).join('')}</div>
+  <div class="fld"><label>الفلسفة التصميمية (سطر لكل نقطة)</label><textarea class="in" id="philo" rows="5">${esc((z.philo && z.philo.length ? z.philo : S.philo || TXT.philo).join('\n'))}</textarea></div></section>
+  <section class="card"><h3>التشجير</h3><div class="ar-imgs three">${[0, 1, 2].map(i => { const t = (z.trees || [])[i] || {}; return `<div>${slot('tree.' + i, ['الشجر', 'الشجيرات', 'مغطيات التربة'][i], t.img)}<input class="in" data-tr="${i}" value="${esc(t.name || ['Acacia ampliceps', 'Acalypha wilkesiana', 'Carissa grandiflora'][i])}" dir="ltr"></div>`; }).join('')}</div></section>`;
+}
+function readForm() {
+  $$('[data-k]').forEach(el => { P[el.dataset.k] = el.value; });
+  $$('[data-b]').forEach(el => { const [k, f] = el.dataset.b.split('|'); P.bounds[k][f] = el.value; });
+  const n = $('#notes'); if (n) P.notes = n.value.split('\n').map(x => x.trim()).filter(Boolean);
+  $$('[data-z]').forEach(el => P.fz[el.dataset.z] = el.value);
+  const ph = $('#philo'); if (ph) P.fz.philo = ph.value.split('\n').map(x => x.trim()).filter(Boolean);
+  $$('[data-tr]').forEach(el => { P.fz.trees = P.fz.trees || []; const i = +el.dataset.tr; P.fz.trees[i] = Object.assign({ t: ['الشجر', 'الشجيرات', 'نباتات مغطيات التربة'][i] }, P.fz.trees[i] || {}, { name: el.value }); });
+  $$('[data-cc]').forEach(el => { const [i, f] = el.dataset.cc.split('|'); P.fz.colors[+i][f] = el.value; });
+}
+const setImg = (key, id) => { if (key.startsWith('fz.')) P.fz[key.slice(3)] = id; else if (key.startsWith('tree.')) { const i = +key.slice(5); P.fz.trees = P.fz.trees || []; P.fz.trees[i] = Object.assign({ t: ['الشجر', 'الشجيرات', 'نباتات مغطيات التربة'][i] }, P.fz.trees[i] || {}, { img: id }); } else P[key] = id; };
+function wireForm(k) {
+  const redraw = async () => { const y = scrollY; readForm(); await vForm(P.id, k); scrollTo(0, y); };
+  $$('[data-im]').forEach(async el => { const id = el.dataset.im; if (!id) return; const im = $('img', el); if (im) { im.src = await getImg(id); el.classList.add('has'); } });
+  $$('[data-k]').forEach(el => el.addEventListener('input', () => { const key = el.dataset.k; if (P.st[key]) { delete P.st[key]; el.className = ''; const n = el.nextElementSibling; if (n && n.classList.contains('rv')) n.remove(); } }));
+  $$('[data-b]').forEach(el => el.addEventListener('input', () => { const [d, f] = el.dataset.b.split('|'); delete P.st[(f === 'desc' ? 'dd_' : 'dl_') + d]; el.classList.remove('st-check'); }));
+  $$('[data-c]').forEach(el => el.onchange = () => { const [w, i, f] = el.dataset.c.split('|'); P[w][+i][f] = el.value; setTimeout(redraw); });
   $$('[data-cx]').forEach(b => b.onclick = () => { const [w, i] = b.dataset.cx.split('|'); P[w].splice(+i, 1); redraw(); });
   $$('[data-ca]').forEach(b => b.onclick = () => { P[b.dataset.ca].push({ floor: '', units: '', use: '', area: '' }); redraw(); });
-  $('#cpy').onclick = () => { P.compsNew = structuredClone(P.compsOld || []); redraw(); };
-  $$('[data-b]').forEach(el => el.oninput = () => { const [k, f] = el.dataset.b.split('|'); P.bounds[k][f] = el.value; delete P.st[(f === 'desc' ? 'dd_' : 'dl_') + k]; el.classList.remove('st-check'); });
-  $('#addPl').onclick = () => { P.plans.push({ title: '', before: '', after: '' }); redraw(); };
+  const cp = $('#cpy'); if (cp) cp.onclick = () => { P.compsNew = structuredClone(P.compsOld || []); redraw(); };
+  const ap = $('#addPl'); if (ap) ap.onclick = () => { readForm(); P.plans.push({ title: '', before: '', after: '' }); redraw(); };
   $$('[data-pt]').forEach(el => el.oninput = () => P.plans[+el.dataset.pt].title = el.value);
   $$('[data-px]').forEach(b => b.onclick = () => { if (confirm('تمسح الدور ده؟')) { P.plans.splice(+b.dataset.px, 1); redraw(); } });
   $$('[data-pu]').forEach(b => b.onclick = () => $(`[data-pf="${b.dataset.pu}"]`).click());
-  $$('[data-pf]').forEach(el => el.onchange = async () => { const f = el.files[0]; if (!f) return; const [i, w] = el.dataset.pf.split('|'); busy(1); try { const L = await fileImgs(f); P.plans[+i][w] = await putImg(L[0]); for (let j = 1; j < L.length; j++) P.plans.push({ title: '', [w]: await putImg(L[j]) }); } catch (e) { toast(F.authMsg(e), 1); } busy(0); redraw(); });
+  $$('[data-pf]').forEach(el => el.onchange = async () => { const f = el.files[0]; if (!f) return; const [i, w] = el.dataset.pf.split('|'); busy(1, 'جارٍ رفع المخطط…'); try { readForm(); const L = await fileToImages(f, 8); P.plans[+i][w] = await putImg(L[0]); for (let j = 1; j < L.length; j++) P.plans.push({ title: '', [w]: await putImg(L[j]) }); await saveP(true); } catch (e) { toast(F.authMsg(e), 1); } busy(0); redraw(); });
   $$('[data-oneu]').forEach(b => b.onclick = () => $(`[data-one="${b.dataset.oneu}"]`).click());
-  $$('[data-one]').forEach(el => el.onchange = async () => { const f = el.files[0]; if (!f) return; busy(1); try { P[el.dataset.one] = await putImg((await fileImgs(f))[0]); } catch (e) { toast(F.authMsg(e), 1); } busy(0); redraw(); });
-  $('#siteU').onclick = () => $('#siteIn').click();
-  $('#siteIn').onchange = async e => { busy(1); try { for (const f of e.target.files) P.site.push(await putImg(await toWebp(await fileURL(f), 1600))); } catch (x) { toast(F.authMsg(x), 1); } busy(0); redraw(); };
-  $$('[data-rmimg]').forEach(b => b.onclick = () => { const [k, i] = b.dataset.rmimg.split('|'); P[k].splice(+i, 1); redraw(); });
-  $('#notes').oninput = e => P.notes = e.target.value.split('\n').map(x => x.trim()).filter(Boolean);
-  const din = $('#docIn'); $('#pick').onclick = () => din.click(); din.onchange = () => takeDocs([...din.files]);
-  const dz = $('#drop'); ['dragover', 'dragenter'].forEach(t => dz.addEventListener(t, e => { e.preventDefault(); dz.classList.add('ov'); })); ['dragleave', 'drop'].forEach(t => dz.addEventListener(t, () => dz.classList.remove('ov'))); dz.addEventListener('drop', e => { e.preventDefault(); takeDocs([...e.dataTransfer.files]); });
-  $('#save').onclick = saveP;
-}
-const redraw = () => { const y = scrollY; vEdit(P.id, true).then(() => scrollTo(0, y)); };
-function busy(on) { let b = $('#busy'); if (on && !b) { b = document.createElement('div'); b.id = 'busy'; b.className = 'pdf-busy'; b.innerHTML = '<div><span class="spinner"></span><b>جارٍ رفع الصور…</b></div>'; document.body.appendChild(b); } else if (!on && b) b.remove(); }
-async function takeDocs(files) {
-  const m = $('#dzMsg'); m.textContent = 'جارٍ القراءة…'; let n = 0, kinds = [];
-  for (const f of files) { try { const r = await readDoc(f, toast); kinds.push(r.kind === 'license' ? 'رخصة' : r.kind === 'deed' ? 'صك' : 'مستند'); n += r.found;
-    Object.entries(r.v).forEach(([k, v]) => { if (k === '_comps') { if (v.length && !(P.compsOld || []).length) P.compsOld = v.map(c => ({ floor: c.floor, units: c.units, use: c.use, area: c.area })); return; } if (k.startsWith('_')) return;
-      const m2 = k.match(/^d([dls])_(\w)$/); if (m2) { const f2k = { d: 'desc', l: 'len', s: 'set' }[m2[1]]; if (!P.bounds[m2[2]][f2k]) P.bounds[m2[2]][f2k] = v; return; }
-      if (!P[k] || P.st[k] === 'check' && r.st[k] === 'auto') { P[k] = v; P.st[k] = r.st[k]; } });
-    Object.keys(r.st).filter(k => /^d[dl]_/.test(k)).forEach(k => P.st[k] = 'check');
-  } catch (e) { toast(e.message, 1); } }
-  await vEdit(P.id, true); $('#dzMsg').textContent = n ? `اتقرا ${n} خانة من (${kinds.join(' + ')}). راجع الصفرا.` : 'مقدرتش أقرا بيانات — اكتبها بإيدك.';
-}
-async function saveP() {
-  const b = $('#save'); b.disabled = true; b.textContent = 'جارٍ الحفظ…';
-  const { id, ...data } = P; data.upd = F.serverTimestamp();
-  try { if (id) await F.updateDoc(F.doc(db, 'archProjects', id), data); else { data.by = me.uid; data.byName = isOwner ? 'المالك' : (emp && emp.name) || ''; data.at = F.serverTimestamp(); const r = await F.addDoc(F.collection(db, 'archProjects'), data); P.id = r.id; } toast('اتحفظ ✓'); location.hash = 'p/' + P.id; }
-  catch (e) { toast(F.authMsg(e), 1); b.disabled = false; b.textContent = 'حفظ المشروع'; }
+  $$('[data-one]').forEach(el => el.onchange = async () => { const f = el.files[0]; if (!f) return; busy(1, 'جارٍ رفع الصورة…'); try { readForm(); setImg(el.dataset.one, await putImg((await fileToImages(f, 1))[0])); await saveP(true); } catch (e) { toast(F.authMsg(e), 1); } busy(0); redraw(); });
+  $$('[data-clr]').forEach(b => b.onclick = async () => { readForm(); P[b.dataset.clr] = ''; await saveP(true); redraw(); });
+  const su = $('#siteU'); if (su) { su.onclick = () => $('#siteIn').click(); $('#siteIn').onchange = async e => { busy(1, 'جارٍ رفع الصور…'); try { readForm(); for (const f of e.target.files) P.site.push(await putImg(await fileURL(f))); await saveP(true); } catch (x) { toast(F.authMsg(x), 1); } busy(0); redraw(); }; }
+  $$('[data-rmimg]').forEach(b => b.onclick = () => { const [kk, i] = b.dataset.rmimg.split('|'); P[kk].splice(+i, 1); redraw(); });
+  const ac = $('#addCol'); if (ac) ac.onclick = () => { readForm(); P.fz.colors = P.fz.colors || []; P.fz.colors.push({ hex: '#d9b48f', name: '', code: '' }); redraw(); };
+  $$('[data-cx2]').forEach(b => b.onclick = () => { readForm(); P.fz.colors.splice(+b.dataset.cx2, 1); redraw(); });
 }
 
-/* ---------- صفحة المشروع: المستندات ---------- */
-async function vProject(id) {
-  await loadS(); try { const s = await F.getDoc(F.doc(db, 'archProjects', id)); if (!s.exists()) return toast('مش موجود', 1); P = Object.assign(blankP(), s.data(), { id }); } catch (e) { return toast(F.authMsg(e), 1); }
-  frame(`${back('#list', 'كل المشاريع')}<div class="ar-head"><div><h1 class="sv-h">${esc(P.owner || 'مشروع')}</h1><p class="desc">قطعة ${esc(P.plot)} — مخطط ${esc(P.plan)} — ${esc(P.district)}${P.licNo ? ` — رخصة <span dir="ltr">${esc(P.licNo)}</span>` : ''}</p></div><a class="btn btn-ghost sm" href="#e/${id}">✎ تعديل البيانات</a></div>
-  <div class="ar-docs">${DOCS.map(d => `<button class="ar-doc ${d.ready ? '' : 'off'}" data-d="${d.k}" ${d.ready ? '' : 'disabled'}><span class="i">${d.ready ? '📄' : '⏳'}</span><b>${d.t}</b><small>${d.ready ? (P.docs && P.docs[d.k] ? 'اتطبع ' + esc(P.docs[d.k].at || '') : 'جاهز') : 'بعد اعتماد التصميم'}</small></button>`).join('')}</div>`);
-  $$('[data-d]').forEach(b => b.onclick = () => review(b.dataset.d));
-}
+/* ---------- المراجعة الإجبارية ثم PDF ---------- */
 function warnings(k) {
-  const W = [], need = (f, l, lvl = 'bad') => { if (!String(P[f] || '').trim()) W.push([lvl, l + ' فاضي']); };
-  need('owner', 'اسم المالك'); need('plot', 'رقم القطعة'); need('district', 'الحي');
-  if (k === 'owner') { need('ownerId', 'رقم الهوية / السجل'); need('plan', 'رقم المخطط', 'warn'); }
-  if (k === 'tech') { need('deedArea', 'مساحة الأرض', 'warn'); if (!(P.compsOld || []).length) W.push(['warn', 'جدول المكونات السابقة فاضي']); if (!(P.compsNew || []).length) W.push(['warn', 'جدول المكونات المقترحة فاضي']); if (!(P.plans || []).length) W.push(['warn', 'مفيش مخططات قبل/بعد']); if (!P.facade) W.push(['warn', 'مفيش صورة واجهة']);
-    const tot = (P.compsNew || []).filter(c => !/سور|أسوار|اسوار/.test(c.floor)).reduce((s, c) => s + (num(c.area) || 0), 0); if (!tot && (P.compsNew || []).length) W.push(['warn', 'مساحات المكونات المقترحة فاضية']);
-    Object.entries(DIRS).forEach(([d, l]) => { if (!P.bounds[d].desc) W.push(['warn', `حد ${l} فاضي`]); }); }
-  const yl = Object.keys(P.st || {}).filter(x => P.st[x] === 'check'); if (yl.length) W.push(['warn', `فيه ${yl.length} خانة صفرا لسه ما اتراجعتش`]);
+  const W = [], need = (f, lvl = 'bad') => { if (!String(P[f] || '').trim()) W.push([lvl, (LABELS[f] || f) + ' فاضي']); };
+  (NEEDS[k] || []).forEach(f => need(f, ['owner', 'plot'].includes(f) ? 'bad' : 'warn'));
+  if (k === 'tech') { if (!(P.compsOld || []).length) W.push(['warn', 'جدول المكونات السابقة فاضي']); if (!(P.plans || []).length) W.push(['warn', 'مفيش مخططات قبل/بعد']); if (!P.facade) W.push(['warn', 'مفيش صورة واجهة']); }
+  if (k === 'tech' || k === 'fence') Object.entries(DIRS).forEach(([d, l]) => { if (!P.bounds[d].desc) W.push(['warn', `حد ${l} فاضي`]); if (k === 'fence' && !num(P.bounds[d].len)) W.push(['warn', `طول ${l} فاضي (الكروكي محتاجه)`]); });
+  const yl = Object.keys(P.st || {}).filter(x => P.st[x] === 'check' && ((NEEDS[k] || []).includes(x) || ((k === 'tech' || k === 'fence') && /^d[dl]_/.test(x)))); if (yl.length) W.push(['warn', `فيه ${yl.length} خانة صفرا لسه ما اتراجعتش`]);
   return W;
 }
 function review(k) {
   const d = DOCS.find(x => x.k === k), W = warnings(k), bad = W.some(w => w[0] === 'bad');
   const ov = document.createElement('div'); ov.className = 'modal-back'; ov.innerHTML = `<div class="rs-card sv-rev"><h2>مراجعة قبل PDF — ${d.t}</h2>${W.length ? `<ul class="sv-w">${W.map(([t, m]) => `<li class="${t}">${t === 'bad' ? '⛔' : '⚠'} ${esc(m)}</li>`).join('')}</ul>` : '<p class="sv-ok">✓ مفيش ملاحظات</p>'}
-    <table class="sv-rt"><tr><th>المالك</th><td>${esc(P.owner)}</td></tr><tr><th>هوية / سجل</th><td dir="ltr">${esc(P.ownerId)}</td></tr><tr><th>القطعة / المخطط</th><td>${esc(P.plot)} / ${esc(P.plan)}</td></tr><tr><th>الحي</th><td>${esc(P.district)}</td></tr><tr><th>الرخصة</th><td dir="ltr">${esc(P.licNo)}</td></tr></table>
+    <table class="sv-rt">${(NEEDS[k] || []).slice(0, 8).map(f => `<tr><th>${LABELS[f]}</th><td>${esc(P[f] || '—')}</td></tr>`).join('')}</table>
     <label class="sv-ack"><input type="checkbox" id="ack" ${bad ? 'disabled' : ''}> راجعت البيانات وأتحمل صحتها على مسؤوليتي</label>${bad ? '<p class="hint" style="color:var(--red)">صلّح الأخطاء الحمرا الأول.</p>' : ''}
-    <div class="sv-act"><button class="btn btn-ghost" id="rvX">رجوع</button><button class="btn btn-red" id="rvOk" disabled>معاينة وطباعة</button></div></div>`;
+    <div class="sv-act"><button class="btn btn-ghost" id="rvX">رجوع</button><button class="btn btn-red" id="rvOk" disabled>📄 طباعة / حفظ PDF</button></div></div>`;
   document.body.appendChild(ov); $('#rvX', ov).onclick = () => ov.remove(); const ack = $('#ack', ov), ok = $('#rvOk', ov); ack.onchange = () => ok.disabled = !ack.checked;
-  ok.onclick = async () => { ok.disabled = true; try { await F.updateDoc(F.doc(db, 'archProjects', P.id), { [`docs.${k}`]: { at: greg(), by: me.uid, name: isOwner ? 'المالك' : (emp && emp.name) || '' } }); } catch (e) { } ov.remove(); location.hash = `d/${P.id}/${k}`; };
-}
-
-/* ---------- الطباعة: ورق الشركة الموحّد ---------- */
-const O = () => S.office;
-const lhHead = () => `<header class="lh-h"><div class="lh-co"><b>${esc(O().short)}</b><span>${esc(O().sub)}</span></div><img src="assets/img/mark.png" alt=""></header>`;
-const lhFoot = n => `<footer class="lh-f"><div class="lh-fl"><span>المملكة العربية السعودية</span><span>العنوان المختصر: <b dir="ltr">${esc(O().nat)}</b></span><span>${esc(O().addr)}</span></div><div class="lh-pg">${n || ''}</div><div class="lh-fr"><span dir="ltr">${esc(O().phone)}</span><span dir="ltr">${esc(O().email)}</span><span>س.ت <b dir="ltr">${esc(O().cr)}</b></span></div></footer>`;
-const page = (body, n, cls = '') => `<section class="lh ${cls}"><i class="lh-wm"></i><i class="lh-band"></i>${lhHead()}<div class="lh-b">${body}</div>${lhFoot(n)}</section>`;
-const kv = rows => `<table class="dt kv">${rows.map(([k, v, ltr]) => `<tr><th>${k}</th><td ${ltr ? 'dir="ltr"' : ''}>${esc(v || '')}</td></tr>`).join('')}</table>`;
-const compsTable = (L, area) => { const T = L.filter(c => !/سور|أسوار|اسوار/.test(c.floor)).reduce((s, c) => s + (num(c.area) || 0), 0); return `<table class="dt"><tr><th>المكوّن</th><th>عدد الوحدات</th><th>الاستخدام</th><th>المساحة</th><th>النسبة</th></tr>${L.map(c => `<tr><td>${esc(c.floor)}</td><td>${esc(c.units)}</td><td>${esc(c.use)}</td><td dir="ltr">${f2(num(c.area))} م²</td><td dir="ltr">${num(area) && !/سور|أسوار|اسوار/.test(c.floor) ? (num(c.area) / num(area) * 100).toFixed(2) + '%' : '—'}</td></tr>`).join('')}<tr class="tot"><td>الإجمالي</td><td colspan="2"></td><td dir="ltr">${f2(T)} م²</td><td></td></tr></table>`; };
-async function techReport() {
-  const now = new Date(), I = async id => id ? `<img src="${await getImg(id)}" alt="">` : '', pages = [];
-  const contents = [['بيانات المكتب الهندسي', 3], ['بيانات المبنى', 3], ['مكونات الرخصة والحدود', 4], ['المخططات قبل وبعد التعديل', 5], ['جدول المقارنة', ''], ['الواجهة وصور الموقع', ''], ['الملاحظات والاعتماد', '']];
-  pages.push(page(`<div class="cv"><span class="cv-d">${DAYS[now.getDay()]} ${esc(greg(now))} م — ${esc(hijri(now))} هـ</span><h1>تقرير فني</h1><p class="cv-t">نوع المشروع: <b>${esc(P.projType)}</b></p><div class="cv-r"><span>المطلوب</span><b>${esc(P.req)}</b></div><div class="cv-o"><span>المالك</span><b>${esc(P.owner)}</b><span>قطعة ${esc(P.plot)} — مخطط ${esc(P.plan)} — ${esc(P.district)}</span></div></div>`, 1, 'cover'));
-  pages.push(page(`<h2 class="sh">محتويات التقرير</h2><table class="dt toc"><tr><th>م</th><th>البيان</th></tr>${contents.map((c, i) => `<tr><td>${i + 1}</td><td>${c[0]}</td></tr>`).join('')}</table>`, 2));
-  pages.push(page(`<h2 class="sh">بيانات المكتب الاستشاري</h2>${kv([['اسم المكتب الهندسي', O().name], ['العنوان', O().addr], ['الجوال', O().phone, 1], ['رقم السجل التجاري', O().cr, 1], ['المدير العام', S.mgr]])}
-    <h2 class="sh">بيانات المبنى</h2>${kv([['المالك', P.owner], ['الموقع', `${P.district} - مدينة ${P.city || 'الرياض'}`], ['رقم القطعة', P.plot], ['رقم المخطط', P.plan], ['نوع المبنى', P.projType], ['مساحة الأرض', P.deedArea ? f2(num(P.deedArea)) + ' م²' : ''], ['رقم الرخصة', P.licNo, 1], ['البند المطلوب فحصه', 'تقرير فني ' + P.req], ['التاريخ', greg(now) + ' م', 1]])}`, 3));
-  pages.push(page(`<h2 class="sh">مكونات رخصة البناء السابقة</h2>${compsTable(P.compsOld || [], P.deedArea)}<h2 class="sh">مكونات رخصة البناء حسب المخطط المقترح</h2>${compsTable(P.compsNew || [], P.deedArea)}
-    <h2 class="sh">الحدود والأطوال والارتدادات حسب المخطط المقترح</h2><table class="dt"><tr><th>الجهة</th><th>حدود الأرض</th><th>الطول</th><th>الارتداد</th></tr>${Object.entries(DIRS).map(([k, l]) => `<tr><td>${l}</td><td>${esc(P.bounds[k].desc || '')}</td><td dir="ltr">${f2(num(P.bounds[k].len))} م</td><td dir="ltr">${f2(num(P.bounds[k].set))} م</td></tr>`).join('')}</table>`, 4));
-  let n = 5; for (const pl of P.plans || []) pages.push(page(`<h2 class="sh">التعديلات في المخطط${pl.title ? ' — ' + esc(pl.title) : ''}</h2><div class="ba"><figure><figcaption>قبل التعديل</figcaption>${await I(pl.before)}</figure><figure><figcaption class="aft">بعد التعديل</figcaption>${await I(pl.after)}</figure></div>`, n++));
-  const old = P.compsOld || [], nw = P.compsNew || [];
-  pages.push(page(`<h2 class="sh">جدول المقارنة بين المساحات واختلاف المساحات على الطبيعة عن المخططات المعتمدة</h2><table class="dt"><tr><th>المكوّن</th><th>حسب الرخصة</th><th>حسب المخطط المقترح</th><th>الاستخدام</th><th>مقدار الزيادة</th></tr>${nw.map((c, i) => { const o = old.find(x => nk(x.floor) === nk(c.floor)) || old[i] || {}; const d = (num(c.area) || 0) - (num(o.area) || 0); return `<tr><td>${esc(c.floor)}</td><td dir="ltr">${f2(num(o.area))}</td><td dir="ltr">${f2(num(c.area))}</td><td>${esc(c.use)}</td><td dir="ltr" class="${d > 0 ? 'up' : ''}">${f2(d)}</td></tr>`; }).join('')}</table>`, n++));
-  if (P.facade) pages.push(page(`<h2 class="sh">صورة الواجهة</h2><div class="one">${await I(P.facade)}</div>`, n++));
-  if ((P.site || []).length) pages.push(page(`<h2 class="sh">صور من الطبيعة</h2><div class="grid-ph">${(await Promise.all(P.site.slice(0, 4).map(I))).join('')}</div>`, n++));
-  if (P.system) pages.push(page(`<h2 class="sh">نظام البناء المعتمد</h2><div class="one">${await I(P.system)}</div>`, n++));
-  const notes = (P.notes && P.notes.length ? P.notes : S.techNotes) || [];
-  pages.push(page(`<h2 class="sh">الملاحظات</h2><ol class="nt">${notes.map(x => `<li>${esc(x)}</li>`).join('')}</ol><div class="sig-blk"><div><span>${esc(S.mgrTitle)}</span><b>${esc(S.mgr)}</b>${S.mgrSig ? `<img class="sg" src="${S.mgrSig}" alt="">` : ''}</div>${S.stamp ? `<img class="stp" src="${S.stamp}" alt="">` : '<div class="stp ph">الختم</div>'}</div>`, n++));
-  return pages.join('');
-}
-function ownerPledge() {
-  const ln = v => `<b class="fv">${esc(v || '')}</b>`;
-  return `<section class="lh am"><i class="lh-wm"></i><header class="am-h"><div class="am-t">${(S.amanah || []).map((x, i) => `<span class="${i ? '' : 'b'}">${esc(x)}</span>`).join('')}</div>${S.amanahLogo ? `<img src="${S.amanahLogo}" alt="">` : ''}<div class="am-ttl">نموذج تعهد المالك</div></header>
-  <div class="lh-b"><p class="am-in">أتعهد أنا: ${ln(P.owner)} هوية / سجل رقم: ${ln(P.ownerId)} مالك المشروع لقطعة الأرض رقم: ${ln(P.plot)} ضمن المخطط التنظيمي رقم: ${ln(P.plan)} بحي: ${ln(String(P.district || '').replace(/^حي\s*/, ''))} بالالتزام بالتالي:</p>
-  <ul class="am-l">${(S.pledge || PLEDGE).map(x => `<li>${esc(x)}</li>`).join('')}</ul>
-  <div class="am-s"><div><span>الاسم:</span>${ln(P.owner)}</div><div><span>التوقيع:</span><i></i></div><div><span>التاريخ:</span>${ln(greg())}</div><div><span>رقم التواصل:</span><i></i></div></div></div>
-  <footer class="am-f"><span>${esc(O().name)}</span><span dir="ltr">${esc(O().phone)}</span></footer></section>`;
+  ok.onclick = async () => { ok.disabled = true; try { await F.updateDoc(F.doc(db, 'archProjects', P.id), { [`docs.${k}`]: { at: greg(), by: me.uid, name: isOwner ? 'المالك' : (emp && emp.name) || '' } }); } catch (e) { } ov.remove(); location.hash = `d/${P.id}/${k}?print=1`; };
 }
 async function vDoc(id, k) {
-  await loadS(); try { const s = await F.getDoc(F.doc(db, 'archProjects', id)); P = Object.assign(blankP(), s.data(), { id }); } catch (e) { return toast(F.authMsg(e), 1); }
-  const d = DOCS.find(x => x.k === k); root.innerHTML = `<div class="sv-pbar">${back('#p/' + id, 'ملف المشروع')}<span id="pst">جارٍ التجهيز…</span><button class="btn btn-red" id="prt" disabled>🖨 طباعة / حفظ PDF</button></div><div id="sheet" class="lh-doc"></div>`;
-  $('#sheet').innerHTML = k === 'tech' ? await techReport() : k === 'owner' ? ownerPledge() : '<p class="empty">المستند ده هيتعمل بعد اعتماد التصميم</p>';
+  await loadS(); try { await loadP(id); } catch (e) { return toast(F.authMsg(e), 1); }
+  const d = DOCS.find(x => x.k === k), now = new Date();
+  root.innerHTML = `<div class="sv-pbar">${back('#f/' + id + '/' + k, 'رجوع للبيانات')}<span id="pst">جارٍ تجهيز ملف الـ PDF… ⏳</span><button class="btn btn-red" id="prt" disabled>🖨 طباعة / حفظ PDF</button></div><div id="sheet" class="lh-doc doc-${k}"></div>`;
+  const H = { tech: () => D.techReport(P, S, I, now), facade: () => D.facadeModel(P, S, I), letter: () => D.letter(P, S), insurance: () => D.insurance(P, S, hijri(now)), waste: () => D.waste(P, S, hijri(now)), office: () => D.officePledge(P, S, greg(now)), owner: () => D.ownerPledge(P, S, greg(now)), decl: () => D.declaration(P, S), fence: () => D.fence(P, S, I) }[k];
+  $('#sheet').innerHTML = H ? await H() : '<p class="empty">المستند ده هيتعمل لما توصل نسخة منه</p>';
+  document.body.classList.toggle('land', k === 'facade');
   document.title = `${d.t} — ${P.owner || ''}`; await Promise.all($$('#sheet img').map(i => i.decode ? i.decode().catch(() => { }) : 0));
-  $('#pst').textContent = 'جاهز ✓'; const b = $('#prt'); b.disabled = false; b.onclick = () => window.print();
+  $('#pst').textContent = 'جاهز ✓'; const b = $('#prt'); b.disabled = false; b.onclick = () => window.print(); autoPrint();
 }
 
 /* ---------- كل المشاريع ---------- */
@@ -205,7 +210,7 @@ async function vList() {
   frame(`${back('#', 'قسم المعماري')}<h1 class="sv-h">كل المشاريع</h1><div class="sv-mapbar"><input id="fq" class="in" placeholder="بحث بالمالك أو القطعة أو الرخصة"><a class="btn btn-red sm" href="#new">＋ مشروع جديد</a></div><div id="lst"><div class="ld-box"><div class="spinner"></div><b>جاري التحميل…</b></div></div>`);
   let L = []; try { L = (await F.getDocs(F.query(F.collection(db, 'archProjects'), F.orderBy('at', 'desc'), F.limit(300)))).docs.map(d => ({ id: d.id, ...d.data() })); } catch (e) { $('#lst').innerHTML = `<p class="empty">${esc(F.authMsg(e))}</p>`; return; }
   const paint = () => { const q = nk($('#fq').value), X = L.filter(r => !q || nk([r.owner, r.plot, r.plan, r.district, r.licNo].join(' ')).includes(q));
-    $('#lst').innerHTML = X.length ? `<div class="sv-tw"><table class="sv-t sv-lt"><tr><th>المالك</th><th>القطعة / المخطط</th><th>الحي</th><th>الرخصة</th><th>المطلوب</th><th>المستندات</th><th></th></tr>${X.map(r => `<tr><td><b>${esc(r.owner)}</b></td><td>${esc(r.plot)} / ${esc(r.plan)}</td><td>${esc(r.district)}</td><td dir="ltr">${esc(r.licNo)}</td><td>${esc(r.req)}</td><td>${Object.keys(r.docs || {}).length}</td><td class="ac"><a class="btn btn-ghost sm" href="#p/${r.id}">فتح</a></td></tr>`).join('')}</table></div>` : '<p class="empty">مفيش مشاريع</p>'; };
+    $('#lst').innerHTML = X.length ? `<div class="sv-tw"><table class="sv-t sv-lt"><tr><th>المالك</th><th>القطعة / المخطط</th><th>الحي</th><th>الرخصة</th><th>المستندات</th><th></th></tr>${X.map(r => `<tr><td><b>${esc(r.owner || 'بدون اسم')}</b></td><td>${esc(r.plot)} / ${esc(r.plan)}</td><td>${esc(r.district)}</td><td dir="ltr">${esc(r.licNo)}</td><td>${Object.keys(r.docs || {}).length} / 9</td><td class="ac"><a class="btn btn-ghost sm" href="#p/${r.id}">فتح</a></td></tr>`).join('')}</table></div>` : '<p class="empty">مفيش مشاريع</p>'; };
   $('#fq').oninput = paint; paint();
 }
 
@@ -214,28 +219,32 @@ const imgData = (file, max = 520) => fileURL(file).then(src => new Promise(r => 
 async function vCtl(keep) {
   if (!keep) await loadS(); const s = S;
   const inp = (k, l, ltr) => `<div class="fld"><label>${l}</label><input data-o="${k}" value="${esc(s.office[k] || '')}" ${ltr ? 'dir="ltr"' : ''}></div>`;
-  const imgBox = (k, l, h) => `<div class="sv-img"><b>${l}</b><div class="pv">${s[k] ? `<img src="${s[k]}" alt="">` : '<small>لسه ما اترفعش</small>'}</div><input type="file" accept="image/*" data-img="${k}" hidden><div style="display:flex;gap:6px"><button class="btn btn-ghost sm" data-up="${k}">رفع صورة</button>${s[k] ? `<button class="btn btn-ghost sm" data-rm="${k}" style="color:var(--red)">مسح</button>` : ''}</div>${h ? `<small class="hint">${h}</small>` : ''}</div>`;
+  const imgBox = (k, l, h) => `<div class="sv-img"><b>${l}</b><div class="pv">${s[k] ? `<img src="${s[k]}" alt="">` : (k === 'amanahLogo' ? '<img src="assets/img/docs/riyadh.png" alt="">' : '<small>لسه ما اترفعش</small>')}</div><input type="file" accept="image/*" data-img="${k}" hidden><div style="display:flex;gap:6px"><button class="btn btn-ghost sm" data-up="${k}">رفع صورة</button>${s[k] ? `<button class="btn btn-ghost sm" data-rm="${k}" style="color:var(--red)">مسح</button>` : ''}</div>${h ? `<small class="hint">${h}</small>` : ''}</div>`;
+  const ta = (id, l, v, rows = 6, h = '') => `<section class="card"><h3>${l}</h3>${h ? `<p class="hint">${h}</p>` : ''}<textarea id="${id}" class="in" rows="${rows}">${esc(Array.isArray(v) ? v.join('\n') : v)}</textarea></section>`;
   frame(`${back('#', 'قسم المعماري')}<h1 class="sv-h">غرفة التحكم — المعماري</h1>
-  <section class="card"><h3>بيانات المكتب (رأس وتذييل الورق)</h3><div class="sv-grid">${inp('name', 'الاسم الكامل')}${inp('short', 'الاسم في الرأس')}${inp('sub', 'السطر التاني')}${inp('addr', 'العنوان')}${inp('nat', 'العنوان المختصر', 1)}${inp('phone', 'الجوال', 1)}${inp('cr', 'السجل التجاري', 1)}${inp('email', 'البريد', 1)}<div class="fld"><label>المدير العام</label><input id="mgr" value="${esc(s.mgr)}"></div></div></section>
-  <section class="card"><h3>التوقيع والختم والشعارات</h3><div class="sv-imgs">${imgBox('mgrSig', 'توقيع المدير', 'PNG بخلفية شفافة')}${imgBox('stamp', 'الختم')}${imgBox('amanahLogo', 'شعار الأمانة (للنماذج)', 'ارفعه من النموذج الرسمي')}</div></section>
-  <section class="card"><h3>رأس نماذج الأمانة</h3><textarea id="am" class="in" rows="3">${esc((s.amanah || []).join('\n'))}</textarea></section>
-  <section class="card"><h3>نص تعهد المالك</h3><p class="hint">فقرة في كل سطر — نفس صياغة الأمانة، عدّل لو اتغيّرت.</p><textarea id="pl" class="in" rows="12">${esc((s.pledge || PLEDGE).join('\n'))}</textarea><button class="btn btn-ghost sm" id="plR">رجّع النص الأصلي</button></section>
-  <section class="card"><h3>ملاحظات التقرير الفني الافتراضية</h3><textarea id="tn" class="in" rows="4">${esc((s.techNotes || []).join('\n'))}</textarea></section>
-  <section class="card"><h3>القوائم</h3><div class="row2"><div class="fld"><label>أنواع المشاريع</label><textarea id="pt" class="in" rows="5">${esc(s.projTypes.join('\n'))}</textarea></div><div class="fld"><label>المطلوب</label><textarea id="rq" class="in" rows="5">${esc(s.reqs.join('\n'))}</textarea></div></div></section>
+  <section class="card"><h3>بيانات المكتب</h3><div class="sv-grid">${inp('short', 'اسم المكتب')}${inp('sub', 'السطر التاني')}${inp('addr', 'العنوان')}${inp('nat', 'العنوان المختصر', 1)}${inp('phone', 'الجوال', 1)}${inp('cr', 'السجل التجاري', 1)}${inp('lic', 'رقم الترخيص', 1)}${inp('email', 'البريد', 1)}<div class="fld"><label>المدير (في التقرير)</label><input id="mgr" value="${esc(s.mgr)}"></div><div class="fld"><label>الاسم الكامل (في الخطاب)</label><input id="mgrFull" value="${esc(s.mgrFull)}"></div></div></section>
+  <section class="card"><h3>التوقيع والختم والشعار</h3><div class="sv-imgs">${imgBox('mgrSig', 'توقيع المدير', 'PNG بخلفية شفافة')}${imgBox('stamp', 'الختم')}${imgBox('amanahLogo', 'شعار الأمانة', 'موجود افتراضياً — غيّره لو حابب')}</div></section>
+  ${aiBox(isOwner)}
+  ${ta('am', 'رأس نماذج الأمانة', s.amanah, 3)}${ta('pl', 'نص تعهد المالك', s.pledge, 10, 'فقرة في كل سطر')}${ta('ofT', 'نص تعهد المكتب الهندسي المشرف', s.officeTxt, 12, 'فقرة في كل سطر')}
+  ${ta('dO', 'إقرار مالك العقار', s.declOwner, 4)}${ta('dF', 'إقرار المكتب المصمم', s.declOffice, 4)}${ta('ins', 'تعهد التأمين', s.insurance, 3)}${ta('ws', 'تعهد المخلفات ({qty} = الكمية)', s.waste, 3)}${ta('fn', 'تعهد السور', s.fence, 4)}${ta('lt', 'نص الخطاب ({office} و {req})', s.letter, 2)}${ta('ph', 'الفلسفة التصميمية الافتراضية', s.philo, 5)}${ta('tn', 'ملاحظات التقرير الفني الافتراضية', s.techNotes, 3)}
+  <section class="card"><h3>القوائم</h3><div class="row2"><div class="fld"><label>أنواع المشاريع</label><textarea id="pt" class="in" rows="5">${esc(s.projTypes.join('\n'))}</textarea></div><div class="fld"><label>المطلوب</label><textarea id="rq" class="in" rows="5">${esc(s.reqs.join('\n'))}</textarea></div></div><button class="btn btn-ghost sm" id="reset">رجّع كل النصوص الأصلية</button></section>
   <div class="sv-act sticky"><button class="btn btn-red" id="sv">حفظ الإعدادات</button></div>`);
   const lines = id => $(id).value.split('\n').map(x => x.trim()).filter(Boolean);
-  const collect = () => { $$('[data-o]').forEach(e => s.office[e.dataset.o] = e.value); s.mgr = $('#mgr').value; s.amanah = lines('#am'); s.pledge = lines('#pl'); s.techNotes = lines('#tn'); s.projTypes = lines('#pt'); s.reqs = lines('#rq'); };
-  $('#plR').onclick = () => { $('#pl').value = PLEDGE.join('\n'); };
+  const collect = () => { $$('[data-o]').forEach(e => s.office[e.dataset.o] = e.value); s.mgr = $('#mgr').value; s.mgrFull = $('#mgrFull').value; s.amanah = lines('#am'); s.pledge = lines('#pl'); s.officeTxt = lines('#ofT'); s.declOwner = $('#dO').value.trim(); s.declOffice = $('#dF').value.trim(); s.insurance = $('#ins').value.trim(); s.waste = $('#ws').value.trim(); s.fence = $('#fn').value.trim(); s.letter = $('#lt').value.trim(); s.philo = lines('#ph'); s.techNotes = lines('#tn'); s.projTypes = lines('#pt'); s.reqs = lines('#rq'); };
+  $('#reset').onclick = async () => { if (!confirm('ترجّع كل النصوص للصياغة الأصلية؟')) return; Object.assign(s, { pledge: TXT.owner, officeTxt: TXT.office, declOwner: TXT.declOwner, declOffice: TXT.declOffice, insurance: TXT.insurance, waste: TXT.waste, fence: TXT.fence, letter: TXT.letter, philo: TXT.philo }); await vCtl(true); };
   $$('[data-up]').forEach(b => b.onclick = () => $(`[data-img="${b.dataset.up}"]`).click());
   $$('[data-img]').forEach(e => e.onchange = async () => { if (!e.files[0]) return; collect(); s[e.dataset.img] = await imgData(e.files[0]); const y = scrollY; await vCtl(true); scrollTo(0, y); });
   $$('[data-rm]').forEach(b => b.onclick = async () => { collect(); s[b.dataset.rm] = ''; const y = scrollY; await vCtl(true); scrollTo(0, y); });
+  wireAiBox(toast);
   $('#sv').onclick = async () => { collect(); const b = $('#sv'); b.disabled = true; try { await F.setDoc(F.doc(db, 'archSettings', 'main'), JSON.parse(JSON.stringify(s))); toast('اتحفظ ✓'); } catch (e) { toast(F.authMsg(e), 1); } b.disabled = false; };
 }
 
 function route() {
-  if (!me) return; const h = location.hash.slice(1);
-  if (h === 'new') return vEdit(null);
-  if (h.startsWith('e/')) return vEdit(h.slice(2));
+  if (!me) return; const h = location.hash.slice(1).split('?')[0];
+  document.body.classList.remove('land');
+  if (h === 'new') return vNew();
+  if (h.startsWith('e/')) return vForm(h.slice(2), '');
+  if (h.startsWith('f/')) { const [, id, k] = h.split('/'); return vForm(id, k); }
   if (h.startsWith('p/')) return vProject(h.slice(2));
   if (h.startsWith('d/')) { const [, id, k] = h.split('/'); return vDoc(id, k); }
   if (h === 'list') return vList();
@@ -245,7 +254,7 @@ function route() {
 addEventListener('hashchange', () => { route(); scrollTo(0, 0); });
 F.onAuthStateChanged(auth, async u => {
   if (!u) { location.replace('portal.html'); return; }
-  me = u; isOwner = await F.ownerOf(u.uid);
+  me = u; isOwner = await F.ownerOf(u.uid); await initAI();
   if (!isOwner) { try { const s = await F.getDoc(F.doc(db, 'employees', u.uid)); emp = s.exists() ? s.data() : null; } catch (e) { emp = null; } }
   if (!can('arch')) { frame(`${back('portal.html', 'البوابة')}<div class="card" style="text-align:center;padding:40px"><h2>مفيش صلاحية</h2><p style="color:var(--mut);margin-top:8px">قسم المعماري محتاج صلاحية «قسم المعماري» من المالك.</p></div>`); return; }
   route();

@@ -213,7 +213,7 @@ function offerBlock() {
     <a class="btn btn-gold" href="${esc(o.link || '#/request')}" ${ext(o.link || '')}>${esc(o.btn || t('request'))} ${I.arrow}</a></div></div></section>`;
 }
 const socialBlock = () => { const s = V().socials, m = V().media; const list = SOC.filter(x => s[x[0]]); if (!list.length) return '';
-  return `<section class="sec social-sec compact"><div class="wrap">${head(t('socialEy'), esc(m.title), m.sub)}<div class="soc-grid">${list.map((x, i) => `<a class="soc-tile s-${x[0]} rv d${i % 4}" href="${esc(s[x[0]])}" target="_blank" rel="noopener" data-ev="soc:${x[0]}"><span class="si">${I[x[1]]}</span><b>${socName(x)}</b><small>${LANG === 'en' ? 'Tap here to open' : 'اضغط هنا للانتقال'} ${I.arrow}</small></a>`).join('')}</div></div></section>`; };
+  return `<section class="sec social-sec compact"><div class="wrap">${head(t('socialEy'), esc(m.title), m.sub)}<div class="soc-grid">${list.map((x, i) => `<a class="soc-tile s-${x[0]} rv d${i % 4}" href="${esc(s[x[0]])}" target="_blank" rel="noopener" data-ev="soc:${x[0]}" data-app="${x[0]}"><span class="si">${I[x[1]]}</span><b>${socName(x)}</b><small>${LANG === 'en' ? 'Tap here to open' : 'اضغط هنا للانتقال'} ${I.arrow}</small></a>`).join('')}</div></div></section>`; };
 const faqItem = (f) => `<details class="glass rv"><summary>${esc(f.q)}${f.cat ? `<span class="cat">${esc(f.cat)}</span>` : ''}</summary><div class="ans">${nl(f.a)}</div></details>`;
 
 /* ---------- pages ---------- */
@@ -235,9 +235,13 @@ function appStrip(v) {
   const ap = '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="18" r="1.1"/></svg>';
   const b = (href, ic, sm, big, k) => href ? `<a class="h7-store" href="${esc(href)}" target="_blank" rel="noopener" data-ev="app:${k}">${ic}<span><small>${sm}</small><b>${big}</b></span></a>` : `<button class="h7-store" data-inst="${k}">${ic}<span><small>${sm}</small><b>${big}</b></span></button>`;
   const so = V().socials || {}, sl = SOC.filter(x => so[x[0]]);
-  const socs = sl.length ? `<div class="h7-soc">${sl.map((x, i) => `<a class="hs s-${x[0]}" style="--i:${i}" href="${esc(so[x[0]])}" target="_blank" rel="noopener" aria-label="${esc(socName(x))}" data-ev="soc:${x[0]}">${I[x[1]]}</a>`).join('')}</div>` : '';
+  const socs = sl.length ? `<div class="h7-soc">${sl.map((x, i) => `<a class="hs s-${x[0]}" style="--i:${i}" href="${esc(so[x[0]])}" data-app="${x[0]}" target="_blank" rel="noopener" aria-label="${esc(socName(x))}" data-ev="soc:${x[0]}">${I[x[1]]}</a>`).join('')}</div>` : '';
   return `<div class="h7-app"><div class="h7-app-l"><span class="h7-app-t"><i>📱</i>${esc(line)}</span>${socs}</div><div class="h7-app-b">${b(c.playStore, gp, en ? 'Get it on' : 'حمّله من', 'Google Play', 'android')}${b(c.appStore, ap, en ? 'Download on the' : 'حمّله من', 'App Store', 'ios')}</div></div>`;
 }
+// صور بتتبدل بنعومة مع zoom بطيء (من نحن في الرئيسية)
+function rotImgs(box, ms) { let L = []; try { L = JSON.parse(box.dataset.imgs || '[]'); } catch (e) { } if (L.length < 2) return; let k = 0; const t = setInterval(() => { if (!document.body.contains(box)) return clearInterval(t); if (document.hidden) return; k = (k + 1) % L.length; const cur = $('img.on', box), im = new Image(); im.alt = ''; im.src = L[k]; im.onload = () => { box.insertBefore(im, box.querySelector('.ab-badge')); requestAnimationFrame(() => { im.classList.add('on'); if (cur) { cur.classList.remove('on'); setTimeout(() => cur.remove(), 1400); } }); }; }, ms); }
+// عارض صور بسيط (معرض مكتبنا)
+function lightbox(L, i) { const o = document.createElement('div'); o.className = 'lbx'; const paint = () => { o.innerHTML = `<button class="lbx-x" aria-label="إغلاق">×</button><button class="lbx-p" aria-label="السابق">›</button><img src="${esc(L[i])}" alt=""><button class="lbx-n" aria-label="التالي">‹</button>`; $('.lbx-x', o).onclick = () => o.remove(); $('.lbx-n', o).onclick = e => { e.stopPropagation(); i = (i + 1) % L.length; paint(); }; $('.lbx-p', o).onclick = e => { e.stopPropagation(); i = (i - 1 + L.length) % L.length; paint(); }; }; paint(); o.onclick = e => { if (e.target === o) o.remove(); }; document.body.appendChild(o); }
 const grps = p => String(p.grp || '').split(/[,،]/).map(x => x.trim()).filter(Boolean);
 function workCards() {
   const v = V(), Ga = C.workGroups || [], en = LANG === 'en';
@@ -255,15 +259,20 @@ function wireX() {
   const arm = (el, dd) => { const sv = V().services[+el.dataset.xi], d = dd || xDur(sv); el.style.setProperty('--xd', d + 's'); el.classList.remove('run'); if (!hold) { void el.offsetWidth; el.classList.add('run'); } nextAt = Date.now() + d * 1000; };
   const show = (el, user) => { const i = +el.dataset.xi, sv = V().services[i]; if (!sv) return; $$('.h7-xi').forEach(x => { x.classList.toggle('on', x === el); x.setAttribute('aria-selected', x === el); x.classList.remove('run'); });
     p.classList.add('sw'); setTimeout(() => { p.innerHTML = svcPanel(sv, i); if (user && mob()) { el.after(p); el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } p.classList.remove('sw'); arm(el); }, mob() && user ? 0 : 180); };
-  $$('.h7-xi').forEach(el => el.onclick = () => { hold = Date.now(); if (!el.classList.contains('on') || mob()) show(el, 1); });
+  // الموبايل: أكورديون — التفاصيل بتنزل تحت العنوان، واللي قبلها تقفل، والمفتوح بينوّر
+  const acc = el => { const open = el.classList.contains('on'); $$('.h7-xi').forEach(x => { x.classList.remove('on', 'run'); x.setAttribute('aria-expanded', 'false'); }); if (open) { p.classList.add('acc-x'); return; }
+    const i = +el.dataset.xi; p.innerHTML = svcPanel(V().services[i], i); el.after(p); el.classList.add('on'); el.setAttribute('aria-expanded', 'true'); p.classList.remove('acc-x', 'acc-in'); void p.offsetWidth; p.classList.add('acc-in');
+    setTimeout(() => scrollTo({ top: el.getBoundingClientRect().top + scrollY - 96, behavior: 'smooth' }), 60); };
+  $$('.h7-xi').forEach(el => el.onclick = () => { if (mob()) return acc(el); hold = Date.now(); if (!el.classList.contains('on')) show(el, 1); });
   // الماوس على خدمة في القائمة يفتحها على طول، والماوس في أي حتة تانية الحركة مكمّلة
   $$('.h7-xi').forEach(el => { el.addEventListener('mouseenter', () => { if (mob()) return; hold = 1; if (!el.classList.contains('on')) show(el); else $$('.h7-xi.run').forEach(x => x.classList.remove('run')); });
     el.addEventListener('mouseleave', () => { if (hold === 1) { hold = 0; const on = $('.h7-xi.on'); if (on) arm(on); } }); });
-  { const on = $('.h7-xi.on'); if (on && mob()) on.after(p); }
-  const start = () => { const on = $('.h7-xi.on'); if (!on) return; const i = +on.dataset.xi; p.innerHTML = svcPanel(V().services[i], i); arm(on, 2); };
+  if (mob()) { $$('.h7-xi').forEach(x => x.classList.remove('on', 'run')); p.classList.add('acc-x'); }
+  const start = () => { if (mob()) return; const on = $('.h7-xi.on'); if (!on) return; const i = +on.dataset.xi; p.innerHTML = svcPanel(V().services[i], i); arm(on, 2); };
   try { new IntersectionObserver(e => { vis = e[0].isIntersecting; if (vis) sec.classList.add('xin'); if (vis && !seen) { seen = true; start(); } }, { threshold: .25 }).observe(sec); } catch (e) { vis = true; sec.classList.add('xin'); seen = true; start(); }
   xTimer = setInterval(() => {
     if (!document.body.contains(sec)) return clearInterval(xTimer);
+    if (mob()) return;
     if (hold > 1 && Date.now() - hold > 10000) { hold = 0; const on = $('.h7-xi.on'); if (on) arm(on); }
     if (!vis || hold || document.hidden) { nextAt += 200; return; }
     if (Date.now() < nextAt) return;
@@ -279,11 +288,42 @@ function wireWork() {
   let tick = 0; wkTimer = setInterval(() => { if (!document.body.contains(sec)) return clearInterval(wkTimer); if (document.hidden) return; tick++;
     cards.forEach((c, i) => { if ((tick + i) % cards.length !== 0 && cards.length > 2 && tick % 2 !== i % 2) return; let L = []; try { L = JSON.parse(c.dataset.imgs || '[]'); } catch (e) { } if (L.length < 2) return; const box = $('.wk-imgs', c), cur = $('img.on', box), k = ((+c.dataset.k || 0) + 1) % L.length; c.dataset.k = k;
       const im = new Image(); im.alt = ''; im.src = L[k]; im.onload = () => { box.appendChild(im); requestAnimationFrame(() => { im.classList.add('on'); if (cur) { cur.classList.remove('on'); setTimeout(() => cur.remove(), 1300); } }); }; }); }, 4000);
+  // الموبايل: الكروت صغيرة جنب بعض وبتتحرك كارت كارت، وتقف لما تلمسها
+  if (matchMedia('(max-width:700px)').matches) {
+    const g = $('.h7-wk-g', sec) || (cards[0] && cards[0].parentElement); if (g && cards.length > 1) {
+      g.classList.add('wk-car'); let dots = $('.wk-dots', sec); if (!dots) { dots = document.createElement('div'); dots.className = 'wk-dots'; dots.innerHTML = cards.map((_, i) => `<i data-d="${i}"></i>`).join(''); g.after(dots); }
+      let idx = 0, pause = 0; const go = i => { idx = (i + cards.length) % cards.length; const c = cards[idx], gr = g.getBoundingClientRect(), cr = c.getBoundingClientRect(); g.scrollBy({ left: (cr.left + cr.width / 2) - (gr.left + gr.width / 2), behavior: 'smooth' }); };
+      const mark = () => { const mid = g.getBoundingClientRect().left + g.clientWidth / 2; let best = 0, bd = 1e9; cards.forEach((c, i) => { const r = c.getBoundingClientRect(), d = Math.abs(r.left + r.width / 2 - mid); if (d < bd) { bd = d; best = i; } }); idx = best; cards.forEach((c, i) => c.classList.toggle('mid', i === best)); $$('i', dots).forEach((d, i) => d.classList.toggle('on', i === best)); };
+      g.addEventListener('scroll', () => requestAnimationFrame(mark), { passive: true }); ['touchstart', 'pointerdown'].forEach(t => g.addEventListener(t, () => { pause = Date.now(); }, { passive: true }));
+      $$('i', dots).forEach(d => d.onclick = () => { pause = Date.now(); go(+d.dataset.d); }); mark();
+      const ct = setInterval(() => { if (!document.body.contains(g)) return clearInterval(ct); if (document.hidden || Date.now() - pause < 6000) return; const r = g.getBoundingClientRect(); if (r.bottom < 0 || r.top > innerHeight) return; go(idx + 1); }, 3000);
+    }
+  }
   if (matchMedia('(hover:hover)').matches) {
     sec.addEventListener('mousemove', e => { const r = sec.getBoundingClientRect(); sec.style.setProperty('--mx', (e.clientX - r.left) + 'px'); sec.style.setProperty('--my', (e.clientY - r.top) + 'px'); });
     cards.forEach(c => { c.addEventListener('mousemove', e => { const r = c.getBoundingClientRect(), x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5; c.style.transform = `perspective(800px) rotateY(${(x * 8).toFixed(2)}deg) rotateX(${(-y * 8).toFixed(2)}deg) translateY(-4px)`; }); c.addEventListener('mouseleave', () => { c.style.transform = ''; }); });
   }
 }
+
+/* السوشيال على الموبايل: يفتح التطبيق نفسه على طول، ولو مش متسطب يفتح الصفحة */
+const APPS = {
+  instagram: u => { const m = u.match(/instagram\.com\/([^/?#]+)/); return m && { ios: 'instagram://user?username=' + m[1], and: `intent://instagram.com/_u/${m[1]}#Intent;package=com.instagram.android;scheme=https;` }; },
+  snapchat: u => { const m = u.match(/snapchat\.com\/add\/([^/?#]+)/); return m && { ios: 'snapchat://add/' + m[1], and: `intent://add/${m[1]}#Intent;package=com.snapchat.android;scheme=snapchat;` }; },
+  x: u => { const m = u.match(/(?:x|twitter)\.com\/([^/?#]+)/); return m && { ios: 'twitter://user?screen_name=' + m[1], and: `intent://user?screen_name=${m[1]}#Intent;package=com.twitter.android;scheme=twitter;` }; },
+  youtube: u => { const p = u.replace(/^https?:\/\/(www\.|m\.)?youtube\.com/, ''); return /youtube\.com/.test(u) && { ios: 'youtube://www.youtube.com' + p, and: `intent://www.youtube.com${p}#Intent;package=com.google.android.youtube;scheme=https;` }; },
+  tiktok: u => { const m = u.match(/tiktok\.com\/(@[^/?#]+)/); return m && { ios: '', and: `intent://www.tiktok.com/${m[1]}#Intent;package=com.zhiliaoapp.musically;scheme=https;` }; }
+};
+document.addEventListener('click', e => {
+  const a = e.target.closest('a[data-app]'); if (!a || !matchMedia('(pointer:coarse)').matches) return;
+  const url = a.href, f = APPS[a.dataset.app], L = f && f(url); if (!L) return;
+  e.preventDefault(); const android = /android/i.test(navigator.userAgent);
+  if (android) { location.href = L.and + 'S.browser_fallback_url=' + encodeURIComponent(url) + ';end'; return; }
+  if (!L.ios) { location.href = url; return; } // تيك توك: الرابط نفسه بيفتح التطبيق على الآيفون
+  const t0 = Date.now(); location.href = L.ios;
+  setTimeout(() => { if (!document.hidden && Date.now() - t0 < 2500) location.href = url; }, 1400);
+});
+// معرض «مكتبنا»
+document.addEventListener('click', e => { const b = e.target.closest('[data-off]'); if (!b) return; const L = ((V().office || {}).imgs || []).map(src); lightbox(L, +b.dataset.off); });
 let instEv = null;
 addEventListener('beforeinstallprompt', e => { e.preventDefault(); instEv = e; });
 addEventListener('appinstalled', () => { instEv = null; toast(LANG === 'en' ? 'App installed ✓' : 'التطبيق اتثبت ✓'); });
@@ -344,7 +384,7 @@ function homeV7() {
       <div class="h7-all on"><a class="h7-red glow shine-btn" href="#/projects">${en ? 'See all our work' : 'شوف كل أعمالنا'} ${ARW}</a></div></div></section>`,
     aboutH: () => { const a = v.about, st = v.stats || [], img0 = (v.aboutHome && v.aboutHome.img) || 'assets/img/work/w13.webp';
       const pts = [[en ? `Licensed since ${v.brand.founded}` : `مرخّصة منذ ${v.brand.founded}`, '🏛'], [en ? 'Integrated engineering team' : 'فريق هندسي متكامل', '👷'], ...(st.find(x => /فرع|branch/i.test(x.l || x.label || '')) ? [[`${(st.find(x => /فرع|branch/i.test(x.l || x.label || '')) || {}).n || ''} ${en ? 'branches in the Kingdom' : 'فروع داخل المملكة'}`, '📍']] : []), [en ? 'Live project follow-up' : 'متابعة لحظية لمشروعك', '📲']];
-      return `<section class="h7-sec h7-about" id="aboutH"><div class="wrap ab-g"><div class="ab-img"><img src="${esc(src(img0))}" alt="${esc(a.title)}" loading="lazy"><span class="ab-badge"><b>${esc(v.brand.founded)}</b><small>${en ? 'Since' : 'منذ'}</small></span></div>
+      return `<section class="h7-sec h7-about" id="aboutH"><div class="wrap ab-g"><div class="ab-img" data-imgs='${esc(JSON.stringify([img0, ...((v.aboutHome && v.aboutHome.imgs) || [])].filter((x, i, A) => x && A.indexOf(x) === i).map(src)))}'><img class="on" src="${esc(src(img0))}" alt="${esc(a.title)}" loading="lazy"><span class="ab-badge"><b>${esc(v.brand.founded)}</b><small>${en ? 'Since' : 'منذ'}</small></span></div>
       <div class="ab-t">${tag(en ? 'About us' : 'من نحن')}<h2 class="h7-h2">${esc(a.title)}</h2><p class="ab-p">${esc((a.story || [a.lead])[0] || a.lead)}</p>
       <ul class="ab-pts">${pts.map(([tx, ic], i) => `<li style="--i:${i}"><span>${ic}</span>${esc(tx)}</li>`).join('')}</ul>
       <a class="h7-red" href="#/about">${en ? 'Learn more about us' : 'اعرف أكتر عنّا'} ${ARW}</a></div></div></section>`; },
@@ -539,14 +579,16 @@ P.packages = P.packages = () => { const v = V(); return `<section class="phead">
   <section class="sec tight"><div class="wrap"><div class="pk-grid">${pkCards()}</div></div></section>${ctaBox()}`; };
 
 P.about = () => { const v = V(); return `<section class="phead"><div class="wrap">${crumbs(t('about'))}<h1>${esc(v.about.title)}</h1><p class="lead" style="max-width:780px">${esc(v.about.lead)}</p></div></section>
-  <section class="sec tight"><div class="wrap about-grid"><div class="rv">${v.about.story.map(p => `<p style="margin-bottom:14px;font-size:17px">${esc(p)}</p>`).join('')}</div><div class="hero-img rv">${img(C.gallery[0] ? C.gallery[0].img : 'assets/img/story.webp', '')}</div></div>
+  <section class="sec tight"><div class="wrap about-grid"><div class="rv">${v.about.story.map(p => `<p style="margin-bottom:14px;font-size:17px">${esc(p)}</p>`).join('')}</div><div class="hero-img rv">${img((v.office && v.office.imgs && v.office.imgs[0]) || (C.gallery[0] ? C.gallery[0].img : 'assets/img/story.webp'), '')}</div></div>
   <div class="wrap" style="margin-top:40px">${stats()}</div></section>
+  ${(v.office && (v.office.imgs || []).length) ? `<section class="sec alt off-sec"><div class="wrap">${head(LANG === 'en' ? 'Our office' : 'مكتبنا', LANG === 'en' ? 'Where the work happens' : esc(v.office.title || 'مكتبنا'), LANG === 'en' ? 'An integrated engineering workspace in Al-Arid, Riyadh' : esc(v.office.sub || ''))}<div class="off-g">${v.office.imgs.map((x, i) => `<button class="off-i rv d${i % 4}" data-off="${i}"><img src="${esc(src(x))}" alt="${LANG === 'en' ? 'Office' : 'مكتب الشمراني'} ${i + 1}" loading="lazy"></button>`).join('')}</div></div></section>` : ''}
   <section class="sec alt"><div class="wrap">${head(t('licEy'), t('licTitle'), t('licSub'))}<div class="lic-grid">${v.about.licenses.map((l, i) => `<div class="lic glass rv d${i % 4}"><div class="top"><h4>${esc(l.name)}</h4><span class="chip">${esc(l.badge)}</span></div><p>${esc(l.desc)}</p><dl>${l.fields.map(f => `<dt>${esc(f[0])}</dt><dd>${esc(f[1])} <button class="copy" data-copy="${esc(f[1])}">${t('copy')}</button></dd>`).join('')}</dl></div>`).join('')}</div></div></section>
   <section class="sec"><div class="wrap">${head(t('branchesEy'), t('branchesTitle'), '')}<div class="branches">${v.branches.map((b, i) => `<div class="branch glass rv d${i}"><h4>${I.pin} ${esc(b.name)}</h4><p>${esc(b.addr)}</p>${b.auth ? `<small>${esc(b.auth)}</small>` : ''}${b.map ? `<a class="btn btn-ghost sm" style="align-self:flex-start;margin-top:8px" href="${esc(b.map)}" target="_blank" rel="noopener">${t('onMap')}</a>` : ''}</div>`).join('')}</div></div></section>
   <section class="sec alt"><div class="wrap">${head(t('isicEy'), t('isicTitle'), t('isicSub'))}<table class="isic glass rv">${v.about.isic.map(r => `<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td></tr>`).join('')}</table></div></section>
   <section class="sec"><div class="wrap"><div class="quote rv"><div class="avatar"><img src="assets/img/mark.png" alt=""></div><div><blockquote>${esc(v.about.quote2 || v.about.quote)}</blockquote><div class="who"><b>${esc(v.about.ceo)}</b>${esc(v.about.ceoTitle)}</div></div></div></div></section>${ctaBox()}`; };
 
 P.contact = () => { const v = V(), c = v.contact; return `<section class="phead"><div class="wrap">${crumbs(t('contact'))}<h1>${em(t('ctTitle'))}</h1><p class="lead">${t('ctLead')}</p></div></section>
+  ${c.img ? `<section class="sec tight ct-hero-s"><div class="wrap"><div class="ct-hero rv"><img src="${esc(src(c.img))}" alt="${esc(t('contact'))}"><div class="ct-quick"><a href="${tel()}" aria-label="${t('directCall')}">${I.phone}<span>${LANG === 'en' ? 'Call' : 'اتصال'}</span></a><a href="${wa()}" target="_blank" rel="noopener" aria-label="WhatsApp">${I.wa}<span>${LANG === 'en' ? 'WhatsApp' : 'واتساب'}</span></a><a href="mailto:${esc(c.email)}" aria-label="Email">${I.mail}<span>${LANG === 'en' ? 'Email' : 'إيميل'}</span></a></div></div></div></section>` : ''}
   <section class="sec tight"><div class="wrap contact-grid"><div class="c-cards">
     <a class="c-card glass rv" href="${wa()}" target="_blank" rel="noopener"><span class="ic">${I.wa}</span><div><b>${t('waFast')}</b><span>${t('waFastP')}</span></div></a>
     <a class="c-card glass rv d1" href="${tel()}"><span class="ic">${I.phone}</span><div><b dir="ltr" class="num">${esc(c.phone)}</b><span>${t('directCall')}${c.phone2 ? ' · ' + esc(c.phone2) : ''}</span></div></a>
@@ -703,6 +745,7 @@ function render(soft) {
 }
 function wire(r) {
   wireX(); wireWork();
+  { const ab = $('#aboutH .ab-img'); if (ab) rotImgs(ab, 4500); }
   { const ab = $('#aboutH'); if (ab) { try { const io = new IntersectionObserver(e => { if (e[0].isIntersecting) { ab.classList.add('in'); io.disconnect(); } }, { threshold: .2 }); io.observe(ab); } catch (e) { ab.classList.add('in'); } } }
   $$('[data-inst]').forEach(b => b.onclick = () => { track('app:' + b.dataset.inst); doInstall(b.dataset.inst); });
   if ($('#subF')) wireSub();
