@@ -19,7 +19,7 @@
 <meta name="apple-mobile-web-app-title" content="الشمراني">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Noto+Kufi+Arabic:wght@600;700;800;900&family=Inter:wght@500;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/css/site.css?v=13">
+<link rel="stylesheet" href="assets/css/site.css?v=14">
 <script>/* الجوال بيعرض شكل الكمبيوتر بالظبط (مصغّر) — والأزرار العائمة بحجمها المريح */
 (function(){try{var d=document.documentElement,mq=function(){var p=matchMedia('(orientation: landscape)').matches,w=p?Math.max(screen.width,screen.height):Math.min(screen.width,screen.height);return w;};var w=mq();var pc=false;try{pc=localStorage.getItem('sh.view')==='pc'}catch(e){}if(w<1000)d.classList.add('is-phone');if(w<1000&&pc&&!/[?&]mobile=1/.test(location.search)){var m=document.querySelector('meta[name=viewport]');var h=innerHeight&&innerWidth<1000?innerHeight*(w/innerWidth):(screen.height);m.setAttribute('content','width=1280,viewport-fit=cover');d.classList.add('m-desk');var set=function(){var w2=mq();d.style.setProperty('--mk',(1280/w2).toFixed(3));d.style.setProperty('--mw',w2);d.style.setProperty('--mh',Math.round(innerHeight*w2/1280)||Math.round(h));};set();addEventListener('orientationchange',function(){setTimeout(set,300)});addEventListener('resize',set);}}catch(e){}})();
 </script>
@@ -75,7 +75,7 @@
 <div class="toast" id="toast"></div>
 <div class="hold-hint" id="holdHint">بوابة الموظفين…</div>
 
-<script type="module" src="assets/js/site.js?v=13"></script>
+<script type="module" src="assets/js/site.js?v=14"></script>
 <script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));</script>
 </body>
 </html>
