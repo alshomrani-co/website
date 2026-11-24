@@ -66,6 +66,8 @@ export function compressImage(file, max = 1600, q = 0.8) {
 export const MODULES = {
   basma: { t: 'البصمة', d: 'الحضور والانصراف', href: 'basma/', ic: 'finger' },
   report: { t: 'الإشراف', d: 'العملاء والتقارير الميدانية', href: 'supervision.html', ic: 'clip' },
+  survey: { t: 'قسم المساحة', d: 'التقارير المساحية وكروكي القطعة', href: 'survey.html', ic: 'compass' },
+  arch: { t: 'قسم المعماري', d: 'التقارير الفنية والتعهدات والنماذج', href: 'arch.html', ic: 'build' },
   reports: { t: 'كل تقارير المهندسين', d: 'صلاحية مشاهدة تقارير الكل', href: 'supervision.html', ic: 'folder', tile: false },
   support: { t: 'الدعم والمحادثات', d: 'طلبات العملاء والشات المباشر', href: 'portal.html#support', ic: 'chat' },
   cms: { t: 'لوحة التحكم', d: 'تعديل الموقع والإحصائيات', href: 'admin.html', ic: 'gear' }
