@@ -28,6 +28,12 @@ export const SOUNDS = {
 export function play(name, vol) {
   try { const a = ctx(), c = getCfg(), s = SOUNDS[name || c.s] || SOUNDS.mouse, g = a.createGain(); g.gain.value = Math.max(0, Math.min(1.5, vol == null ? +c.v : vol)); g.connect(a.destination); s.fn(a.currentTime + .005, g); } catch (e) { }
 }
-export function tick() { const now = performance.now(); if (now - last < 45 || muted()) return; last = now; play(); }
+export function tick(force) { const now = performance.now(); if ((!force && now - last < 45) || muted()) return; last = now; play(); }
 const SEL = 'button, a[href], [role="button"], .opt, summary, label.switch, input[type="checkbox"], input[type="radio"], select, .h7-xi, .li, .tile';
-document.addEventListener('pointerdown', e => { if (e.button !== 0 && e.pointerType === 'mouse') return; const el = e.target.closest(SEL); if (!el || el.disabled || el.closest('[data-nosnd]')) return; tick(); }, { capture: true, passive: true });
+// الموبايل (خصوصاً الآيفون): الصوت لازم «يتفتح» بأول لمسة — بنشغّل صوت صامت مرة واحدة
+let unlocked = false;
+const unlock = () => { if (unlocked) return; try { const a = ctx(), b = a.createBuffer(1, 1, 22050), s = a.createBufferSource(); s.buffer = b; s.connect(a.destination); s.start(0); if (a.state !== 'suspended') unlocked = true; else a.resume().then(() => { unlocked = true; }); } catch (e) { } };
+['touchend', 'click', 'keydown'].forEach(t => document.addEventListener(t, unlock, { capture: true, passive: true }));
+let pend = null;
+document.addEventListener('touchend', () => { if (pend && performance.now() - pend < 800) { pend = null; unlock(); setTimeout(() => { if (ac && ac.state === 'running') tick(true); }, 40); } }, { capture: true, passive: true });
+document.addEventListener('pointerdown', e => { if (e.button !== 0 && e.pointerType === 'mouse') return; const el = e.target.closest(SEL); if (!el || el.disabled || el.closest('[data-nosnd]')) return; if (e.pointerType !== 'mouse' && (!ac || ac.state !== 'running')) { pend = performance.now(); unlock(); return; } tick(); }, { capture: true, passive: true });

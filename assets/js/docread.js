@@ -47,16 +47,52 @@ function licComps(items) {
 }
 export function boundsText(text) {
   const o = {}; const R = { N: 'شمال', S: 'جنوب', E: 'شرق', W: 'غرب' };
-  Object.entries(R).forEach(([k, w]) => { const m = text.match(new RegExp(w + '[اًا]*\\s*[:：]?\\s*(.{2,60}?)\\s*بطول\\s*[:]?\\s*([\\d.,]+)')); if (m) o[k] = { desc: N(m[1]).replace(/[،,:]$/, ''), len: num(m[2]) }; });
+  Object.entries(R).forEach(([k, w]) => { const m = text.replace(/\s+/g, ' ').match(new RegExp(w + '[يىاًأا]*\\s*[:：]\\s*(.{2,60}?)\\s*بطول\\s*:?\\s*\\(?\\s*([\\d.,]+)')); if (m) o[k] = { desc: N(m[1]).replace(/[،,:]$/, ''), len: num(m[2]) }; });
   return o;
 }
-export async function readDoc(file, toast = () => { }) {
-  let items = [], text = '', ocr = false;
-  if (/pdf/i.test(file.type) || /\.pdf$/i.test(file.name)) { items = await pdfItems(file); text = items.map(i => i.s).join('\n'); }
-  if (!text.trim()) { ocr = true; toast('بنقرأ الصورة بالـ OCR… ممكن ياخد دقيقة'); const T = await import('https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.esm.min.js'); const r = await T.default.recognize(file, 'ara+eng'); text = N(r.data.text); }
-  return parse(items, text, ocr);
+// صورة/صفحات → صور JPEG مضغوطة (أي حجم ملف بيدخل)
+export const fileURL = f => new Promise((r, j) => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.onerror = j; fr.readAsDataURL(f); });
+export const shrink = (src, max = 1800, q = .85) => new Promise(r => { const im = new Image(); im.onload = () => { const k = Math.min(1, max / Math.max(im.naturalWidth, im.naturalHeight)), c = document.createElement('canvas'); c.width = Math.max(1, Math.round(im.naturalWidth * k)); c.height = Math.max(1, Math.round(im.naturalHeight * k)); const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(im, 0, 0, c.width, c.height); r(c.toDataURL('image/jpeg', q)); }; im.onerror = () => r(''); im.src = src; });
+export const isPdf = f => /pdf/i.test(f.type) || /\.pdf$/i.test(f.name || '');
+export async function fileToImages(f, max = 3) { if (isPdf(f)) return Promise.all((await pdfPages(f, 2, max)).map(d => shrink(d, 1800))); return [await shrink(await fileURL(f), 2000)]; }
+// إعدادات قارئ الـ AI (بيتحط رابطه من غرفة التحكم)
+let AI = { url: '', getToken: null };
+export const setAI = o => { AI = Object.assign(AI, o || {}); };
+export const aiReady = () => !!AI.url;
+export async function aiRead(images, hint) {
+  if (!AI.url) throw new Error('قارئ الـ AI مش متوصّل — حط رابطه من غرفة التحكم');
+  const tok = AI.getToken ? await AI.getToken() : '';
+  const r = await fetch(AI.url, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok }, body: JSON.stringify({ images: images.slice(0, 4), hint: hint || '' }) });
+  const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || ('AI ' + r.status)); return j;
+}
+// تحويل رد الـ AI لنفس شكل القراءة العادية — كله «راجعها»
+export function fromAI(j) {
+  const v = {}, st = {}, F = j.fields || {};
+  Object.entries(F).forEach(([k, x]) => { x = N(x); if (!x) return; if (k === 'lat' || k === 'lng') { v['_' + k] = +x; return; } v[k] = x; st[k] = 'check'; });
+  if (v.deedArea) v.deedArea = String(num(v.deedArea) || v.deedArea);
+  Object.entries(j.bounds || {}).forEach(([d, b]) => { if (!b) return; if (N(b.desc)) { v['dd_' + d] = N(b.desc); st['dd_' + d] = 'check'; } if (N(b.len)) { v['dl_' + d] = String(num(b.len) || N(b.len)); st['dl_' + d] = 'check'; } if (N(b.set)) v['ds_' + d] = String(num(b.set)); });
+  if (Array.isArray(j.comps) && j.comps.some(c => c && c.floor)) v._comps = j.comps.filter(c => c && c.floor).map(c => ({ floor: N(c.floor), units: N(c.units), use: N(c.use), area: num(c.area) }));
+  return { v, st, ocr: true, ai: true, kind: j.kind || 'other', planTitle: N(j.planTitle), planStage: j.planStage || '', unsure: j.unsure || [], found: Object.keys(v).filter(k => !k.startsWith('_')).length };
+}
+let tess = null;
+async function ocrImages(images, toast) {
+  if (!tess) { await loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5.1.0/dist/tesseract.min.js'); tess = window.Tesseract; }
+  toast('بنقرأ بالـ OCR… أول مرة بتاخد دقيقة عشان ملف اللغة العربية');
+  const w = await tess.createWorker('ara+eng'); let t = ''; try { for (const im of images) { const r = await w.recognize(im); t += '\n' + r.data.text; } } finally { await w.terminate(); }
+  return N(t.replace(/\n/g, ' \n '));
+}
+// القراءة: PDF فيه كلام ← مباشر (أخضر). صورة أو PDF متصوّر ← الـ AI، ولو مش متاح ← OCR
+export async function readDoc(file, toast = () => { }, hint) {
+  let items = [], text = '';
+  if (isPdf(file)) { items = await pdfItems(file); text = items.map(i => i.s).join('\n'); }
+  if (text.replace(/\s/g, '').length > 40) { const r = parse(items, text, false); r.text = true; return r; }
+  toast('الملف صورة — بنقراه…'); const images = await fileToImages(file);
+  if (!images.filter(Boolean).length) throw new Error('الملف مش صورة ولا PDF مفهوم');
+  if (AI.url) { try { toast('الـ AI بيقرا المستند…'); const r = fromAI(await aiRead(images, hint)); r.images = images; return r; } catch (e) { toast('الـ AI: ' + e.message + ' — هنجرّب OCR', 1); } }
+  const t = await ocrImages(images, toast); const r = parse([], t, true); r.images = images; return r;
 }
 export function parse(items, text, ocr) {
+  text = toEn(String(text || '').normalize('NFKC'));
   const v = {}, st = {}, put = (k, val, sure) => { val = N(val); if (!val || v[k]) return; v[k] = val; st[k] = sure && !ocr ? 'auto' : 'check'; };
   const isLic = /رخص[هة] بناء/.test(text), isDeed = /صك|السجل العقاري|رقم العقار/.test(text) && !isLic;
   // الصك: جداول بعناوين أعمدة
@@ -79,6 +115,14 @@ export function parse(items, text, ocr) {
     const ll = text.match(/\b(2\d\.\d{5,})\b[\s\S]{0,40}?\b(4\d\.\d{5,})\b/); if (ll) { v._lat = +ll[1]; v._lng = +ll[2]; }
     const dts = [...text.matchAll(/\b(\d{2}\/\d{2}\/14\d{2})\b/g)].map(m => m[1]); if (dts[0]) put('licDate', dts[0], false); if (dts[1]) put('licEnd', dts[1], false);
   }
+  // صكوك العدل القديمة (OCR)
+  const tx = text.replace(/\s+/g, ' ');
+  const mo = (re, k) => { const m = tx.match(re); if (m) put(k, m[1], false); };
+  mo(/الرقم\s*:?\s*(\d{8,14})/, 'deedNo'); mo(/التاريخ\s*:?\s*(\d{1,2}\s*\/\s*\d{1,2}\s*\/\s*14\d{2})/, 'deedDate');
+  mo(/قطع[ةه] الار[ضظ] رقم\s*:?\s*(بدون|[\d\/]+)/, 'plot'); mo(/المخطط رقم\s*:?\s*([\d\/]+)/, 'plan'); mo(/الواقع في حي\s+([^\s،,]+)/, 'district'); mo(/بمدينة\s+([^\s،,.]+)/, 'city');
+  mo(/مساحتها\s*:?\s*\(?\s*([\d.,]+)/, 'deedArea'); mo(/انتقلت ملكيتها\s*(?:لـ|ل)?\s*:?\s*(.+?)\s+(?:سعودي|بموجب|الجنسية)/, 'owner'); mo(/سجل مدني رقم\s*:?\s*(\d{10})/, 'ownerId');
+  if (v.deedDate) v.deedDate = v.deedDate.replace(/\s+/g, '').split('/').reverse().join('/');
+  if (v.deedArea) v.deedArea = String(num(v.deedArea));
   // عام
   if (!v.plot) put('plot', after(text, ['رقم القطعة', 'القطعة رقم', 'قطعة رقم']), false);
   if (!v.plan) put('plan', after(text, ['رقم المخطط', 'المخطط رقم', 'مخطط رقم']), false);

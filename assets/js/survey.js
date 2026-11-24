@@ -2,7 +2,8 @@
 import './click.js';
 import * as F from './fb.js';
 import { toUTM, fromUTM, areaUTM, sides, hijri, greg, mapImage } from './geo.js';
-import { readDoc } from './docread.js';
+import { readDoc, aiReady } from './docread.js';
+import { initAI, aiBox, wireAiBox, pdfBar, autoPrint } from './deptcommon.js';
 const { auth, db } = F;
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -67,7 +68,7 @@ async function vEdit(id, keep) {
   <section class="card"><h3>الحدود والأطوال</h3><div class="sv-tw"><table class="sv-t" id="bT"></table></div></section>
   ${S.opts.elev ? `<section class="card"><h3>مناسيب الأرض (اختياري)</h3><div class="sv-elev">${R.elev.map((e, i) => `<label>${i + 1}<input data-el="${i}" value="${esc(e)}" inputmode="decimal"></label>`).join('')}</div></section>` : ''}
   <section class="card"><div class="fld"><label>ملاحظة</label><textarea data-k="note" placeholder="${esc(S.note || '')}">${esc(R.note || '')}</textarea></div></section>
-  <div class="sv-act"><button class="btn btn-red" id="rev">مراجعة البيانات ←</button></div>`);
+  <div class="sv-act"><button class="btn btn-red" id="rev">مراجعة البيانات ←</button></div>${pdfBar('📄 مراجعة وطباعة PDF')}`);
   // الحقول
   $$('[data-k]').forEach(el => el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', () => { const k = el.dataset.k; R[k] = k === 'surveyor' ? +el.value : el.value; if (R.st[k]) { delete R.st[k]; el.className = ''; const n = el.nextElementSibling; if (n && n.classList.contains('rv')) n.remove(); } if (k === 'district') autoSector(); }));
   $$('[data-el]').forEach(el => el.oninput = () => { R.elev[+el.dataset.el] = el.value; });
@@ -76,7 +77,7 @@ async function vEdit(id, keep) {
   const dz = $('#drop'); ['dragover', 'dragenter'].forEach(t => dz.addEventListener(t, e => { e.preventDefault(); dz.classList.add('ov'); })); ['dragleave', 'drop'].forEach(t => dz.addEventListener(t, () => dz.classList.remove('ov'))); dz.addEventListener('drop', e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) takeDoc(f); });
   $('#addP').onclick = () => { const c = map ? map.getCenter() : (pts.length ? fromUTM(U()[pts.length - 1].e + 10, U()[pts.length - 1].n) : { lat: 24.7136, lng: 46.6753 }); pts.push({ lat: c.lat, lng: c.lng }); paintPts(); };
   initMap(); paintPts(); paintBounds(); autoSector(true);
-  $('#rev').onclick = vReview;
+  $('#rev').onclick = vReview; $('#pdfGo').onclick = vReview;
 }
 function autoSector(quiet) {
   const d = nk(R.district || ''), h = $('#secHint'); if (!h) return; if (!d) { h.textContent = ''; return; }
@@ -90,7 +91,7 @@ async function takeDoc(file) {
     if (r.v._lat && !pts.length) R._center = [r.v._lat, r.v._lng];
     if (r.v.sector && !(S.sectors || []).includes(r.v.sector)) S.sectors = [...(S.sectors || []), r.v.sector];
     m.textContent = r.found ? `اتقرا ${r.found} خانة${r.ocr ? ' (بالـ OCR — راجعها كلها)' : ''}. راجع الصفرا قبل ما تكمّل.` : 'مقدرتش أقرا بيانات من الملف — اكتبها بإيدك.';
-    const msg = m.textContent; await vEdit(R.id || null, true); $('#dzMsg').textContent = msg; } catch (e) { m.textContent = 'تعذّرت القراءة: ' + e.message; }
+    const msg = m.textContent + (r.ai ? ' (قراها الـ AI)' : ''); await vEdit(R.id || null, true); $('#dzMsg').textContent = msg; } catch (e) { m.textContent = 'تعذّرت القراءة: ' + ((e && (e.message || e)) || 'خطأ غير معروف') + ' — اكتب البيانات بإيدك'; }
 }
 /* الخريطة */
 function initMap() {
@@ -143,7 +144,7 @@ function vReview() {
     ${bad ? '<p class="hint" style="color:var(--red)">صلّح الأخطاء الحمرا الأول.</p>' : ''}
     <div class="sv-act"><button class="btn btn-ghost" id="rvX">رجوع للتعديل</button><button class="btn btn-red" id="rvOk" disabled>حفظ وطباعة PDF</button></div></div>`;
   document.body.appendChild(ov); $('#rvX', ov).onclick = () => ov.remove(); const ack = $('#ack', ov), ok = $('#rvOk', ov); ack.onchange = () => ok.disabled = !ack.checked;
-  ok.onclick = async () => { ok.disabled = true; ok.textContent = 'جارٍ الحفظ…'; try { const id = await save(); ov.remove(); location.hash = 'p/' + id; } catch (e) { toast(F.authMsg(e), 1); ok.disabled = false; ok.textContent = 'حفظ وطباعة PDF'; } };
+  ok.onclick = async () => { ok.disabled = true; ok.textContent = 'جارٍ الحفظ…'; try { const id = await save(); ov.remove(); location.hash = 'p/' + id + '?print=1'; } catch (e) { toast(F.authMsg(e), 1); ok.disabled = false; ok.textContent = 'حفظ وطباعة PDF'; } };
 }
 async function save() {
   const u = U(), ns = natSides(), data = { owner: R.owner, plot: R.plot, plan: R.plan, deedNo: R.deedNo, deedDate: R.deedDate, district: R.district, city: R.city, sector: R.sector, deedArea: R.deedArea, surveyor: +R.surveyor || 0, surveyorName: ((S.surveyors || [])[R.surveyor] || {}).name || '', note: R.note || '', elev: R.elev, dd: R.dd, dl: R.dl, nd: R.nd, st: {}, pts: pts.map(p => Object.assign({ lat: p.lat, lng: p.lng }, p.u ? { u: p.u } : {})), utm: u.map(p => ({ e: +p.e.toFixed(4), n: +p.n.toFixed(4) })), area: +areaUTM(u).toFixed(2), nl: ns, ack: { by: me.uid, name: isOwner ? 'المالك' : (emp && emp.name) || '', at: new Date().toISOString() }, upd: F.serverTimestamp() };
@@ -186,7 +187,7 @@ async function vPrint(id) {
    </div></div></div>`;
   document.title = `تقرير مساحي ${noStr(r.no)} — ${r.owner || ''}`;
   await Promise.all($$('#sheet img').map(i => i.decode ? i.decode().catch(() => { }) : 0));
-  $('#pst').textContent = sk || sat ? 'جاهز ✓' : 'جاهز (الخرائط محتاجة إنترنت)'; const b = $('#prt'); b.disabled = false; b.onclick = () => window.print();
+  $('#pst').textContent = sk || sat ? 'جاهز ✓' : 'جاهز (الخرائط محتاجة إنترنت)'; const b = $('#prt'); b.disabled = false; b.onclick = () => window.print(); autoPrint();
 }
 
 /* ---------- كل التقارير ---------- */
@@ -211,6 +212,7 @@ async function vCtl(keep) {
   <section class="card"><h3>المساحين</h3><div id="svs"></div><button class="btn btn-ghost sm" id="addSv">＋ مساح جديد</button></section>
   <section class="card"><h3>القطاعات</h3><p class="hint">سطر لكل قطاع — بيظهر في «سعادة رئيس…».</p><textarea id="secs" rows="5" class="in">${esc((s.sectors || []).join('\n'))}</textarea></section>
   <section class="card"><h3>جدول الأحياء ← القطاع</h3><p class="hint">لما المهندس يختار قطاع لحي جديد بيتضاف هنا لوحده.</p><div id="dm"></div><button class="btn btn-ghost sm" id="addDm">＋ حي</button></section>
+  ${aiBox(isOwner)}
   <section class="card"><h3>خيارات التقرير</h3><div style="display:grid;gap:10px">
     <label class="switch"><input type="checkbox" data-o="elev" ${s.opts.elev ? 'checked' : ''}><span></span> جدول مناسيب الأرض</label>
     <label class="switch"><input type="checkbox" data-o="nature" ${s.opts.nature ? 'checked' : ''}><span></span> جدول الحدود حسب الطبيعة</label>
@@ -225,7 +227,7 @@ async function vCtl(keep) {
     $$('[data-sd]').forEach(b => b.onclick = () => { if (confirm('تمسح المساح ده؟')) { s.surveyors.splice(+b.dataset.sd, 1); paintSv(); } }); };
   const paintDm = () => { $('#dm').innerHTML = Object.entries(s.dmap || {}).map(([d, q]) => `<div class="sv-row"><input class="in" data-dk value="${esc(d)}" placeholder="الحي"><select class="in" data-dv>${[...new Set([...(s.sectors || []), q])].map(x => `<option ${x === q ? 'selected' : ''}>${esc(x)}</option>`).join('')}</select><button class="btn btn-ghost sm" data-dx style="color:var(--red)">×</button></div>`).join('') || '<p class="empty">الجدول فاضي</p>'; $$('[data-dx]').forEach(b => b.onclick = () => { b.parentElement.remove(); }); };
   const readDm = () => { const o = {}; $$('#dm .sv-row').forEach(r => { const k = $('[data-dk]', r).value.trim(); if (k) o[k] = $('[data-dv]', r).value; }); return o; };
-  paintSv(); paintDm();
+  paintSv(); paintDm(); wireAiBox(toast);
   $('#addSv').onclick = () => { s.surveyors = s.surveyors || []; s.surveyors.push({ name: '', phone: '', sig: '' }); paintSv(); };
   $('#addDm').onclick = () => { s.dmap = readDm(); s.dmap[''] = (s.sectors || [])[0] || ''; paintDm(); };
   $$('[data-up]').forEach(b => b.onclick = () => $(`[data-img="${b.dataset.up}"]`).click());
@@ -241,7 +243,7 @@ function route() {
   if (!me) return; const h = location.hash.slice(1);
   if (h === 'new') return vEdit(null);
   if (h.startsWith('e/')) return vEdit(h.slice(2));
-  if (h.startsWith('p/')) return vPrint(h.slice(2));
+  if (h.startsWith('p/')) return vPrint(h.slice(2).split('?')[0]);
   if (h === 'list') return vList();
   if (h === 'ctl') return vCtl();
   vHome();
@@ -249,7 +251,7 @@ function route() {
 addEventListener('hashchange', () => { route(); scrollTo(0, 0); });
 F.onAuthStateChanged(auth, async u => {
   if (!u) { location.replace('portal.html'); return; }
-  me = u; isOwner = await F.ownerOf(u.uid);
+  me = u; isOwner = await F.ownerOf(u.uid); initAI();
   if (!isOwner) { try { const s = await F.getDoc(F.doc(db, 'employees', u.uid)); emp = s.exists() ? s.data() : null; } catch (e) { emp = null; } }
   if (!can('survey')) { frame(`${back('portal.html', 'البوابة')}<div class="card" style="text-align:center;padding:40px"><h2>مفيش صلاحية</h2><p style="color:var(--mut);margin-top:8px">قسم المساحة محتاج صلاحية «قسم المساحة» من المالك.</p></div>`); return; }
   route();

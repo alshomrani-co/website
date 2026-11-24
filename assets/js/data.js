@@ -47,6 +47,7 @@ export const DEFAULT = {
     founded: 2016
   },
   contact: {
+    img: 'assets/img/contact.webp',
     phone: '0570086833', phone2: '', whatsapp: '966570086833', email: 's3adalshomrani2022@gmail.com',
     address: 'الرياض — حي العارض — شارع ريحانة بنت زيد، 13338',
     map: 'https://maps.google.com/?q=%D8%B4%D8%A7%D8%B1%D8%B9+%D8%B1%D9%8A%D8%AD%D8%A7%D9%86%D8%A9+%D8%A8%D9%86%D8%AA+%D8%B2%D9%8A%D8%AF+%D8%A7%D9%84%D8%B9%D8%A7%D8%B1%D8%B6+%D8%A7%D9%84%D8%B1%D9%8A%D8%A7%D8%B6',
@@ -148,7 +149,8 @@ export const DEFAULT = {
     { key: 'الواجهات', title: 'الواجهات', sub: 'تصاميم واجهات ثلاثية الأبعاد', img: 'assets/img/projects/r3d-villa.webp' },
     { key: 'التصميم الداخلي', title: 'التصميم الداخلي', sub: 'مجالس وغرف نوم ومعيشة وحمامات', img: 'assets/img/projects/r3d-31.webp' }
   ],
-  aboutHome: { img: 'assets/img/work/w13.webp' },
+  aboutHome: { img: 'assets/img/office/o1.webp', imgs: ['assets/img/office/o1.webp', 'assets/img/office/o2.webp', 'assets/img/office/o3.webp', 'assets/img/office/o4.webp'] },
+  office: { title: 'مكتبنا', sub: 'بيئة عمل هندسية متكاملة في حي العارض — الرياض', imgs: ['assets/img/office/o1.webp', 'assets/img/office/o2.webp', 'assets/img/office/o3.webp', 'assets/img/office/o4.webp'] },
   reviews: { on: true, title: 'آراء عملائنا', sub: 'تقييمات حقيقية من عملاء تعاملوا معانا.' },
   occasion: { active: 'none', auto: false, until: '', text: '', fx: true, level: 'heavy' },
   sound: { s: 'mouse', v: 0.7, site: true, app: true },
@@ -302,6 +304,13 @@ export function migrate(D, EN) {
     const sv = (D.services || []).find(x => x.id === 'survey'); if (sv && /work\/w05/.test(sv.img || '')) sv.img = 'assets/img/work/w17.webp';
     const wg = (D.workGroups || []).find(x => x.key === 'المساحة'); if (wg && /work\/w05/.test(wg.img || '')) wg.img = 'assets/img/work/w17.webp';
     if (D.contact && D.contact.apkUrl === undefined) D.contact.apkUrl = DEFAULT.contact.apkUrl;
+  }
+  if ((D._mig || 0) < 12) {
+    D._mig = 12; D.aboutHome = D.aboutHome || {};
+    if (!D.aboutHome.img || /work\/w13/.test(D.aboutHome.img)) D.aboutHome.img = DEFAULT.aboutHome.img;
+    if (!Array.isArray(D.aboutHome.imgs) || !D.aboutHome.imgs.length) D.aboutHome.imgs = DEFAULT.aboutHome.imgs.slice();
+    if (!D.office) D.office = structuredClone(DEFAULT.office);
+    if (D.contact && !D.contact.img) D.contact.img = 'assets/img/contact.webp';
   }
   return D;
 }
