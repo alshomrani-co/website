@@ -34,7 +34,7 @@ export function grpOf(p) {
   if (/مساح/.test(c)) return 'المساحة';
   return '';
 }
-const SURVEY_GAL = ['w00', 'w01', 'w05', 'w06', 'w07', 'w08', 'w10', 'w12', 'w13', 'w16', 'w17', 'w18'].map(x => ({ img: 'assets/img/work/' + x + '.webp', cap: '' }));
+const SURVEY_GAL = ['w00', 'w01', 'w06', 'w07', 'w08', 'w10', 'w12', 'w13', 'w16', 'w17', 'w18'].map(x => ({ img: 'assets/img/work/' + x + '.webp', cap: '' }));
 export const PLANS_PRJ = { img: 'assets/img/floor-plan.webp', gallery: [{ img: 'assets/img/structural-model.webp', cap: '' }], cat: 'تصميم 3D', tag: 'مخططات', title: 'مخططات معمارية وإنشائية', desc: 'مخططات معمارية تنفيذية ونماذج إنشائية بالأبعاد المعتمدة.', loc: 'الرياض', scope: 'تصميم معماري وإنشائي', grp: 'المخططات' };
 
 export const DEFAULT = {
@@ -53,7 +53,7 @@ export const DEFAULT = {
     hours: ['السبت: 11 صباحاً – 9 مساءً', 'الأحد – الأربعاء: 9 صباحاً – 9 مساءً', 'الخميس: 9 صباحاً – 5 مساءً'],
     replyNote: 'نرد خلال ساعات العمل · السبت – الخميس',
     waText: 'السلام عليكم، أرغب بطلب استشارة هندسية.',
-    appLine: 'حمّل التطبيق لمتابعة مشروعك', playStore: '', appStore: ''
+    appLine: 'حمّل التطبيق لمتابعة مشروعك', playStore: '', apkUrl: 'https://github.com/alshomrani-co/website/releases/latest/download/shamrani-app.apk', appStore: ''
   },
   socials: {
     instagram: 'https://www.instagram.com/alshomrani.co', tiktok: 'https://www.tiktok.com/@alshomrani.co',
@@ -148,8 +148,9 @@ export const DEFAULT = {
     { key: 'الواجهات', title: 'الواجهات', sub: 'تصاميم واجهات ثلاثية الأبعاد', img: 'assets/img/projects/r3d-villa.webp' },
     { key: 'التصميم الداخلي', title: 'التصميم الداخلي', sub: 'مجالس وغرف نوم ومعيشة وحمامات', img: 'assets/img/projects/r3d-31.webp' }
   ],
-  reviews: { on: true, title: 'آراء عملائنا', sub: 'تقييمات حقيقية من عملاء تعاملوا معنا — بتتنشر بعد مراجعة الإدارة.' },
-  occasion: { active: 'none', auto: false, until: '', text: '', fx: true },
+  aboutHome: { img: 'assets/img/work/w13.webp' },
+  reviews: { on: true, title: 'آراء عملائنا', sub: 'تقييمات حقيقية من عملاء تعاملوا معانا.' },
+  occasion: { active: 'none', auto: false, until: '', text: '', fx: true, level: 'heavy' },
   confidential: 'كثير من أعمالنا يخضع لاتفاقيات سرية مع جهات مصرفية وصحية ومطوّرين عقاريين، ولا يُنشر إلا بإذن كتابي من المالك. نفضّل ذكر النطاق الفعلي للعمل بدل نشر صور لا تخصّنا. ملف الأعمال الكامل متاح عند الطلب.',
   gallery: [
     { img: 'assets/img/work/w05.webp', title: 'قسم المساحة', sub: 'رفع ميداني بمحطة رصد متكاملة' },
@@ -224,14 +225,14 @@ export const DEFAULT = {
   popup: { on: false, title: '', text: '', btn: 'تواصل الآن', link: '', img: '', delay: 6 },
   support: { on: true, depts: ['استفسار عام', 'التصميم', 'الرخص والمعاملات', 'المساحة', 'الإشراف', 'السلامة', 'إدارة المشاريع', 'تصميم 3D', 'شكوى أو ملاحظة'] },
   offer: { on: false, title: 'عرض خاص لفترة محدودة', text: 'خصم على باقات الإشراف للعقود الموقعة هذا الشهر.', badge: 'عرض', img: '', until: '', btn: 'استفد من العرض', link: '#/request' },
-  design: { logo: '', font: 'kufi', logoSize: 100, heroLogo: true, heroLogoSize: 100, fontScale: 100, red: '#E1262B', gold: '#C9A24B', glass: true, cursorGlow: true, sections: ['offer', 'trust', 'services', 'packages', 'feature', 'reviews', 'steps', 'portal', 'faq', 'social', 'cta'], homeStyle: 'v7' },
+  design: { logo: '', font: 'kufi', logoSize: 100, heroLogo: true, heroLogoSize: 100, fontScale: 100, red: '#E1262B', gold: '#C9A24B', glass: true, cursorGlow: true, sections: ['offer', 'trust', 'services', 'packages', 'feature', 'aboutH', 'reviews', 'steps', 'portal', 'faq', 'social', 'cta'], homeStyle: 'v7' },
   media: { title: 'تابعنا على السوشيال ميديا', sub: 'شغلنا في الميدان يومياً — فيديوهات وصور من مواقع المشاريع.', youtubeKey: '', youtube: [], tiktok: [], instagram: [], snapchat: [], x: [] },
   seo: { keywords: 'مكتب هندسي الرياض، استشارات هندسية، رخصة بناء، تصميم فلل، إشراف هندسي، رفع مساحي، دفاع مدني، تصميم معماري، تصميم إنشائي، الكهروميكانيك، مخططات، شركة سعد الشمراني', title: 'شركة سعد الشمراني للاستشارات الهندسية | تصميم، رخص، مساحة، إشراف، سلامة', desc: 'شركة استشارات هندسية مرخّصة في الرياض منذ 2016: تصميم معماري وإنشائي، رخص بناء، رفع مساحي، إشراف هندسي، وأنظمة سلامة — تحت سقف واحد.' }
 };
 
 /* بلوكات كل صفحة (لقسم «الصفحات» في لوحة التحكم). الرئيسية بتتحكم في ترتيبها من design.sections */
 export const PAGE_BLOCKS = {
-  home: { t: 'الرئيسية', hash: '', blocks: { hero: 'الفيديو والعنوان والأرقام', offer: 'العرض الحالي', trust: 'شريط الجهات (نتعامل مع)', services: 'أقسامنا (قائمة مترقمة)', feature: 'من أعمالنا (كروت المساحة/السلامة/المخططات/الواجهات)', reviews: 'آراء العملاء', steps: 'آلية العمل', portal: 'تابع مشروعك', packages: 'الباقات', faq: 'الأسئلة الشائعة', cta: 'ابدأ مشروعك + التواصل', strip: 'شريط الخدمات المتحرك', gallery: 'معرض صور الأعمال (متحرك)', stats: 'الأرقام (منفصلة)', social: 'السوشيال ميديا', why: 'ليش الشمراني' } },
+  home: { t: 'الرئيسية', hash: '', blocks: { hero: 'الفيديو والعنوان والأرقام', offer: 'العرض الحالي', trust: 'شريط الجهات (نتعامل مع)', services: 'أقسامنا (قائمة مترقمة)', feature: 'من أعمالنا (كروت المساحة/السلامة/المخططات/الواجهات)', aboutH: 'من نحن', reviews: 'آراء العملاء', steps: 'آلية العمل', portal: 'تابع مشروعك', packages: 'الباقات', faq: 'الأسئلة الشائعة', cta: 'ابدأ مشروعك + التواصل', strip: 'شريط الخدمات المتحرك', gallery: 'معرض صور الأعمال (متحرك)', stats: 'الأرقام (منفصلة)', social: 'السوشيال ميديا', why: 'ليش الشمراني' } },
   services: { t: 'الخدمات', hash: 'services', blocks: { head: 'العنوان', strip: 'شريط الخدمات', grid: 'كروت الخدمات', cta: 'دعوة التواصل' } },
   sub: { t: 'صفحة خدمة فرعية', hash: 'service/permits/0', blocks: { head: 'العنوان', body: 'التفاصيل والطلب', cta: 'دعوة التواصل' } },
   service: { t: 'صفحة خدمة', hash: 'service/design', blocks: { head: 'العنوان والوصف', body: 'الصورة والبنود والطلب', strip: 'شريط الخدمات', cta: 'دعوة التواصل' } },
@@ -292,6 +293,15 @@ export function migrate(D, EN) {
     const sv = (D.services || []).find(x => x.id === 'survey'); if (sv && (!sv.img || /work\/w05/.test(sv.img))) sv.img = 'assets/img/work/w17.webp';
     const wg = (D.workGroups || []).find(x => x.key === 'المساحة'); if (wg && (!wg.img || /work\/w05/.test(wg.img))) wg.img = 'assets/img/work/w17.webp';
   }
+  if ((D._mig || 0) < 11) {
+    D._mig = 11; orderSvcs(D);
+    { const sc = D.design.sections; if (Array.isArray(sc) && !sc.includes('aboutH')) { const fi = sc.indexOf('feature'); sc.splice(fi >= 0 ? fi + 1 : sc.length, 0, 'aboutH'); } }
+    if (D.reviews && /مراجعة الإدارة/.test(D.reviews.sub || '')) D.reviews.sub = 'تقييمات حقيقية من عملاء تعاملوا معانا.';
+    const sp = (D.projects || []).find(p => /مساح/.test(p.cat || '')); if (sp) { if (/work\/w05/.test(sp.img || '')) sp.img = 'assets/img/work/w03.webp'; sp.gallery = (sp.gallery || []).filter(g => !/work\/w05/.test(g.img || '')); }
+    const sv = (D.services || []).find(x => x.id === 'survey'); if (sv && /work\/w05/.test(sv.img || '')) sv.img = 'assets/img/work/w17.webp';
+    const wg = (D.workGroups || []).find(x => x.key === 'المساحة'); if (wg && /work\/w05/.test(wg.img || '')) wg.img = 'assets/img/work/w17.webp';
+    if (D.contact && D.contact.apkUrl === undefined) D.contact.apkUrl = DEFAULT.contact.apkUrl;
+  }
   return D;
 }
 /* لكل بند في الخدمة صفحة خاصة: تفاصيلها بتتعدّل من «الخدمات ← تفاصيل الخدمات الفرعية» */
@@ -302,5 +312,13 @@ function syncSubs(D) {
     (s.items || []).forEach(n => { if (!s.subs.some(x => x && x.name === n)) s.subs.push(subBlank(n)); });
   });
 }
+export const SVC_ORDER = ['survey', 'design', 'supervision', 'safety', '3d', 'permits', 'mep', 'pm'];
+function orderSvcs(D) {
+  const old = (D.services || []).map(x => x.id), rank = id => { const i = SVC_ORDER.indexOf(id); return i < 0 ? 100 + old.indexOf(id) : i; };
+  const perm = old.map((id, i) => i).sort((a, b) => rank(old[a]) - rank(old[b]));
+  D.services = perm.map(i => D.services[i]); D.services.forEach((x, i) => { x.no = String(i + 1).padStart(2, '0'); });
+  if (D.en && Array.isArray(D.en.services) && D.en.services.length === old.length) D.en.services = perm.map(i => D.en.services[i]);
+}
+orderSvcs(DEFAULT);
 syncSubs(DEFAULT);
 DEFAULT.projects.forEach(p => { if (p.grp === undefined) p.grp = grpOf(p); if (/مساح/.test(p.cat) && !(p.gallery || []).length) p.gallery = SURVEY_GAL.map(x => ({ ...x })); });

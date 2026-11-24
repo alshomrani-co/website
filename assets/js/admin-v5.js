@@ -157,12 +157,14 @@ export function vOccasion(mp, c) {
     <div class="fld"><label>نص التهنئة (اتركه فاضي للنص الجاهز)</label><input id="ocTxt" value="${esc(o.text || '')}" placeholder="${esc(greeting(o.active !== 'none' && o.active ? o.active : (cur || 'fitr'), 'ar'))}" maxlength="140"></div>
     <div class="fld"><label>تنتهي المناسبة في (اختياري — الموقع يرجع لشكله العادي لوحده)</label><input type="datetime-local" id="ocUntil" value="${esc(o.until || '')}"></div>
     <label class="switch"><input type="checkbox" id="ocFx" ${o.fx !== false ? 'checked' : ''}><span></span> الزينة المتحركة (فوانيس، نجوم، كونفيتي…)</label>
+    <div class="fld"><label>كمية الزينة</label><div class="seg" id="ocLvl">${[['light', 'خفيفة'], ['normal', 'عادية'], ['heavy', 'كتير']].map(([k, l]) => `<button type="button" data-l="${k}" class="btn sm ${(o.level || 'heavy') === k ? 'btn-red' : 'btn-ghost'}">${l}</button>`).join(' ')}</div></div>
     <label class="switch"><input type="checkbox" id="ocAuto" ${o.auto ? 'checked' : ''}><span></span> تشغيل تلقائي كل سنة في ميعاد كل مناسبة (الهجري بتقويم أم القرى)</label>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><a class="btn btn-ghost sm" href="index.html?preview=1" target="_blank" rel="noopener">👁 معاينة</a></div>
     <p class="hint">ملحوظة: الزينة مرسومة بالألوان والزخارف بس — مفيش علم بيتحرك أو بينزل، ومفيش شعارات رسمية.</p></div>`;
-  mp.onclick = e => { const b = e.target.closest('.occ-card'); if (!b) return; o.active = b.dataset.k; c.dirty(); vOccasion(mp, c); c.toast(o.active === 'none' ? 'رجع الشكل العادي — اضغط حفظ ونشر' : `${OCC[o.active].ar} — اضغط حفظ ونشر`); };
+  mp.onclick = e => { if (e.target.closest('#ocLvl')) return; const b = e.target.closest('.occ-card'); if (!b) return; o.active = b.dataset.k; c.dirty(); vOccasion(mp, c); c.toast(o.active === 'none' ? 'رجع الشكل العادي — اضغط حفظ ونشر' : `${OCC[o.active].ar} — اضغط حفظ ونشر`); };
   $('#ocTxt').oninput = e => { o.text = e.target.value; c.dirty(); };
   $('#ocUntil').onchange = e => { o.until = e.target.value; c.dirty(); };
   $('#ocFx').onchange = e => { o.fx = e.target.checked; c.dirty(); };
+  $('#ocLvl').onclick = e => { const b = e.target.closest('[data-l]'); if (!b) return; e.stopPropagation(); o.level = b.dataset.l; c.dirty(); vOccasion(mp, c); };
   $('#ocAuto').onchange = e => { o.auto = e.target.checked; c.dirty(); vOccasion(mp, c); };
 }
