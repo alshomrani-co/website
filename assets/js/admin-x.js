@@ -19,6 +19,7 @@ const PRESETS = [['#E1262B', '#C9A24B', 'أحمر الشركة'], ['#B91D22', '#
 
 /* ---------- التصميم ---------- */
 import { PAGE_BLOCKS } from './data.js';
+import { SOUNDS, play, setCfg as sndCfg } from './click.js';
 let dsPg = 'all';
 const dsTabs = D => `<div class="ds-tabs">${[['all', 'كل الموقع (عام)'], ...Object.keys(PAGE_BLOCKS).map(k => [k, PAGE_BLOCKS[k].t])].map(([k, t]) => `<button data-ds="${k}" class="${k === dsPg ? 'on' : ''} ${k !== 'all' && D.design.pageStyle && D.design.pageStyle[k] ? 'mod' : ''}">${t}</button>`).join('')}</div>`;
 function vDesignPage(mp, c) {
@@ -220,4 +221,21 @@ async function vLeads(mp, c) {
   $('#lx').onclick = () => { const csv = '﻿' + [['النوع', 'الاسم', 'الجوال', 'الطلب', 'التاريخ']].concat(rows.map(r => [r.kind, r.name, r.phone, (r.what || '').replace(/\n/g, ' '), r.at && r.at.toDate ? r.at.toDate().toLocaleString('en-GB') : ''])).map(a => a.map(x => '"' + String(x || '').replace(/"/g, '""') + '"').join(',')).join('\n'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = 'leads-' + new Date().toISOString().slice(0, 10) + '.csv'; a.click(); };
 }
 
-export const VIEWS = { design: vDesign, video: vVideo, layout: vLayout, en: vEn, stats: (mp, c) => vStats(mp, c), leads: vLeads };
+function vSound(mp, c) {
+  const D = c.D(); D.sound = Object.assign({ s: 'mouse', v: 0.7, site: true, app: true }, D.sound || {}); const o = D.sound;
+  const upd = () => { c.dirty(); sndCfg(o); };
+  mp.innerHTML = `<h2>الأصوات</h2><p class="desc">صوت الضغط على الأزرار في الموقع والبوابة والتطبيق. اضغط ▶ تسمع، واختار الصوت، وبعدين «حفظ ونشر» — بيتطبق على كل الزوار والموظفين.</p>
+  <div class="card" style="display:grid;gap:14px">
+    <label class="switch"><input type="checkbox" id="sdSite" ${o.site !== false ? 'checked' : ''}><span></span> صوت الضغط في <b>الموقع</b></label>
+    <label class="switch"><input type="checkbox" id="sdApp" ${o.app !== false ? 'checked' : ''}><span></span> صوت الضغط في <b>البوابة والتطبيق ولوحة التحكم</b></label>
+    <div class="fld"><label>علو الصوت: <b id="sdVv">${Math.round(o.v * 100)}%</b></label><input type="range" id="sdV" min="0.1" max="1.5" step="0.05" value="${o.v}" data-nosnd></div>
+  </div>
+  <div class="snd-grid" data-nosnd>${Object.entries(SOUNDS).map(([k, x]) => `<div class="snd-card ${o.s === k ? 'on' : ''}" data-k="${k}"><button type="button" class="snd-play" data-p="${k}" aria-label="اسمع">▶</button><b>${x.ar}</b><button type="button" class="btn sm ${o.s === k ? 'btn-red' : 'btn-ghost'}" data-pick="${k}">${o.s === k ? '✓ المختار' : 'اختار'}</button></div>`).join('')}</div>
+  <p class="hint">أي زائر يقدر يكتم الصوت عنده من زرار الكتم، ده مش بيأثر على الباقيين.</p>`;
+  mp.onclick = e => { const p = e.target.closest('[data-p]'); if (p) { play(p.dataset.p, o.v); return; } const k = e.target.closest('[data-pick]'); if (k) { o.s = k.dataset.pick; upd(); play(o.s, o.v); vSound(mp, c); c.toast('اتختار — اضغط حفظ ونشر'); } };
+  $('#sdSite').onchange = e => { o.site = e.target.checked; upd(); };
+  $('#sdApp').onchange = e => { o.app = e.target.checked; upd(); };
+  $('#sdV').oninput = e => { o.v = +e.target.value; $('#sdVv').textContent = Math.round(o.v * 100) + '%'; };
+  $('#sdV').onchange = () => { upd(); play(o.s, o.v); };
+}
+export const VIEWS = { sound: vSound, design: vDesign, video: vVideo, layout: vLayout, en: vEn, stats: (mp, c) => vStats(mp, c), leads: vLeads };

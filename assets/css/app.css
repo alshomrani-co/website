@@ -376,3 +376,9 @@ button.wa-ic{border:0;cursor:pointer;color:#fff}
 .ld-sk i{display:block;height:54px;border-radius:14px;background:linear-gradient(90deg,var(--line,#eee) 25%,rgba(255,255,255,.6) 50%,var(--line,#eee) 75%) 0 0/300% 100%;animation:ldSh 1.3s linear infinite}
 @keyframes ldSh{from{background-position:100% 0}to{background-position:-100% 0}}
 .ld-slow{color:var(--mut,#777)}
+/* v12b الأصوات */
+.snd-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px;margin-top:14px}
+.snd-card{display:grid;gap:8px;justify-items:center;padding:16px 12px;border-radius:16px;border:2px solid var(--line);background:var(--card,#fff);text-align:center}
+.snd-card.on{border-color:var(--red,#E5252A);box-shadow:0 6px 20px -10px var(--red,#E5252A)}
+.snd-play{width:46px;height:46px;border-radius:50%;border:0;background:var(--red,#E5252A);color:#fff;font-size:16px;cursor:pointer;transition:transform .12s}
+.snd-play:active{transform:scale(.9)}

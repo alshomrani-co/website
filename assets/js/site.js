@@ -1,4 +1,4 @@
-import './click.js';
+import { setCfg as sndCfg } from './click.js';
 // شركة سعد الشمراني — الموقع العام (صفحة واحدة بروابط #) — عربي / English
 import { DEFAULT, migrate, PAGE_BLOCKS } from './data.js';
 import { EN } from './data-en.js';
@@ -26,7 +26,7 @@ function overlay(a, b) {
 /* ---------- state ---------- */
 let C = DEFAULT;
 const PREVIEW = /[?&]preview=1/.test(location.search);
-try { const c = JSON.parse(localStorage.getItem(PREVIEW ? 'sh.preview' : 'sh.site') || 'null'); if (c) C = migrate(deepMerge(DEFAULT, c), EN); } catch (e) { }
+try { const c = JSON.parse(localStorage.getItem(PREVIEW ? 'sh.preview' : 'sh.site') || 'null'); if (c) { C = migrate(deepMerge(DEFAULT, c), EN); sndCfg(C.sound); } } catch (e) { }
 let LANG = 'ar';
 try { LANG = localStorage.getItem('sh.lang') || (/^en/.test(new URLSearchParams(location.search).get('lang') || '') ? 'en' : 'ar'); } catch (e) { }
 let VV = null;
@@ -39,7 +39,7 @@ function prune(o, off, path = '') {
 const V = () => VV || (VV = prune(LANG === 'en' ? overlay(C, deepMerge(EN, C.en || {})) : C, (C._off || {})));
 const t = (k, rep) => { let s = (UI[LANG] && UI[LANG][k] !== undefined) ? UI[LANG][k] : UI.ar[k]; if (rep && typeof s === 'string') for (const r in rep) s = s.replace('{' + r + '}', rep[r]); return s; };
 const em = s => String(s).replace(/<em>/g, '<span class="hl">').replace(/<\/em>/g, '</span>');
-const setC = next => { C = migrate(next, EN); VV = null; };
+const setC = next => { C = migrate(next, EN); VV = null; try { sndCfg(C.sound); } catch (e) { } };
 
 if (PREVIEW) { try { const bc = new BroadcastChannel('sh-preview'); bc.onmessage = e => { setC(deepMerge(DEFAULT, e.data)); chrome(); render(true); initGlow(); }; } catch (e) { } addEventListener('DOMContentLoaded', () => { const b = document.createElement('div'); b.className = 'preview-flag'; b.textContent = t('preview'); document.body.appendChild(b); }); }
 
@@ -252,14 +252,15 @@ const xDur = sv => 3.9 + ((sv && sv.items) || []).length * .12; // موجة سر
 function wireX() {
   clearInterval(xTimer); const sec = $('#services'), p = $('#h7X'); if (!sec || !p || !$('.h7-xi')) return;
   const mob = () => matchMedia('(max-width:860px)').matches; let vis = false, hold = 0, nextAt = Infinity, seen = false;
-  const arm = (el) => { const sv = V().services[+el.dataset.xi], d = xDur(sv); el.style.setProperty('--xd', d + 's'); el.classList.remove('run'); if (!hold) { void el.offsetWidth; el.classList.add('run'); } nextAt = Date.now() + d * 1000; };
+  const arm = (el, dd) => { const sv = V().services[+el.dataset.xi], d = dd || xDur(sv); el.style.setProperty('--xd', d + 's'); el.classList.remove('run'); if (!hold) { void el.offsetWidth; el.classList.add('run'); } nextAt = Date.now() + d * 1000; };
   const show = (el, user) => { const i = +el.dataset.xi, sv = V().services[i]; if (!sv) return; $$('.h7-xi').forEach(x => { x.classList.toggle('on', x === el); x.setAttribute('aria-selected', x === el); x.classList.remove('run'); });
     p.classList.add('sw'); setTimeout(() => { p.innerHTML = svcPanel(sv, i); if (user && mob()) { el.after(p); el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } p.classList.remove('sw'); arm(el); }, mob() && user ? 0 : 180); };
   $$('.h7-xi').forEach(el => el.onclick = () => { hold = Date.now(); if (!el.classList.contains('on') || mob()) show(el, 1); });
-  sec.addEventListener('mouseenter', () => { if (!hold) hold = 1; $$('.h7-xi.run').forEach(x => x.classList.remove('run')); });
-  sec.addEventListener('mouseleave', () => { if (hold === 1) { hold = 0; const on = $('.h7-xi.on'); if (on) arm(on); } });
+  // الماوس على خدمة في القائمة يفتحها على طول، والماوس في أي حتة تانية الحركة مكمّلة
+  $$('.h7-xi').forEach(el => { el.addEventListener('mouseenter', () => { if (mob()) return; hold = 1; if (!el.classList.contains('on')) show(el); else $$('.h7-xi.run').forEach(x => x.classList.remove('run')); });
+    el.addEventListener('mouseleave', () => { if (hold === 1) { hold = 0; const on = $('.h7-xi.on'); if (on) arm(on); } }); });
   { const on = $('.h7-xi.on'); if (on && mob()) on.after(p); }
-  const start = () => { const on = $('.h7-xi.on'); if (!on) return; const i = +on.dataset.xi; p.innerHTML = svcPanel(V().services[i], i); arm(on); };
+  const start = () => { const on = $('.h7-xi.on'); if (!on) return; const i = +on.dataset.xi; p.innerHTML = svcPanel(V().services[i], i); arm(on, 2); };
   try { new IntersectionObserver(e => { vis = e[0].isIntersecting; if (vis) sec.classList.add('xin'); if (vis && !seen) { seen = true; start(); } }, { threshold: .25 }).observe(sec); } catch (e) { vis = true; sec.classList.add('xin'); seen = true; start(); }
   xTimer = setInterval(() => {
     if (!document.body.contains(sec)) return clearInterval(xTimer);

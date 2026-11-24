@@ -151,6 +151,7 @@ export const DEFAULT = {
   aboutHome: { img: 'assets/img/work/w13.webp' },
   reviews: { on: true, title: 'آراء عملائنا', sub: 'تقييمات حقيقية من عملاء تعاملوا معانا.' },
   occasion: { active: 'none', auto: false, until: '', text: '', fx: true, level: 'heavy' },
+  sound: { s: 'mouse', v: 0.7, site: true, app: true },
   confidential: 'كثير من أعمالنا يخضع لاتفاقيات سرية مع جهات مصرفية وصحية ومطوّرين عقاريين، ولا يُنشر إلا بإذن كتابي من المالك. نفضّل ذكر النطاق الفعلي للعمل بدل نشر صور لا تخصّنا. ملف الأعمال الكامل متاح عند الطلب.',
   gallery: [
     { img: 'assets/img/work/w05.webp', title: 'قسم المساحة', sub: 'رفع ميداني بمحطة رصد متكاملة' },

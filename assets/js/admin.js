@@ -1,4 +1,4 @@
-import './click.js';
+import { setCfg as sndCfg } from './click.js';
 // لوحة التحكم الكاملة: كل محتوى الموقع + الصور + الموظفين + كود الدعوة + النسخ الاحتياطي
 import * as F from './fb.js';
 import { DEFAULT, migrate } from './data.js';
@@ -50,6 +50,7 @@ const SECTIONS = [
   { id: 'video', t: 'فيديو الواجهة', ic: '▶' },
   { id: 'pages', t: 'الصفحات (ترتيب وأحجام)', ic: '☰' },
   { id: 'occasion', t: 'المناسبات والأعياد', ic: '🎉' },
+  { id: 'sound', t: 'الأصوات', ic: '🔊' },
   { h: 'المحتوى' },
   { id: 'hero', t: 'الواجهة والأرقام', keys: ['hero', 'stats'], ic: '◧', d: 'العنوان الكبير والأزرار والأرقام اللي تحت الفيديو.' },
   { id: 'offer', t: 'العروض', keys: ['offer', 'announce', 'popup'], ic: '🎁', d: 'عرض يظهر للناس بشكل واضح في الرئيسية بعدّاد تنازلي، وشريط أعلى الموقع، ونافذة منبثقة.' },
@@ -81,7 +82,7 @@ function dirty() {
 addEventListener('beforeunload', e => { if (JSON.stringify(D) !== saved) { e.preventDefault(); e.returnValue = ''; } });
 
 async function loadContent() {
-  try { const s = await F.getDoc(F.doc(db, 'site', 'content')); const d = s.exists() ? s.data() : null; const r = d && d.json ? JSON.parse(d.json) : d && d.data; if (r) D = deepMerge(clone(DEFAULT), r); } catch (e) { toast('تعذّر تحميل المحتوى: ' + F.authMsg(e), 1); }
+  try { const s = await F.getDoc(F.doc(db, 'site', 'content')); const d = s.exists() ? s.data() : null; const r = d && d.json ? JSON.parse(d.json) : d && d.data; if (r) D = deepMerge(clone(DEFAULT), r); sndCfg(D.sound); } catch (e) { toast('تعذّر تحميل المحتوى: ' + F.authMsg(e), 1); }
   D.en = deepMerge(clone(EN), D.en || {});
   migrate(D, EN);
   saved = JSON.stringify(D);

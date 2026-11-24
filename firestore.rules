@@ -200,6 +200,30 @@ service cloud.firestore {
         && request.resource.data.img is string && request.resource.data.img.size() < 900000;
     }
 
+    // ===== v13: قسم المساحة =====
+    match /surveys/{id} {
+      allow read, create: if hasMod('survey');
+      allow update: if hasMod('survey');
+      allow delete: if isOwner();
+    }
+    match /svSettings/{id} {
+      allow read, write: if hasMod('survey');
+    }
+    // ===== v13: قسم المعماري =====
+    match /archProjects/{id} {
+      allow read, create, update: if hasMod('arch');
+      allow delete: if isOwner();
+    }
+    match /archMedia/{id} {
+      allow read: if hasMod('arch');
+      allow create: if hasMod('arch') && request.resource.data.by == request.auth.uid
+        && request.resource.data.img is string && request.resource.data.img.size() < 1000000;
+      allow delete: if hasMod('arch');
+    }
+    match /archSettings/{id} {
+      allow read, write: if hasMod('arch');
+    }
+
     match /reports/{id} {
       allow read: if hasMod('reports') || (signedIn() && resource.data.by == request.auth.uid)
         || (hasMod('report') && resource.data.get('clientNo', null) != null)
