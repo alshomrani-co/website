@@ -415,6 +415,13 @@ input[type="radio"].hidden-radio{display:none;}
 .cv-cm form{display:flex;gap:8px}.cv-cm textarea{flex:1;border-radius:12px;border:1.5px solid #d1d5db;padding:10px;font:inherit}
 .cv-cm button{background:#e02828;color:#fff;border:0;border-radius:12px;padding:0 18px;font-weight:700;font-family:inherit;cursor:pointer}
 @media print{.cv-cm{display:none!important}}
+#pdfBusy{position:fixed;inset:0;z-index:99999;display:none;place-items:center;background:rgba(15,16,18,.55);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+#pdfBusy.on{display:grid}
+#pdfBusy div{background:#fff;border-radius:18px;padding:22px 26px;display:grid;gap:10px;justify-items:center;box-shadow:0 20px 50px -20px rgba(0,0,0,.5);font-family:inherit}
+#pdfBusy b{font-size:17px}#pdfBusy small{color:#777}
+#pdfBusy i{display:block;width:220px;height:5px;border-radius:5px;background:linear-gradient(90deg,#eee 25%,#d7262b 50%,#eee 75%) 0 0/300% 100%;animation:pbz 1s linear infinite}
+@keyframes pbz{from{background-position:100% 0}to{background-position:-100% 0}}
+@media print{#pdfBusy{display:none!important}}
 </style>
 <style>
 /* ===== شركة سعد الشمراني — الشعار المتحرك + الحركات + الأرشيف السحابي ===== */
@@ -1543,12 +1550,27 @@ function applyPrintLayout() {
   void document.body.offsetHeight; // synchronous reflow — NO setTimeout (breaks mobile print)
 }
 
+// رسالة «جارٍ تجهيز ملف الـ PDF» + تجهيز الصور قبل الطباعة
+function pdfBusy(on) {
+  var o = document.getElementById('pdfBusy');
+  if (!o) { o = document.createElement('div'); o.id = 'pdfBusy'; o.innerHTML = '<div><b>جارٍ تجهيز ملف الـ PDF… ⏳</b><i></i><small>ثواني وهتفتح شاشة الحفظ</small></div>'; document.body.appendChild(o); }
+  o.classList.toggle('on', !!on);
+}
+function decodeImgs() { var L = []; document.querySelectorAll('img').forEach(function (im) { if (im.src && im.decode) L.push(im.decode().catch(function () { })); }); return Promise.all(L); }
+setInterval(function () { document.querySelectorAll('img:not([data-dec])').forEach(function (im) { if (im.complete && im.naturalWidth && im.decode) { im.dataset.dec = 1; im.decode().catch(function () { }); } }); }, 1500);
+window.addEventListener('afterprint', function () { pdfBusy(false); });
 function prepareAndPrint() {
+  pdfBusy(true);
+  var mobile = /iphone|ipad|ipod|android/i.test(navigator.userAgent);
+  if (!mobile) { decodeImgs().then(function () { requestAnimationFrame(function () { setTimeout(function () { doPrint(); }, 30); }); }); return; }
+  doPrint();
+}
+function doPrint() {
   applyPrintLayout();
   try {
     if (typeof window.print !== 'function') { throw new Error('print-unsupported'); }
-    window.print();
-  } catch (err) {
+    window.print(); setTimeout(function () { pdfBusy(false); }, 1500);
+  } catch (err) { pdfBusy(false);
     alert('لإنشاء ملف PDF: افتح هذه الصفحة في متصفح Chrome أو Safari (وليس داخل تطبيق مثل واتساب)، ثم استخدم قائمة المتصفح ← طباعة / مشاركة ← حفظ كـ PDF.\n\nTo create the PDF: open this page in Chrome or Safari (not inside an app such as WhatsApp), then use the browser menu → Print / Share → Save as PDF.');
   }
 }
@@ -1784,5 +1806,6 @@ addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key === 's'
 
 </script>
 <div id="cloud-veil"><div class="cv-in"><div class="lg-mini"></div><p>جارٍ فتح التقرير من الأرشيف…</p></div></div>
+<script type="module" src="../assets/js/click.js"></script>
 </body>
 </html>

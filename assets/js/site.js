@@ -1,3 +1,4 @@
+import './click.js';
 // شركة سعد الشمراني — الموقع العام (صفحة واحدة بروابط #) — عربي / English
 import { DEFAULT, migrate, PAGE_BLOCKS } from './data.js';
 import { EN } from './data-en.js';
@@ -121,7 +122,7 @@ function applyDesign() {
 }
 
 /* ---------- chrome ---------- */
-const NAV_MAIN = ['', 'services', 'projects', 'packages', 'contact'];
+const NAV_MAIN = ['', 'about', 'services', 'projects', 'packages', 'contact'];
 const NAV_ALL = ['', 'services', 'projects', 'packages', 'about', 'support', 'track', 'request', 'contact'];
 function chrome() {
   const v = V();
@@ -154,7 +155,7 @@ function chrome() {
 function paintOcc(v) {
   const k = activeOcc(C.occasion), o = C.occasion || {}, en = LANG === 'en'; let fx = $('#occFx');
   const off = store('sh.occFx', 'session') === '0' || o.fx === false || matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (!k || off) { if (fx) fx.remove(); } else if (!fx || fx.dataset.k !== k) { if (fx) fx.remove(); fx = document.createElement('div'); fx.id = 'occFx'; fx.className = 'occ-fx'; fx.dataset.k = k; fx.setAttribute('aria-hidden', 'true'); fx.innerHTML = fxHTML(k, matchMedia('(max-width:700px)').matches); document.body.appendChild(fx); }
+  if (!k || off) { if (fx) fx.remove(); } else if (!fx || fx.dataset.k !== k + (o.level || 'heavy')) { if (fx) fx.remove(); fx = document.createElement('div'); fx.id = 'occFx'; fx.className = 'occ-fx'; fx.dataset.k = k + (o.level || 'heavy'); fx.setAttribute('aria-hidden', 'true'); fx.innerHTML = fxHTML(k, matchMedia('(max-width:700px)').matches || document.documentElement.classList.contains('is-phone'), o.level || 'heavy'); document.body.appendChild(fx); }
   if (!k) return false;
   const txt = greeting(k, LANG, (v.occasion || {}).text), bar = $('#announce');
   if (store('sh.occBar', 'session') === k) return false;
@@ -233,18 +234,21 @@ function appStrip(v) {
   const gp = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 3.5v17l9-8.5z" fill="#34A853"/><path d="M4 3.5l9 8.5 3-2.8L5.6 3z" fill="#4285F4"/><path d="M4 20.5l9-8.5 3 2.8-10.4 6.2z" fill="#EA4335"/><path d="M16 9.2l3.6 2.1c.7.4.7 1 0 1.4L16 14.8 13 12z" fill="#FBBC04"/></svg>';
   const ap = '<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="18" r="1.1"/></svg>';
   const b = (href, ic, sm, big, k) => href ? `<a class="h7-store" href="${esc(href)}" target="_blank" rel="noopener" data-ev="app:${k}">${ic}<span><small>${sm}</small><b>${big}</b></span></a>` : `<button class="h7-store" data-inst="${k}">${ic}<span><small>${sm}</small><b>${big}</b></span></button>`;
-  return `<div class="h7-app"><span class="h7-app-t"><i>📱</i>${esc(line)}</span><div class="h7-app-b">${b(c.playStore, gp, en ? 'Get it on' : 'حمّله من', 'Google Play', 'android')}${b(c.appStore, ap, en ? 'Download on the' : 'حمّله من', 'App Store', 'ios')}</div></div>`;
+  const so = V().socials || {}, sl = SOC.filter(x => so[x[0]]);
+  const socs = sl.length ? `<div class="h7-soc">${sl.map((x, i) => `<a class="hs s-${x[0]}" style="--i:${i}" href="${esc(so[x[0]])}" target="_blank" rel="noopener" aria-label="${esc(socName(x))}" data-ev="soc:${x[0]}">${I[x[1]]}</a>`).join('')}</div>` : '';
+  return `<div class="h7-app"><div class="h7-app-l"><span class="h7-app-t"><i>📱</i>${esc(line)}</span>${socs}</div><div class="h7-app-b">${b(c.playStore, gp, en ? 'Get it on' : 'حمّله من', 'Google Play', 'android')}${b(c.appStore, ap, en ? 'Download on the' : 'حمّله من', 'App Store', 'ios')}</div></div>`;
 }
 const grps = p => String(p.grp || '').split(/[,،]/).map(x => x.trim()).filter(Boolean);
 function workCards() {
   const v = V(), Ga = C.workGroups || [], en = LANG === 'en';
   return (v.workGroups || []).map((g, i) => { const key = (Ga[i] || {}).key || g.key; if (!key) return ''; const P = v.projects.filter(p => grps(p).includes(key)); const n = P.reduce((a, p) => a + (p.img ? 1 : 0) + (p.gallery || []).filter(x => x.img).length, 0);
     const im = g.img || (P.find(p => p.img) || {}).img || '';
-    return `<a class="h7-wk rv d${i % 5}" href="#/projects?g=${encodeURIComponent(key)}">${im ? img(im, g.title) : ''}<div class="ov"><span class="cnt">${n} ${en ? 'photos' : 'صورة'}</span><h3>${esc(g.title)}</h3><p>${esc(g.sub || '')}</p><span class="go">${ARW}</span></div></a>`; }).join('');
+    const more = [...new Set([im, ...P.flatMap(p => [p.img, ...(p.gallery || []).map(x => x.img)])].filter(Boolean))].slice(0, 6).map(src);
+    return `<a class="h7-wk d${i % 5}" style="--wi:${i}" href="#/projects?g=${encodeURIComponent(key)}" data-imgs='${esc(JSON.stringify(more))}'><span class="wk-imgs">${im ? `<img class="on" src="${esc(src(im))}" alt="${esc(g.title)}" loading="lazy">` : ''}</span><span class="wk-sweep"></span><div class="ov"><span class="cnt"><b data-n="${n}">0</b> ${en ? 'photos' : 'صورة'}</span><h3>${esc(g.title)}</h3><p>${esc(g.sub || '')}</p><span class="wk-cta">${en ? 'View work' : 'شوف الأعمال'} ${ARW}</span></div></a>`; }).join('');
 }
 /* الأقسام بتقلّب لوحدها كل ٥ ثواني، وتقف لما العميل يلمسها */
 let xTimer = null;
-const xDur = sv => 1.7 + ((sv && sv.items) || []).length * .5; // كل الخدمات المشمولة تنوّر واحدة واحدة وبعدها ثانية
+const xDur = sv => 3.9 + ((sv && sv.items) || []).length * .12; // موجة سريعة زي v10 وبعدها ثانيتين // كل الخدمات المشمولة تنوّر واحدة واحدة وبعدها ثانية
 function wireX() {
   clearInterval(xTimer); const sec = $('#services'), p = $('#h7X'); if (!sec || !p || !$('.h7-xi')) return;
   const mob = () => matchMedia('(max-width:860px)').matches; let vis = false, hold = 0, nextAt = Infinity, seen = false;
@@ -265,10 +269,32 @@ function wireX() {
     const all = $$('.h7-xi'), cur = all.findIndex(x => x.classList.contains('on')); show(all[(cur + 1) % all.length]);
   }, 200);
 }
+/* «أعمال موثّقة»: ستارة، صور بتتحرك وبتتبدل، لمعة، عدّاد، ميل ثلاثي الأبعاد، وكشاف ورا الماوس */
+let wkTimer = null;
+function wireWork() {
+  clearInterval(wkTimer); const sec = $('#work'); if (!sec) return; const cards = $$('.h7-wk', sec);
+  const count = () => $$('.cnt b[data-n]', sec).forEach(b => { const n = +b.dataset.n, t0 = performance.now(); const st = t => { const k = Math.min(1, (t - t0) / 1400); b.textContent = Math.round(n * (1 - Math.pow(1 - k, 3))); if (k < 1) requestAnimationFrame(st); }; requestAnimationFrame(st); });
+  try { const io = new IntersectionObserver(e => { if (e[0].isIntersecting) { sec.classList.add('wk-in'); count(); io.disconnect(); } }, { threshold: .2 }); io.observe(sec); } catch (e) { sec.classList.add('wk-in'); }
+  let tick = 0; wkTimer = setInterval(() => { if (!document.body.contains(sec)) return clearInterval(wkTimer); if (document.hidden) return; tick++;
+    cards.forEach((c, i) => { if ((tick + i) % cards.length !== 0 && cards.length > 2 && tick % 2 !== i % 2) return; let L = []; try { L = JSON.parse(c.dataset.imgs || '[]'); } catch (e) { } if (L.length < 2) return; const box = $('.wk-imgs', c), cur = $('img.on', box), k = ((+c.dataset.k || 0) + 1) % L.length; c.dataset.k = k;
+      const im = new Image(); im.alt = ''; im.src = L[k]; im.onload = () => { box.appendChild(im); requestAnimationFrame(() => { im.classList.add('on'); if (cur) { cur.classList.remove('on'); setTimeout(() => cur.remove(), 1300); } }); }; }); }, 4000);
+  if (matchMedia('(hover:hover)').matches) {
+    sec.addEventListener('mousemove', e => { const r = sec.getBoundingClientRect(); sec.style.setProperty('--mx', (e.clientX - r.left) + 'px'); sec.style.setProperty('--my', (e.clientY - r.top) + 'px'); });
+    cards.forEach(c => { c.addEventListener('mousemove', e => { const r = c.getBoundingClientRect(), x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5; c.style.transform = `perspective(800px) rotateY(${(x * 8).toFixed(2)}deg) rotateX(${(-y * 8).toFixed(2)}deg) translateY(-4px)`; }); c.addEventListener('mouseleave', () => { c.style.transform = ''; }); });
+  }
+}
 let instEv = null;
 addEventListener('beforeinstallprompt', e => { e.preventDefault(); instEv = e; });
 addEventListener('appinstalled', () => { instEv = null; toast(LANG === 'en' ? 'App installed ✓' : 'التطبيق اتثبت ✓'); });
 // شريط «تثبيت التطبيق» تحت الشاشة على الجوال (بيرجع يظهر بعد ٣ أيام لو اتقفل)
+// زرار PC / Phone على الجوال بس (مكان «اطلب خدمة»)
+// على الجوال: «تحدث معنا» تظهر جنب الدايرة ٣ ثواني بس
+function fabLabel() { const f = $('#botFab'); if (!f) return; f.classList.add('lbl'); setTimeout(() => f.classList.remove('lbl'), 3000); }
+function initViewBtn() {
+  const b = $('#viewBtn'); if (!b) return; const pc = document.documentElement.classList.contains('m-desk');
+  b.innerHTML = pc ? '<span>📱</span>Phone' : '<span>💻</span>PC'; b.title = pc ? 'منظور الجوال' : 'منظور الكمبيوتر';
+  b.onclick = () => { try { localStorage.setItem('sh.view', pc ? 'phone' : 'pc'); } catch (e) { } location.reload(); };
+}
 function initInstBar() {
   const phone = document.documentElement.classList.contains('m-desk') || matchMedia('(pointer:coarse) and (max-width:900px)').matches;
   if (!phone || PREVIEW || matchMedia('(display-mode: standalone)').matches || navigator.standalone) return;
@@ -281,7 +307,14 @@ function initInstBar() {
   $('.ib-x', b).onclick = () => { try { localStorage.setItem('sh.ibX', String(Date.now())); } catch (e) { } b.remove(); document.documentElement.classList.remove('has-ib'); };
   addEventListener('appinstalled', () => { b.remove(); document.documentElement.classList.remove('has-ib'); });
 }
+function apkGuide() {
+  const en = LANG === 'en', c = V().contact || {};
+  try { const a = document.createElement('a'); a.href = c.apkUrl; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove(); } catch (e) { location.href = c.apkUrl; }
+  $('#popBody').innerHTML = `<div class="inst"><img src="assets/img/icon-192.png" alt="" width="64" height="64"><h3>${en ? 'Downloading the app…' : 'جارٍ تنزيل التطبيق…'}</h3><ol>${(en ? ['Open the downloaded file <b>shamrani-app.apk</b>', 'If asked, allow installing from this browser', 'Tap <b>Install</b>'] : ['افتح الملف اللي نزل <b>shamrani-app.apk</b>', 'لو طلب، اسمح بالتثبيت من المتصفح', 'اضغط <b>تثبيت</b>']).map(x => `<li>${x}</li>`).join('')}</ol><p class="inst-n"><a href="${esc(c.apkUrl)}" rel="noopener" style="color:var(--red);font-weight:700">${en ? 'Download didn\'t start? Tap here' : 'التنزيل مبدأش؟ اضغط هنا'}</a></p></div>`;
+  $('#popup').hidden = false;
+}
 async function doInstall(k) {
+  { const c = V().contact || {}, ios0 = /iphone|ipad|ipod/i.test(navigator.userAgent); if (!ios0 && k !== 'ios' && !matchMedia('(display-mode: standalone)').matches) { if (c.playStore) { location.href = c.playStore; return; } if (c.apkUrl && /android/i.test(navigator.userAgent)) return apkGuide(); } }
   const en = LANG === 'en', ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   if (matchMedia('(display-mode: standalone)').matches) return toast(en ? 'The app is already installed ✓' : 'التطبيق متثبت عندك بالفعل ✓');
   if (instEv && !ios) { instEv.prompt(); try { await instEv.userChoice; } catch (e) { } instEv = null; return; }
@@ -305,9 +338,15 @@ function homeV7() {
     services: () => `<section class="h7-sec" id="services"><div class="wrap"><div class="h7-sh"><div>${tag(en ? 'Our services' : 'خدماتنا')}<h2 class="h7-h2">${en ? 'Every engineering discipline under one roof' : 'كل الأقسام الهندسية تحت سقف واحد'}</h2></div><p>${esc(t('svcSub'))}</p></div>
       <div class="h7-x"><div class="h7-x-l" role="tablist">${v.services.map((x, i) => `<button class="h7-xi ${i ? '' : 'on'}" role="tab" aria-selected="${!i}" data-xi="${i}" style="--xi:${i}"><span class="n">${String(i + 1).padStart(2, '0')}</span><span class="tt"><b>${esc(x.title)}</b><small>${esc(x.short)}</small></span><span class="ar">${ARW}</span></button>`).join('')}</div>
       <div class="h7-x-p" id="h7X">${svcPanel(v.services[0], 0)}</div></div></div></section>`,
-    feature: () => `<section class="h7-sec h7-dark" id="work"><div class="wrap"><div class="h7-sh"><div>${tag(en ? 'Our work' : 'من أعمالنا', 1)}<h2 class="h7-h2">${en ? 'Documented work, not just photos' : 'أعمال موثّقة، مش مجرد صور'}</h2></div><p>${en ? 'Pick a field to see all its projects and photos.' : 'اختار المجال وشوف كل مشاريعه وصوره.'}</p></div>
+    feature: () => `<section class="h7-sec h7-dark" id="work"><div class="wrap"><div class="h7-sh"><div>${tag(en ? 'Our work' : 'من أعمالنا', 1)}<h2 class="h7-h2">${en ? '<em class="shine">Documented</em> work, not just photos' : 'أعمال <em class="shine">موثّقة</em>، مش مجرد صور'}</h2></div><p>${en ? 'Pick a field to see all its projects and photos.' : 'اختار المجال وشوف كل مشاريعه وصوره.'}</p></div>
       <div class="h7-wk-g">${workCards()}</div>
-      <div class="h7-all on"><a class="h7-red glow" href="#/projects">${en ? 'See all our work' : 'شوف كل أعمالنا'} ${ARW}</a></div></div></section>`,
+      <div class="h7-all on"><a class="h7-red glow shine-btn" href="#/projects">${en ? 'See all our work' : 'شوف كل أعمالنا'} ${ARW}</a></div></div></section>`,
+    aboutH: () => { const a = v.about, st = v.stats || [], img0 = (v.aboutHome && v.aboutHome.img) || 'assets/img/work/w13.webp';
+      const pts = [[en ? `Licensed since ${v.brand.founded}` : `مرخّصة منذ ${v.brand.founded}`, '🏛'], [en ? 'Integrated engineering team' : 'فريق هندسي متكامل', '👷'], ...(st.find(x => /فرع|branch/i.test(x.l || x.label || '')) ? [[`${(st.find(x => /فرع|branch/i.test(x.l || x.label || '')) || {}).n || ''} ${en ? 'branches in the Kingdom' : 'فروع داخل المملكة'}`, '📍']] : []), [en ? 'Live project follow-up' : 'متابعة لحظية لمشروعك', '📲']];
+      return `<section class="h7-sec h7-about" id="aboutH"><div class="wrap ab-g"><div class="ab-img"><img src="${esc(src(img0))}" alt="${esc(a.title)}" loading="lazy"><span class="ab-badge"><b>${esc(v.brand.founded)}</b><small>${en ? 'Since' : 'منذ'}</small></span></div>
+      <div class="ab-t">${tag(en ? 'About us' : 'من نحن')}<h2 class="h7-h2">${esc(a.title)}</h2><p class="ab-p">${esc((a.story || [a.lead])[0] || a.lead)}</p>
+      <ul class="ab-pts">${pts.map(([tx, ic], i) => `<li style="--i:${i}"><span>${ic}</span>${esc(tx)}</li>`).join('')}</ul>
+      <a class="h7-red" href="#/about">${en ? 'Learn more about us' : 'اعرف أكتر عنّا'} ${ARW}</a></div></div></section>`; },
     reviews: () => v.reviews && v.reviews.on !== false ? `<section class="h7-sec h7-rev" id="reviews"><div class="wrap"><div class="h7-sh"><div>${tag(en ? 'Reviews' : 'آراء العملاء')}<h2 class="h7-h2">${esc(v.reviews.title)}</h2></div><div class="rev-hd"><p>${esc(v.reviews.sub)}</p><button class="h7-red sm" data-review>✍️ ${en ? 'Write your review' : 'اكتب رأيك'}</button></div></div><div class="rev-track" id="revTrack"><p class="rev-empty">${en ? 'Loading…' : 'جارٍ التحميل…'}</p></div></div></section>` : '',
     steps: () => `<section class="h7-sec" id="process"><div class="wrap"><div class="h7-sh"><div>${tag(t('how'))}<h2 class="h7-h2">${en ? 'Clear steps, no surprises' : 'خطوات واضحة، بدون مفاجآت'}</h2></div></div><div class="h7-steps">${v.about.steps.map((x, i) => `<div class="h7-step rv d${i}"><span class="dot"></span><span class="sn">${String(i + 1).padStart(2, '0')}</span><h4>${esc(x.t)}</h4><p>${esc(x.d)}</p></div>`).join('')}</div></div></section>`,
     portal: () => `<section class="h7-portal-w" id="portal"><div class="wrap"><div class="h7-portal"><div>${tag(en ? 'New' : 'جديد', 1)}<h2 class="h7-h2" style="font-size:clamp(26px,3.4vw,40px)">${en ? 'Follow your project from your phone' : 'تابع مشروعك من جوالك'}</h2><p>${en ? 'Sign in to see supervision reports and drawings as they come, and chat with your engineer right here.' : 'سجّل دخولك وشوف تقارير الإشراف والمخططات أول بأول، وكلّم المهندس المختص مباشرة على الموقع.'}</p><div class="h7-chips"><span>${en ? 'Supervision reports' : 'تقارير الإشراف'}</span><span>${en ? 'Drawings' : 'المخططات المعمارية والإنشائية'}</span><span>${en ? 'MEP' : 'الكهروميكانيك'}</span><span>${en ? 'Comments to your engineer' : 'تعليقك للمهندس'}</span></div></div><a class="h7-red big" href="#/${ACC.signedIn() ? 'my' : 'account'}">${ACC.signedIn() ? (en ? 'My project' : 'مشروعي') : (en ? 'Sign in / Create account' : 'دخول / إنشاء حساب')}</a></div></div></section>`,
@@ -433,7 +472,7 @@ async function loadReviews() {
   const tr = $('#revTrack'); if (!tr) return; const en = LANG === 'en';
   if (!REVS) { try { const F = await fb(); const sn = await F.getDocs(F.query(F.collection(F.db, 'reviews'), F.where('status', '==', 'approved'), F.limit(30))); REVS = sn.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => ((b.at && b.at.seconds) || 0) - ((a.at && a.at.seconds) || 0)); } catch (e) { REVS = []; } }
   const el = $('#revTrack'); if (!el) return;
-  if (!REVS.length) { el.innerHTML = `<div class="rev-first glass"><span>⭐</span><div><b>${en ? 'Worked with us? Be the first to review us' : 'اتعاملت معانا؟ كن أول واحد يكتب رأيه'}</b><small>${en ? 'Your review appears after management approval.' : 'رأيك بيظهر بعد موافقة الإدارة.'}</small></div><button class="btn btn-red sm" data-review>${en ? 'Write a review' : 'اكتب رأيك'}</button></div>`; $$('[data-review]', el).forEach(b => b.onclick = openReview); return; }
+  if (!REVS.length) { el.innerHTML = `<div class="rev-first glass"><span>⭐</span><div><b>${en ? 'Worked with us? Be the first to review us' : 'اتعاملت معانا؟ كن أول واحد يكتب رأيه'}</b><small>${en ? 'Share your experience in a minute.' : 'شاركنا تجربتك في دقيقة.'}</small></div><button class="btn btn-red sm" data-review>${en ? 'Write a review' : 'اكتب رأيك'}</button></div>`; $$('[data-review]', el).forEach(b => b.onclick = openReview); return; }
   el.innerHTML = `<div class="rev-row" id="revRow">${REVS.map(r => `<figure class="rev glass">${stars(r.stars || 5)}<blockquote>${esc(r.text)}</blockquote><figcaption><span class="rav">${esc((r.name || '?').trim().charAt(0))}</span><span><b>${esc(r.name)}${r.uid ? ` <em class="ver">✓ ${en ? 'Verified client' : 'عميل موثّق'}</em>` : ''}</b><small>${esc(r.svc || '')}</small></span></figcaption></figure>`).join('')}</div>`;
   const row = $('#revRow'); if (row && REVS.length > 1) { let hov = false; row.onmouseenter = () => hov = true; row.onmouseleave = () => hov = false; row.addEventListener('touchstart', () => { hov = true; setTimeout(() => hov = false, 8000); }, { passive: true });
     const it = setInterval(() => { if (!document.body.contains(row)) return clearInterval(it); if (hov || document.hidden) return; const w = row.firstElementChild.offsetWidth + 16, dir = LANG === 'en' ? 1 : -1, max = row.scrollWidth - row.clientWidth; if (Math.abs(row.scrollLeft) + w > max + 4) row.scrollTo({ left: 0, behavior: 'smooth' }); else row.scrollBy({ left: dir * w, behavior: 'smooth' }); }, 5000); }
@@ -441,7 +480,7 @@ async function loadReviews() {
 function openReview() {
   const en = LANG === 'en', v = V(); let st = 5;
   try { const last = +localStorage.getItem('sh.revAt') || 0; if (Date.now() - last < 864e5) { toast(en ? 'You already sent a review today — thank you!' : 'بعت رأيك النهارده بالفعل — شكراً ليك!'); return; } } catch (e) { }
-  $('#popBody').innerHTML = `<form class="rev-f" id="revF" novalidate><h3>${en ? 'Share your experience' : 'شاركنا رأيك'}</h3><p class="hint">${en ? 'Published after management review.' : 'بيتنشر بعد مراجعة الإدارة.'}</p>
+  $('#popBody').innerHTML = `<form class="rev-f" id="revF" novalidate><h3>${en ? 'Share your experience' : 'شاركنا رأيك'}</h3>
     <div class="rev-st" id="revSt">${[1, 2, 3, 4, 5].map(i => `<button type="button" data-s="${i}" class="on" aria-label="${i}">★</button>`).join('')}</div>
     <div class="fld"><label>${t('nameL')}</label><input id="rvName" maxlength="60" value="${esc(store('sh.custName') || '')}"></div>
     <div class="fld"><label>${en ? 'Service' : 'الخدمة'}</label><select id="rvSvc"><option value="">${en ? '— choose —' : '— اختار —'}</option>${v.services.map(x => `<option>${esc(x.title)}</option>`).join('')}<option>${en ? 'Other' : 'أخرى'}</option></select></div>
@@ -457,7 +496,7 @@ function openReview() {
     try { const F = await fb(); const u = F.auth.currentUser, cu = store('sh.cust');
       await F.addDoc(F.collection(F.db, 'reviews'), { name: name.slice(0, 60), stars: st, svc: $('#rvSvc').value.slice(0, 80), text: text.slice(0, 600), phone: toEnDigits($('#rvPh').value).replace(/\D/g, '').slice(0, 15), uid: u && cu && u.uid === cu ? u.uid : '', status: 'pending', at: F.serverTimestamp(), lang: LANG });
       try { localStorage.setItem('sh.revAt', String(Date.now())); } catch (x) { } track('review');
-      $('#popBody').innerHTML = `<div class="ticket-ok"><svg class="check-anim" viewBox="0 0 84 84"><circle cx="42" cy="42" r="38"/><path d="M26 43l11 11 21-23"/></svg><h3 style="margin:0">${en ? 'Thank you!' : 'شكراً ليك!'}</h3><p style="color:var(--mut)">${en ? 'Your review was received and will appear after review.' : 'رأيك وصل وهيظهر بعد المراجعة.'}</p></div>`;
+      $('#popBody').innerHTML = `<div class="ticket-ok"><svg class="check-anim" viewBox="0 0 84 84"><circle cx="42" cy="42" r="38"/><path d="M26 43l11 11 21-23"/></svg><h3 style="margin:0">${en ? 'Thank you!' : 'شكراً ليك!'}</h3><p style="color:var(--mut)">${en ? 'Your review will be published within minutes.' : 'سيتم النشر خلال دقائق.'}</p></div>`;
     } catch (x) { er.textContent = t('connErr'); b.disabled = false; b.textContent = en ? 'Send review' : 'أرسل رأيك'; }
   };
 }
@@ -475,7 +514,15 @@ P.projects = (q) => { const v = V(), ch = prjChips(), g = new URLSearchParams(q 
   <section class="sec tight"><div class="wrap"><div class="filters ${prjStop ? '' : 'auto'}" id="filters">${ch.map((c, i) => `<button class="${i === prjChip ? 'on' : ''}" data-c="${i}">${esc(c.l)}</button>`).join('')}</div><div class="prj-grid" id="prjGrid">${prjCards()}</div>
   <div class="note-box glass rv" style="margin-top:34px"><div><h4>${t('whyNo')}</h4><p>${esc(v.confidential)}</p></div><a class="btn btn-ink" href="${wa(t('portfolioWa'))}" target="_blank" rel="noopener">${t('portfolio')}</a></div></div></section>
   ${galleryBlock()}${ctaBox()}`; };
-const prjCards = () => { const v = V(), c = prjChips()[prjChip] || { f: () => true }; return v.projects.map((p, k) => [p, k]).filter(([p]) => c.f(p)).map(([p, k], i) => `<article class="prj glass ${p.img || (p.gallery || []).length ? 'has-img' : ''}" data-prj="${k}" style="animation-delay:${i * 40}ms">${(p.gallery || []).filter(g => g.img).length ? `<span class="prj-n">${I.play.replace('M8 5v14l11-7z', 'M4 5h16v14H4zM4 15l5-5 4 4 3-3 4 4')} ${(p.gallery || []).filter(g => g.img).length + (p.img ? 1 : 0)}</span>` : ''}<div class="ph">${p.img ? img(p.img, p.title) : `<img class="ph-ic" src="assets/img/mark.png" alt="">`}</div><div class="bd"><span class="chip" style="align-self:flex-start">${esc(p.tag || p.cat)}</span><h3>${esc(p.title)}</h3><p>${esc(p.desc)}</p><div class="meta"><span>${t('loc')} <b>${esc(p.loc)}</b></span><span>·</span><span>${t('scope')} <b>${esc(p.scope)}</b></span></div></div></article>`).join(''); };
+// «الكل»: مكس بين كل الأنواع (مشروع من كل نوع بالتبادل، واللي ليهم صور الأول)
+function mixAll(L) {
+  const ORD = ['السلامة', 'الواجهات', 'التصميم الداخلي', 'المساحة', 'المخططات'], B = new Map();
+  L.forEach(x => { const g = grps(x[0])[0] || '_'; if (!B.has(g)) B.set(g, []); B.get(g).push(x); });
+  const keys = [...ORD.filter(k => B.has(k)), ...[...B.keys()].filter(k => !ORD.includes(k))], Q = keys.map(k => B.get(k).sort((a, b) => (!!(b[0].img) - !!(a[0].img))));
+  const out = []; let more = true; while (more) { more = false; Q.forEach(q => { if (q.length) { out.push(q.shift()); more = true; } }); }
+  const wi = out.filter(x => x[0].img), wo = out.filter(x => !x[0].img); return [...wi.slice(0, 6), ...out.filter(x => !wi.slice(0, 6).includes(x))];
+}
+const prjCards = () => { const v = V(), c = prjChips()[prjChip] || { f: () => true, k: 'all' }; const L0 = v.projects.map((p, k) => [p, k]).filter(([p]) => c.f(p)); return (c.k === 'all' ? mixAll(L0) : L0).map(([p, k], i) => `<article class="prj glass ${p.img || (p.gallery || []).length ? 'has-img' : ''}" data-prj="${k}" style="animation-delay:${i * 40}ms">${(p.gallery || []).filter(g => g.img).length ? `<span class="prj-n">${I.play.replace('M8 5v14l11-7z', 'M4 5h16v14H4zM4 15l5-5 4 4 3-3 4 4')} ${(p.gallery || []).filter(g => g.img).length + (p.img ? 1 : 0)}</span>` : ''}<div class="ph">${p.img ? img(p.img, p.title) : `<img class="ph-ic" src="assets/img/mark.png" alt="">`}</div><div class="bd"><span class="chip" style="align-self:flex-start">${esc(p.tag || p.cat)}</span><h3>${esc(p.title)}</h3><p>${esc(p.desc)}</p><div class="meta"><span>${t('loc')} <b>${esc(p.loc)}</b></span><span>·</span><span>${t('scope')} <b>${esc(p.scope)}</b></span></div></div></article>`).join(''); };
 function setChip(i, user) {
   const fl = $('#filters'); if (!fl) return; const bs = $$('button', fl); if (!bs.length) return; prjChip = (i + bs.length) % bs.length;
   bs.forEach((x, j) => x.classList.toggle('on', j === prjChip)); const g = $('#prjGrid'); g.classList.add('sw'); setTimeout(() => { g.innerHTML = prjCards(); g.classList.remove('sw'); $$('[data-prj]', g).forEach(bindPrj); }, user ? 0 : 200);
@@ -654,7 +701,8 @@ function render(soft) {
   applyDesign(); paintAcc(); wire(r); pageView();
 }
 function wire(r) {
-  wireX();
+  wireX(); wireWork();
+  { const ab = $('#aboutH'); if (ab) { try { const io = new IntersectionObserver(e => { if (e[0].isIntersecting) { ab.classList.add('in'); io.disconnect(); } }, { threshold: .2 }); io.observe(ab); } catch (e) { ab.classList.add('in'); } } }
   $$('[data-inst]').forEach(b => b.onclick = () => { track('app:' + b.dataset.inst); doInstall(b.dataset.inst); });
   if ($('#subF')) wireSub();
   initHold(); applyBlocks($('#subF') ? 'sub' : r); reveal(); counters(); countdown(); initStrip();
@@ -774,6 +822,8 @@ function resetBot() { $('#botMsgs').innerHTML = ''; $('#botQuick').innerHTML = '
 function openBot() {
   $('#bot').hidden = false; $('#botFab').classList.add('hide'); track('bot');
   botMini(false);
+  if (!$('#botMsgs').children.length && chatId) { startChat(); hideTease(); return; }
+  if (unreadC && chatId && !chatMode) { startChat(); hideTease(); return; }
   if (!$('#botMsgs').children.length) { $('#bot').classList.remove('live', 'asst'); $('#botSubT').textContent = LANG === 'en' ? 'How can we help?' : 'نخدمك إزاي؟'; botSay(LANG === 'en' ? 'Hi 👋 Who would you like to talk to?' : 'أهلاً بيك 👋 تحب تتكلم مع مين؟'); showChoice(); }
   hideTease();
   if (matchMedia('(hover:hover)').matches) setTimeout(() => $('#botIn').focus(), 200);
@@ -790,7 +840,8 @@ function setAssist() {
 }
 function paintSwitch(hide) {
   const b = $('#botSwitch'); if (!b) return; b.hidden = !!hide;
-  b.innerHTML = chatMode ? `<span class="sw-ic">${ROBOT('sm')}</span>${LANG === 'en' ? 'Switch to the assistant' : 'التحويل إلى المساعد'}` : `<span class="sw-ic eng"><img src="assets/img/mark.png" alt=""></span>${LANG === 'en' ? 'Talk to a real engineer' : 'كلّم المهندس المختص'}`;
+  const live = $('#bot').classList.contains('live');
+  b.innerHTML = live ? `<span class="sw-ic">${ROBOT('sm')}</span>${LANG === 'en' ? 'Talk to the assistant' : 'تحدث مع المساعد'}` : `<span class="sw-ic eng"><img src="assets/img/mark.png" alt=""></span>${LANG === 'en' ? 'Talk to a real engineer' : 'كلّم المهندس المختص'}`;
 }
 // المهندس: محادثة مباشرة على الموقع، من غير اسم ولا رقم. لو الاتصال فشل الرسايل بتستنى وتتبعت لوحدها
 function startEngineer() {
@@ -852,7 +903,9 @@ function initBot() {
   $('.bot-av', $('#bot')).insertAdjacentHTML('beforeend', ROBOT('hd'));
   const mn = document.createElement('button'); mn.type = 'button'; mn.className = 'bot-min'; mn.id = 'botMin'; mn.setAttribute('aria-label', LANG === 'en' ? 'Minimize' : 'تصغير'); mn.title = LANG === 'en' ? 'Minimize' : 'تصغير'; mn.innerHTML = '<i></i>'; $('#bot header').insertBefore(mn, $('#botX'));
   mn.onclick = () => { $('#bot').hidden = true; botMini(true); };
-  $('#botX').onclick = () => { $('#bot').hidden = true; botMini(false); $('#botFab').classList.remove('hide'); chatMode = false; $('#botMsgs').innerHTML = ''; $('#botQuick').innerHTML = ''; paintSwitch(true); $('#bot').classList.remove('live', 'asst'); };
+  $('#botX').onclick = () => { $('#bot').hidden = true; botMini(false); $('#botFab').classList.remove('hide'); }; // المحادثة بتفضل محفوظة
+  // 4: أي رابط جوه الشات بينقل للصفحة ويصغّر الشات لشريط تحت
+  $('#bot').addEventListener('click', e => { const a = e.target.closest('a[href^="#/"], [data-go]'); if (!a || !$('#bot').contains(a)) return; setTimeout(() => { if (!$('#bot').hidden) { $('#bot').hidden = true; botMini(true); } }, 60); });
   $('#botQuick').onclick = e => { const b = e.target.closest('button'); if (!b) return; if (b.dataset.mode === 'bot') return setAssist(); if (b.dataset.mode === 'eng') return startEngineer(); if (!b.dataset.botBack) botAsk(b.textContent); };
   $('#botForm').onsubmit = e => { e.preventDefault(); const v = $('#botIn').value.trim(); if (!v) return; $('#botIn').value = ''; if (chatMode) chatSend(v); else botAsk(v); };
   $('#bot').addEventListener('click', e => { const a = e.target.closest('a[href="#chat"]'); if (a) { e.preventDefault(); startEngineer(); } if (e.target.closest('[data-bot-back]')) setAssist(); });
@@ -1020,11 +1073,11 @@ const fileHtml = (f, local) => { if (!f) return ''; const isImg = /^image\//.tes
 function paintChat() {
   if (!chatMode) return; const box = $('#botMsgs'); box.innerHTML = '';
   const add = (cls, html) => { const el = document.createElement('div'); el.className = 'bm ' + cls; el.innerHTML = html; box.appendChild(el); };
-  const tk = (c, ttl) => `<i class="tk" title="${ttl}">${c === '✓' ? '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3 3 7-7"/></svg>' : '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5"/></svg>'}</i>`;
+  const tk = (c, ttl) => `<i class="tk${c === '✓' ? ' dlv' : ''}" title="${ttl}">${c === '✓' ? '<svg viewBox="0 0 20 16" width="17" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 8.5l3 3 7-7"/><path d="M7.5 11.5l7-7"/></svg>' : '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5"/></svg>'}</i>`;
   if (!serverMsgs.some(x => x.from === 's')) add('bt', esc(ENG_HI()));
   const en = LANG === 'en', DEL = `<i class="m-del">🚫 ${en ? 'This message was deleted' : 'تم حذف هذه الرسالة'}</i>`, ED = `<small class="m-ed">${en ? 'edited' : 'معدّلة'}</small>`;
   serverMsgs.filter(x => !x.sys).forEach(x => { if (x.del) return add((x.from === 'c' ? 'me' : 'bt staff') + ' deleted', DEL); const body = fileHtml(x.file) + (x.text ? nl(x.text) : '') + (x.ed ? ED : '');
-    if (x.from === 'c') { add('me mine', tk('✓', '') + body + `<button type="button" class="m-x" data-del="${x.at}">🗑 ${en ? 'Delete' : 'حذف'}</button>`); box.lastChild.dataset.at = x.at; } else add('bt staff', `<b class="who">${esc(x.by || t('team'))}</b>` + body); });
+    if (x.from === 'c') { add('me mine', tk('✓', LANG === 'en' ? 'Delivered' : 'وصلت') + body + `<button type="button" class="m-x" data-del="${x.at}">🗑 ${en ? 'Delete' : 'حذف'}</button>`); box.lastChild.dataset.at = x.at; } else add('bt staff', `<b class="who">${esc(x.by || t('team'))}</b>` + body); });
   chatQ().forEach(x => add('me pend', tk('⏳', LANG === 'en' ? 'Sending…' : 'جارٍ الإرسال') + fileHtml(x.file, 1) + (x.text ? nl(x.text) : '')));
   $$('.cm-img[data-mid]:not([src])', box).forEach(async im => { try { const m = await mediaGet(im.dataset.mid); if (m) im.src = m.data; } catch (e) { } });
   $$('.cm-img', box).forEach(im => im.onclick = e => { e.stopPropagation(); im.src && lbOpen([{ src: im.src, cap: '' }], 0); });
@@ -1054,7 +1107,7 @@ async function listen() {
       snd('recv'); try { navigator.vibrate && navigator.vibrate([40, 60, 40]); } catch (e) { }
       const last = serverMsgs.filter(x => x.from === 's').slice(-1)[0];
       if ($('#bot').hidden || !chatMode) { unreadC += sc - staffSeen; fabBadge(); }
-      if (document.hidden && 'Notification' in window && Notification.permission === 'granted') { try { new Notification(LANG === 'en' ? 'Reply from our engineer' : 'رد من المهندس المختص', { body: (last.text || (LANG === 'en' ? 'Attachment' : 'مرفق')).slice(0, 120), icon: 'assets/img/icon-192.png', tag: 'sh-chat' }); } catch (e) { } }
+      if (document.hidden && 'Notification' in window && Notification.permission === 'granted') { try { const nt = new Notification(LANG === 'en' ? 'Reply from our engineer' : 'رد من المهندس المختص', { body: (last.text || (LANG === 'en' ? 'Attachment' : 'مرفق')).slice(0, 120), icon: 'assets/img/icon-192.png', tag: 'sh-chat' }); nt.onclick = () => { try { focus(); } catch (x) { } nt.close(); openBot(); if (!chatMode) startChat(); }; } catch (e) { } }
     }
     staffSeen = sc;
     if (!$('#bot').hidden && chatMode && serverMsgs.some(x => x.from === 's' && x.at > (d.data().seenAt || 0))) F.updateDoc(F.doc(F.db, 'chats', chatId), { seenAt: Date.now() }).catch(() => { });
@@ -1099,7 +1152,14 @@ async function pickFile(f) {
     else toast(en ? 'Images or PDF only' : 'صور أو PDF بس');
   } catch (e) { toast(t('connErr')); }
 }
-function shrinkImg(f, max, q) { return new Promise((res, rej) => { const u = URL.createObjectURL(f), im = new Image(); im.onload = () => { const k = Math.min(1, max / Math.max(im.width, im.height)); const c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); let out = c.toDataURL('image/jpeg', q); if (out.length > 900000) out = c.toDataURL('image/jpeg', .55); URL.revokeObjectURL(u); res(out); }; im.onerror = rej; im.src = u; }); }
+// تصغير ناعم على مراحل + فلتر خفيف (إضاءة وألوان أدفى) بدل الحدة الزيادة
+function softResize(im, max) {
+  let w = im.naturalWidth || im.width, h = im.naturalHeight || im.height, src = im; const k = Math.min(1, max / Math.max(w, h)), tw = Math.round(w * k), th = Math.round(h * k);
+  while (w / 2 >= tw * 1.15) { const c = document.createElement('canvas'); w = Math.round(w / 2); h = Math.round(h / 2); c.width = w; c.height = h; const x = c.getContext('2d'); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; x.drawImage(src, 0, 0, w, h); src = c; }
+  const c = document.createElement('canvas'); c.width = tw; c.height = th; const x = c.getContext('2d'); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high';
+  try { x.filter = 'brightness(1.03) saturate(1.06) contrast(1.02) blur(0.25px)'; } catch (e) { } x.drawImage(src, 0, 0, tw, th); return c;
+}
+function shrinkImg(f, max, q) { return new Promise((res, rej) => { const u = URL.createObjectURL(f), im = new Image(); im.onload = () => { const c = softResize(im, max); let out = c.toDataURL('image/webp', Math.max(q, .86)); if (!out.startsWith('data:image/webp')) out = c.toDataURL('image/jpeg', Math.max(q, .86)); if (out.length > 900000) out = c.toDataURL('image/jpeg', .7); if (out.length > 900000) out = c.toDataURL('image/jpeg', .55); URL.revokeObjectURL(u); res(out); }; im.onerror = rej; im.src = u; }); }
 addEventListener('online', () => { if (chatId && (store('sh.chatPend') || chatQ().length)) flushChat(); });
 
 /* ---------- boot ---------- */
@@ -1118,7 +1178,7 @@ function boot() {
   $('#lb').insertAdjacentHTML('beforeend', `<button class="lb-nav p" aria-label="prev">${I.prev}</button><button class="lb-nav n" aria-label="next">${I.next}</button>`); $('#lb .lb-nav.p').onclick = () => lbStep(LANG === 'en' ? -1 : 1); $('#lb .lb-nav.n').onclick = () => lbStep(LANG === 'en' ? 1 : -1);
   { let sx = 0; $('#lb').addEventListener('touchstart', e => { sx = e.touches[0].clientX; }, { passive: true }); $('#lb').addEventListener('touchend', e => { const dx = e.changedTouches[0].clientX - sx; if (Math.abs(dx) > 50) lbStep(dx > 0 ? 1 : -1); }); }
   document.addEventListener('touchstart', () => { }, { passive: true }); // يفعّل تأثير الضغط :active على الآيفون
-  chrome(); render(); initBot(); initTease(); initHold(); popup(); initGlow(); initWa(); initStats(); initInstBar();
+  chrome(); render(); initBot(); initTease(); initHold(); popup(); initGlow(); initWa(); initStats(); initInstBar(); initViewBtn(); fabLabel();
   loadRemote();
 }
 boot();

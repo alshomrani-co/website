@@ -1,3 +1,4 @@
+import './click.js';
 // الإشراف: البحث عن العملاء (من الإكسل)، صفحة العميل، تقارير مرقّمة، عميل جديد، تصدير Excel
 import * as F from './fb.js';
 import { xlsx } from './xlsx-lite.js';
@@ -24,15 +25,22 @@ const back = (href, label = 'رجوع') => `<a class="glass-back" href="${href}"
 function frame(html) { root.innerHTML = top() + `<main class="shell sup">${html}</main>`; $('#lo').onclick = () => F.signOut(auth); }
 
 /* ---------- العملاء ---------- */
+// العملاء بيتحفظوا على الجهاز: الصفحة بتفتح فوراً بالنسخة المحفوظة، وفي الخلفية بتتحدّث
+const CKEY = 'sh.clients2';
+async function fetchClients() {
+  const s = await F.getDocs(F.collection(db, 'clients'));
+  const list = s.docs.map(d => d.data()).sort((a, b) => a.no - b.no);
+  try { localStorage.setItem(CKEY, JSON.stringify({ t: Date.now(), list })); } catch (e) { }
+  return list;
+}
 async function loadClients(force) {
   if (clients && !force) return clients;
-  try { if (!force) { const c = JSON.parse(sessionStorage.getItem('sh.clients') || 'null'); if (c && Date.now() - c.t < 5 * 60e3) return clients = c.list; } } catch (e) { }
-  const s = await F.getDocs(F.collection(db, 'clients'));
-  clients = s.docs.map(d => d.data()).sort((a, b) => a.no - b.no);
-  try { sessionStorage.setItem('sh.clients', JSON.stringify({ t: Date.now(), list: clients })); } catch (e) { }
-  return clients;
+  if (!force) { try { const c = JSON.parse(localStorage.getItem(CKEY) || 'null'); if (c && c.list && c.list.length) { clients = c.list; if (Date.now() - c.t > 60e3) fetchClients().then(L => { clients = L; const q = document.getElementById('qName'); if (q) q.dispatchEvent(new Event('input')); }).catch(() => { }); return clients; } } catch (e) { } }
+  clients = await fetchClients(); return clients;
 }
-const dropCache = () => { clients = null; try { sessionStorage.removeItem('sh.clients'); } catch (e) { } };
+const LOADING = (txt = 'جارٍ تحميل بيانات العملاء…') => `<div class="ld-box"><img class="ld-mark" src="assets/img/mark.png" alt=""><b>${txt}</b><div class="ld-sk"><i></i><i></i><i></i></div><small class="ld-slow" hidden>أول مرة على الجهاز ده بتاخد وقت أطول شوية…</small></div>`;
+setInterval(() => { document.querySelectorAll('.ld-box:not([data-t])').forEach(b => { b.dataset.t = Date.now(); setTimeout(() => { const sl = b.querySelector('.ld-slow'); if (sl && document.body.contains(b)) sl.hidden = false; }, 4000); }); }, 300);
+const dropCache = () => { clients = null; try { sessionStorage.removeItem('sh.clients'); localStorage.removeItem(CKEY); } catch (e) { } };
 function match(c, qNo, qName, qDoc) {
   if (qNo && !(String(c.no) === qNo || String(c.no).startsWith(qNo) || (c.refs || []).some(r => r.split('#')[1] === qNo))) return false;
   if (qName) { const n = norm(c.name); if (!qName.split(' ').every(w => n.includes(w))) return false; }
@@ -46,7 +54,7 @@ async function vHome() {
   frame(`${back('portal.html', 'البوابة')}<div class="hello"><div><h1>الإشراف الميداني</h1><p>ابدأ تقرير جديد، أو ابحث عن العميل وشوف كل تقاريره.</p></div></div>
   <div class="big2"><a class="bigbtn red" href="#new"><span>➕</span><b>تقرير جديد</b><small>اختار العميل وابدأ على طول</small></a><a class="bigbtn" href="#search"><span>🔍</span><b>ابحث عن عميل</b><small>بالرقم أو الاسم أو الرخصة</small></a></div>
   <div class="row-acts"><a class="btn btn-ghost" href="#add">➕ عميل جديد</a>${seeAll() ? '<button class="btn btn-ghost" id="xl">⬇ تنزيل Excel بآخر وضع</button>' : ''}${isOwner ? '<button class="btn btn-ghost" id="seed" hidden>⬆ تحميل عملاء الإكسل</button>' : ''}</div>
-  <h3 class="sec-t">آخر التقارير</h3><div class="list" id="rl"><p class="empty">جارٍ التحميل…</p></div>`);
+  <h3 class="sec-t">آخر التقارير</h3><div class="list" id="rl">${LOADING('جارٍ تحميل البيانات…')}</div>`);
   const xl = $('#xl'); if (xl) xl.onclick = exportExcel;
   SX.homeExtras($('main.shell'), toast);
   try {
@@ -67,7 +75,7 @@ async function vSearch(forNew) {
   <div class="s3 card"><div class="fld"><label>١. رقم العميل / المشروع</label><input id="qNo" inputmode="numeric" dir="ltr" placeholder="مثلاً 245" autocomplete="off"></div>
   <div class="fld"><label>٢. الاسم (أو جزء منه)</label><input id="qName" placeholder="مثلاً الصانع" autocomplete="off"></div>
   <div class="fld"><label>٣. رقم الرخصة أو الوثيقة</label><input id="qDoc" inputmode="numeric" dir="ltr" placeholder="رقم الرخصة / الخدمة / الطلب" autocomplete="off"></div></div>
-  <p class="count" id="cnt"></p><div class="list" id="res"><p class="empty">جارٍ تحميل العملاء…</p></div>`);
+  <p class="count" id="cnt"></p><div class="list" id="res">${LOADING()}</div>`);
   let cl; try { cl = await loadClients(); } catch (e) { $('#res').innerHTML = `<p class="empty">${esc(F.authMsg(e))}</p>`; return; }
   const run = () => {
     const qNo = F.toEn($('#qNo').value).replace(/\D/g, ''), qName = norm($('#qName').value), qDoc = F.toEn($('#qDoc').value).replace(/\s/g, '');
@@ -80,7 +88,7 @@ async function vSearch(forNew) {
 
 /* ---------- صفحة العميل ---------- */
 async function vClient(no) {
-  frame(`${back('#search', 'رجوع للبحث')}<p class="empty">جارٍ التحميل…</p>`);
+  frame(`${back('#search', 'رجوع للبحث')}${LOADING('جارٍ تحميل بيانات العميل…')}`);
   let c; try { const s = await F.getDoc(F.doc(db, 'clients', String(no))); if (!s.exists()) { frame(`${back('#search')}<p class="empty">العميل ده مش موجود.</p>`); return; } c = s.data(); } catch (e) { frame(`${back('#search')}<p class="empty">${esc(F.authMsg(e))}</p>`); return; }
   const phones = String(c.phones || '').split(/\s*\/\s*|\s+/).filter(x => x.replace(/\D/g, '').length >= 9);
   const st = Object.entries(c.stages || {});
@@ -93,7 +101,7 @@ async function vClient(no) {
     ${c.createdAt ? `<dt>اتضاف</dt><dd>${fmt(c.createdAt)} ${c.createdByName ? '— ' + esc(c.createdByName) : ''}</dd>` : ''}</dl>
     ${phones.length ? `<div class="ph">${phones.map(p => `<a class="btn btn-ghost sm" href="tel:${esc(p)}" dir="ltr">📞 ${esc(p)}</a><a class="btn btn-ok sm" target="_blank" rel="noopener" href="${waL(p)}">واتساب</a>`).join('')}</div>` : ''}</div>
   <div class="card"><h3>🏗 مراحل التنفيذ (أرقام الطلبات)</h3>${st.length ? `<table class="stg">${st.map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('')}</table>` : '<p class="empty" style="padding:10px">لسه مفيش مراحل مسجلة</p>'}</div></div>
-  <h3 class="sec-t">التقارير <span class="chip" id="rc">…</span></h3><div class="list" id="rl"><p class="empty">جارٍ التحميل…</p></div>`);
+  <h3 class="sec-t">التقارير <span class="chip" id="rc">…</span></h3><div class="list" id="rl">${LOADING('جارٍ تحميل البيانات…')}</div>`);
   try {
     const q = seeAll() ? F.query(F.collection(db, 'reports'), F.where('clientNo', '==', c.no)) : F.query(F.collection(db, 'reports'), F.where('clientNo', '==', c.no), F.where('by', '==', me.uid));
     const s = await F.getDocs(q); const L = s.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.seq || 0) - (a.seq || 0) || ((b.at && b.at.seconds) || 0) - ((a.at && a.at.seconds) || 0));

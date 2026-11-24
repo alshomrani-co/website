@@ -1,3 +1,4 @@
+import './click.js';
 // بوابة الموظفين: دخول، تسجيل بكود دعوة، انتظار موافقة، الأقسام، الدعم الفني، أرشيف التقارير
 import * as F from './fb.js';
 const { auth, db, MODULES } = F;
@@ -347,4 +348,9 @@ function startLive() {
 }
 
 function dataBlob(u) { const [h, b] = u.split(','); const bin = atob(b), a = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i); return new Blob([a], { type: (h.match(/data:([^;]+)/) || [])[1] || 'application/octet-stream' }); }
-function shrinkTo(f) { return new Promise((res, rej) => { const u = URL.createObjectURL(f), im = new Image(); im.onload = () => { const k = Math.min(1, 1280 / Math.max(im.width, im.height)); const c = document.createElement('canvas'); c.width = Math.round(im.width * k); c.height = Math.round(im.height * k); c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); URL.revokeObjectURL(u); let o = c.toDataURL('image/jpeg', .76); if (o.length > 900000) o = c.toDataURL('image/jpeg', .55); res(o); }; im.onerror = rej; im.src = u; }); }
+function softResize(im, max) {
+  let w = im.naturalWidth || im.width, h = im.naturalHeight || im.height, src = im; const k = Math.min(1, max / Math.max(w, h)), tw = Math.round(w * k), th = Math.round(h * k);
+  while (w / 2 >= tw * 1.15) { const c = document.createElement('canvas'); w = Math.round(w / 2); h = Math.round(h / 2); c.width = w; c.height = h; const x = c.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(src, 0, 0, w, h); src = c; }
+  const c = document.createElement('canvas'); c.width = tw; c.height = th; const x = c.getContext('2d'); x.imageSmoothingQuality = 'high'; try { x.filter = 'brightness(1.03) saturate(1.06) contrast(1.02) blur(0.25px)'; } catch (e) { } x.drawImage(src, 0, 0, tw, th); return c;
+}
+function shrinkTo(f) { return new Promise((res, rej) => { const u = URL.createObjectURL(f), im = new Image(); im.onload = () => { const c = softResize(im, 1280); URL.revokeObjectURL(u); let o = c.toDataURL('image/webp', .86); if (!o.startsWith('data:image/webp')) o = c.toDataURL('image/jpeg', .86); if (o.length > 900000) o = c.toDataURL('image/jpeg', .6); res(o); }; im.onerror = rej; im.src = u; }); }

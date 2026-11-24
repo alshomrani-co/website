@@ -93,7 +93,7 @@ export const EN = {
     { tag: 'Drawings', title: 'Architectural & Structural Drawings', desc: 'Construction architectural drawings and structural models with approved dimensions.', loc: 'Riyadh', scope: 'Architectural & structural design' }
   ],
   workGroups: [{ title: 'Surveying', sub: 'Field surveys and land setting-out' }, { title: 'Fire safety', sub: 'Approved safety systems for commercial, residential and service buildings' }, { title: 'Drawings', sub: 'Construction architectural and structural drawings' }, { title: 'Facades', sub: '3D facade designs' }, { title: 'Interior design', sub: 'Majlis, bedrooms, living areas and bathrooms' }],
-  reviews: { title: 'What our clients say', sub: 'Real reviews from our clients — published after management review.' },
+  reviews: { title: 'What our clients say', sub: 'Real reviews from clients who worked with us.' },
   occasion: { text: '' },
   confidential: 'Much of our work is covered by confidentiality agreements with banks, healthcare providers and developers, and is published only with the owner\'s written consent. We prefer to state the actual scope rather than publish images that are not ours. The full portfolio is available on request.',
   gallery: [
@@ -166,3 +166,5 @@ export const EN = {
   media: { title: 'Follow us on social media', sub: 'Our daily field work — videos and photos from project sites.' },
   seo: { keywords: 'engineering consultancy Riyadh, building permit, villa design, engineering supervision, land surveying, civil defence, MEP design, Al-Shamrani', title: 'Al-Shamrani Engineering Consultancy | Design, Permits, Surveying, Supervision, Safety', desc: 'Licensed engineering consultancy in Riyadh since 2016: architectural & structural design, building permits, surveying, engineering supervision and fire-safety systems — under one roof.' }
 };
+// ترتيب الأقسام (نفس ترتيب data.js SVC_ORDER)
+EN.services = [2, 0, 3, 4, 7, 1, 5, 6].map(i => EN.services[i]);
