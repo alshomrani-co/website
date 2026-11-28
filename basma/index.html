@@ -18,7 +18,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alexandria:wght@400;500;600&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Cinzel:wght@500&display=swap">
-<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}
+/* v15: أزرار الموقع والبوابة جنب الخروج */
+.iconbtn.navbtn{width:auto!important;padding:0 10px!important;gap:5px;display:inline-flex;align-items:center;text-decoration:none;color:inherit;font-weight:700;font-size:12.5px}
+@media (max-width:420px){.iconbtn.navbtn span{display:none}.iconbtn.navbtn{padding:0!important;width:38px!important;justify-content:center}}
+</style>
 <style>
 /* Layout: one centered app column; employee and owner are two views of the same shell, gold used only for the logo, the ring and the primary action */
 :root{
@@ -941,7 +945,7 @@ button.wrow:active{background:var(--surface2)}
         <img src="mark.png" alt="" class="bm">
         <div><b>الشمراني للاستشارات الهندسية</b><span>الحضور والانصراف</span></div>
       </div>
-      <div class="chrome-user"><span class="uchip" id="userChip"></span><button class="iconbtn" data-theme-toggle type="button" aria-label="تبديل الوضع الأبيض والأسود" title="الوضع الأبيض / الأسود"></button><button class="iconbtn bellbtn" id="bellBtn" type="button" aria-label="الإشعارات" title="الإشعارات"></button><button class="iconbtn" id="logoutBtn" aria-label="تسجيل الخروج" title="تسجيل الخروج"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 8V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2v-2M9 12h12l-3-3M18 15l3-3"/></svg></button></div>
+      <div class="chrome-user"><span class="uchip" id="userChip"></span><button class="iconbtn" data-theme-toggle type="button" aria-label="تبديل الوضع الأبيض والأسود" title="الوضع الأبيض / الأسود"></button><button class="iconbtn bellbtn" id="bellBtn" type="button" aria-label="الإشعارات" title="الإشعارات"></button><a class="iconbtn navbtn" href="../index.html" title="الموقع" aria-label="الانتقال للموقع"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg><span>الموقع</span></a><a class="iconbtn navbtn" href="../portal.html" title="البوابة" aria-label="الانتقال للبوابة"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span>البوابة</span></a><button class="iconbtn" id="logoutBtn" aria-label="تسجيل الخروج" title="تسجيل الخروج"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 8V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2v-2M9 12h12l-3-3M18 15l3-3"/></svg></button></div>
     </header>
     <div class="clockbar">
       <div class="t num" id="bigClock">--:--</div>
@@ -992,5 +996,6 @@ button.wrow:active{background:var(--surface2)}
 
 <a href="../portal.html" id="toPortal" title="بوابة الموظفين" style="position:fixed;left:0;top:42%;z-index:25;background:#16171A;color:#fff;font:700 11px/1.2 system-ui,sans-serif;padding:10px 6px 10px 5px;border-radius:0 10px 10px 0;text-decoration:none;opacity:.55;writing-mode:vertical-rl;box-shadow:0 6px 16px -8px rgba(0,0,0,.5)">⌂ البوابة</a>
 <script type="module" src="app.js?v=39"></script>
+<script type="module">import('../assets/js/deco.js').then(D => { try { D.applyLite(); } catch (e) { } }).catch(() => { });</script>
 </body>
 </html>

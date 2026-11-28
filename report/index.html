@@ -1159,7 +1159,9 @@ function setTodayDate() {
 }
 
 // ===== IMAGE COMPRESSION (playbook §5.7 — mandatory before DOM storage) =====
-var IMG_MAX_W = 1400, IMG_MAX_H = 1050, IMG_QUALITY = 0.80;
+// v15: الصور بتتضغط WebP وقت الرفع (أصغر بكتير)، ووقت الـ PDF بتتحول JPEG بحجم مناسب علشان التقرير اليومي يفضل تحت 800KB
+var IMG_MAX_W = 1280, IMG_MAX_H = 960, IMG_QUALITY = 0.72;
+var WEBP_OK = (function () { try { return document.createElement('canvas').toDataURL('image/webp').indexOf('data:image/webp') === 0; } catch (e) { return false; } })();
 function compressImage(file, callback) {
   var reader = new FileReader();
   reader.onload = function(e) {
@@ -1173,7 +1175,7 @@ function compressImage(file, callback) {
       var canvas = document.createElement('canvas');
       canvas.width = w; canvas.height = h;
       canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      callback(canvas.toDataURL('image/jpeg', IMG_QUALITY));
+      callback(WEBP_OK ? canvas.toDataURL('image/webp', IMG_QUALITY) : canvas.toDataURL('image/jpeg', IMG_QUALITY));
     };
     img.onerror = function() { callback(e.target.result); };
     img.src = e.target.result;
@@ -1565,14 +1567,25 @@ function prepareAndPrint() {
   if (!mobile) { decodeImgs().then(function () { requestAnimationFrame(function () { setTimeout(function () { doPrint(); }, 30); }); }); return; }
   doPrint();
 }
+// صور التقرير للـ PDF: JPEG بحجم محسوب (ميزانية ~700KB للصور كلها)
+function pdfImages() {
+  try {
+    var L = Array.prototype.slice.call(document.querySelectorAll('#photos-grid img, .site-photo-preview img, .photo-preview img')).filter(function (im) { return im.complete && im.naturalWidth > 300 && /^data:image\/(webp|png|jpeg)/.test(im.src); });
+    var D = []; if (!L.length) return Promise.resolve(); var per = Math.max(45000, 700000 / L.length), c = document.createElement('canvas');
+    L.forEach(function (im) { if (im.dataset.pdf) return; var k = Math.min(1, 1100 / Math.max(im.naturalWidth, im.naturalHeight)), q = .7, out = '';
+      for (var i = 0; i < 6; i++) { c.width = Math.round(im.naturalWidth * k); c.height = Math.round(im.naturalHeight * k); var g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(im, 0, 0, c.width, c.height); out = c.toDataURL('image/jpeg', q); if (out.length * .75 <= per) break; q = Math.max(.45, q - .08); k *= .85; }
+      if (out && (out.length < im.src.length || !/jpeg/.test(im.src))) { im.dataset.pdf = '1'; im.src = out; if (im.decode) D.push(im.decode().catch(function () { })); } });
+    return Promise.race([Promise.all(D), new Promise(function (r) { setTimeout(r, 1500); })]);
+  } catch (e) { return Promise.resolve(); }
+}
 function doPrint() {
   applyPrintLayout();
-  try {
+  pdfImages().then(function () { try {
     if (typeof window.print !== 'function') { throw new Error('print-unsupported'); }
     window.print(); setTimeout(function () { pdfBusy(false); }, 1500);
   } catch (err) { pdfBusy(false);
     alert('لإنشاء ملف PDF: افتح هذه الصفحة في متصفح Chrome أو Safari (وليس داخل تطبيق مثل واتساب)، ثم استخدم قائمة المتصفح ← طباعة / مشاركة ← حفظ كـ PDF.\n\nTo create the PDF: open this page in Chrome or Safari (not inside an app such as WhatsApp), then use the browser menu → Print / Share → Save as PDF.');
-  }
+  } });
 }
 
 window.addEventListener('afterprint', function() {

@@ -31,6 +31,18 @@ service cloud.firestore {
         : (!(k in request.resource.data) || request.resource.data[k] == request.time);
     }
 
+    // ===== v15: توكنات الإشعارات (السكربت بيقراها بصلاحية المشروع) =====
+    match /pushTokens/{id} {
+      allow read: if isOwner();
+      allow create, update: if signedIn() && request.resource.data.uid == request.auth.uid
+        && request.resource.data.token is string && request.resource.data.token.size() < 400;
+      allow delete: if isOwner() || (signedIn() && resource.data.uid == request.auth.uid);
+    }
+    // ===== v15: سجل الأرشفة (السكربت بيكتب، المالك بيقرا) =====
+    match /archiveLog/{id} {
+      allow read, delete: if isOwner();
+    }
+
     match /settings/{id} {
       allow read: if signedIn();
       allow write: if isOwner();
@@ -266,6 +278,10 @@ service cloud.firestore {
             && request.resource.data.msgs.size() == resource.data.msgs.size() + 1
             && request.resource.data.msgs.size() <= 400)
         || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['seenAt'])
+        // «اتسمع» للفويس نوت
+        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['heard'])
+        // توكن الإشعارات للزائر (عشان يوصله رد المهندس والتطبيق مقفول)
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['push']) && request.resource.data.push is string && request.resource.data.push.size() < 400)
         // العميل بيحذف رسالته (نفس عدد الرسايل)
         || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['msgs', 'upd'])
             && request.resource.data.msgs.size() == resource.data.msgs.size());
