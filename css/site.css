@@ -1466,3 +1466,40 @@ html[dir=ltr] .ab-img{transform:translateX(-40px)}
 .ct-quick a{display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:14px;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);color:#16171A;font-weight:800;box-shadow:0 8px 20px -10px rgba(0,0,0,.4);transition:transform .2s}
 .ct-quick a:hover{transform:translateY(-3px)}.ct-quick svg{width:20px;height:20px;color:var(--red)}
 @media (max-width:700px){.ct-hero{aspect-ratio:4/3}.ct-quick{inset-inline:10px;bottom:10px;justify-content:center}.ct-quick a{padding:8px 12px;font-size:13px}}
+
+/* ===== v15: الشاشات الكبيرة تملى الصفحة (zoom) — نعوّض ارتفاعات الشاشة ===== */
+.h7-hero{min-height:min(900px,calc(100svh / var(--zf,1)))}
+.bot{height:min(600px,calc(100svh / var(--zf,1) - 110px))}
+.lbx img{max-height:calc(84vh / var(--zf,1));max-width:calc(92vw / var(--zf,1))}
+/* التابلت: شكل الموبايل */
+html.is-tablet .wrap{padding:0 18px}
+/* v15 — الفويس نوت + الشات */
+.vn-mic{flex:0 0 40px;width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--paper2);color:var(--ink);display:grid;place-items:center;cursor:pointer}
+.vn-mic:active{transform:scale(.92)}
+.bot:not(.live) .vn-mic{display:none}
+.vn-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;border-top:1px solid var(--line);background:var(--paper2)}
+.vn-bar[hidden]{display:none}
+.vn-bar button{border:0;background:none;cursor:pointer;font:inherit;color:var(--ink);font-size:15px;padding:4px 6px;border-radius:8px}
+.vn-bar .vn-stop,.vn-bar .vn-send{background:#E1262B;color:#fff;font-weight:700;padding:6px 12px;margin-inline-start:auto}
+.vn-dot{width:10px;height:10px;border-radius:50%;background:#E1262B;animation:vnB 1s infinite}
+@keyframes vnB{50%{opacity:.25}}
+.vn-t{font:600 13px Inter,sans-serif;min-width:34px;color:var(--mut)}
+.vn-wave{flex:1;max-width:160px;height:28px}
+.vn-prog{flex:1;height:4px;border-radius:4px;background:var(--line);overflow:hidden}
+.vn-prog i{display:block;height:100%;width:0;background:#E1262B;transition:width .2s linear}
+.cm-voice{display:flex;align-items:center;gap:8px;min-width:190px;padding:4px 0}
+.cm-voice .vp{width:34px;height:34px;border-radius:50%;border:0;background:#E1262B;color:#fff;cursor:pointer;flex:0 0 34px}
+.cm-voice.heard .vn-t::after{content:' ✓✓';color:#2b8a3e}
+.sys-day{align-self:center;font-size:12px;color:var(--mut);background:var(--paper2);padding:4px 12px;border-radius:20px;text-align:center}
+.to-eng{display:inline-flex;align-items:center;gap:6px;margin-top:8px;background:#0f5132;color:#fff;border:0;border-radius:20px;padding:8px 14px;font:inherit;font-weight:700;cursor:pointer}
+/* v15 — كود العميل */
+.my-follow{display:inline-flex;align-items:center;gap:8px;margin-top:14px;background:#E1262B;color:#fff;font-weight:800;padding:12px 22px;border-radius:14px;box-shadow:0 8px 24px rgba(225,38,43,.4);animation:mfP 2s infinite;text-decoration:none}
+@keyframes mfP{50%{box-shadow:0 8px 34px rgba(225,38,43,.75)}}
+.code-ban{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin-top:12px;background:rgba(0,0,0,.55);backdrop-filter:blur(8px);border:1px dashed rgba(255,255,255,.4);color:#fff;border-radius:14px;padding:10px 14px;max-width:560px}
+.code-ban b{font:800 17px Inter,sans-serif;letter-spacing:1px;color:#ffd166}
+.code-ban small{flex-basis:100%;opacity:.8;order:3}
+.code-ban .cb-cp{border:0;background:#fff;color:#111;border-radius:10px;padding:5px 10px;font:inherit;font-weight:700;cursor:pointer}
+.code-done{text-align:center;display:grid;gap:12px;justify-items:center}
+.code-done .ic{font-size:44px}
+.code-done .code,.my-wait .code{font:800 28px Inter,sans-serif;letter-spacing:2px;padding:12px 22px;border:2px dashed #E1262B;border-radius:14px;color:#E1262B}
+.code-note{font-size:14px;color:var(--mut);line-height:1.8;max-width:420px}

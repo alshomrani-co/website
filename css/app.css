@@ -382,3 +382,56 @@ button.wa-ic{border:0;cursor:pointer;color:#fff}
 .snd-card.on{border-color:var(--red,#E5252A);box-shadow:0 6px 20px -10px var(--red,#E5252A)}
 .snd-play{width:46px;height:46px;border-radius:50%;border:0;background:var(--red,#E5252A);color:#fff;font-size:16px;cursor:pointer;transition:transform .12s}
 .snd-play:active{transform:scale(.9)}
+/* v15 — فويس + ربط العميل في شات الدعم */
+.wa-link{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:8px 14px;background:#2a3942;color:#e9edef;font-size:13px}
+.wa-link b{color:#ffd166;font-family:Inter,sans-serif}
+.wa-link div{display:flex;gap:6px;flex:1;min-width:220px}
+.wa-link input{flex:1;border:0;border-radius:8px;padding:7px 10px;background:#111b21;color:#fff;font:inherit}
+.vn-mic{flex:0 0 40px;width:40px;height:40px;border-radius:50%;border:0;background:transparent;color:#8696a0;display:grid;place-items:center;cursor:pointer}
+.vn-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;background:#202c33;color:#e9edef}
+.vn-bar[hidden]{display:none}
+.vn-bar button{border:0;background:none;cursor:pointer;font:inherit;color:#e9edef;font-size:15px;padding:4px 6px;border-radius:8px}
+.vn-bar .vn-stop,.vn-bar .vn-send{background:#00a884;color:#fff;font-weight:700;padding:6px 12px;margin-inline-start:auto}
+.vn-dot{width:10px;height:10px;border-radius:50%;background:#E1262B;animation:vnB 1s infinite}
+@keyframes vnB{50%{opacity:.25}}
+.vn-t{font:600 12px Inter,sans-serif;min-width:32px;opacity:.8}
+.vn-wave{flex:1;max-width:160px;height:28px}
+.vn-prog{flex:1;height:4px;border-radius:4px;background:rgba(255,255,255,.2);overflow:hidden}
+.vn-prog i{display:block;height:100%;width:0;background:#00a884}
+.cm-voice{display:flex;align-items:center;gap:8px;min-width:200px;padding:4px 0}
+.cm-voice .vp{width:34px;height:34px;border-radius:50%;border:0;background:#00a884;color:#fff;cursor:pointer;flex:0 0 34px}
+.cm-voice.heard .vn-t::after{content:' ✓✓';color:#53bdeb}
+/* v15 — البوابة: أيقونات متحركة + لمعة + خلفية نجدية */
+body{background-color:var(--bg,#F4F2EE)}
+.deco-bg{position:fixed;inset:0;z-index:0;pointer-events:none}
+#root{position:relative;z-index:1}
+.hello{position:relative}
+.hello::before{content:"";position:absolute;inset:-30px -10px auto;height:160px;background:radial-gradient(60% 100% at 70% 0,rgba(225,38,43,.14),transparent 70%);pointer-events:none;z-index:-1}
+.tile{background:linear-gradient(160deg,var(--card) 60%,color-mix(in srgb,var(--card) 88%,#E1262B));backdrop-filter:blur(6px)}
+.tile::before{content:"";position:absolute;top:0;bottom:0;width:60%;left:-80%;background:linear-gradient(105deg,transparent,rgba(255,255,255,.55),transparent);transform:skewX(-18deg);animation:tShine 7s ease-in-out infinite;animation-delay:calc(var(--ti,0) * .6s);pointer-events:none;z-index:2}
+@keyframes tShine{0%,72%{left:-80%}88%,100%{left:130%}}
+.tile .ic{position:relative;box-shadow:0 6px 18px rgba(225,38,43,.18);transition:.35s}
+.tile .ic::after{content:"";position:absolute;inset:-4px;border-radius:19px;border:1.5px solid rgba(225,38,43,.35);opacity:0;animation:icRing 3.2s ease-out infinite;animation-delay:calc(var(--ti,0) * .4s)}
+@keyframes icRing{0%{opacity:.8;transform:scale(.9)}70%,100%{opacity:0;transform:scale(1.25)}}
+.tile .ic svg{animation:icFloat 3.4s ease-in-out infinite;animation-delay:calc(var(--ti,0) * .3s)}
+@keyframes icFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+.tile.t-compass .ic svg,.tile.t-gear .ic svg,.tile.t-cog .ic svg{animation:icSpin 9s linear infinite}
+@keyframes icSpin{to{transform:rotate(360deg)}}
+.tile.t-finger .ic svg,.tile.t-chat .ic svg,.tile.t-support .ic svg{animation:icPulse 2.4s ease-in-out infinite}
+@keyframes icPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+.tile:hover .ic{transform:rotate(-6deg) scale(1.08);background:var(--red);color:#fff}
+@media (prefers-reduced-motion:reduce){.tile::before,.tile .ic::after,.tile .ic svg{animation:none!important}}
+/* v15 — لوحة التحكم */
+.bg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+.bg-opt{display:grid;gap:6px;padding:8px;border-radius:14px;border:2px solid var(--line);background:var(--card);cursor:pointer;font:inherit;text-align:center}
+.bg-opt .pv{display:block;height:74px;border-radius:10px;background-color:var(--paper,#f6f4ef);border:1px solid var(--line)}
+.bg-opt.on{border-color:var(--red);box-shadow:0 0 0 3px rgba(225,38,43,.15)}
+.bg-opt b{font-size:13px}
+.meter{display:block;height:6px;border-radius:6px;background:var(--line);margin-top:8px;overflow:hidden}.meter i{display:block;height:100%;background:var(--red)}
+.id-pv{display:flex;align-items:center;gap:12px;padding:16px;border-radius:16px;background:#16171A;color:#fff}
+.id-pv img{width:46px;height:52px;object-fit:contain}.id-pv b{display:block;font-size:17px}.id-pv small{display:block;opacity:.75}.id-pv i{display:block;font-style:normal;font-size:12px;opacity:.6}
+.tbl-w{overflow:auto}.tbl{width:100%;border-collapse:collapse;font-size:13.5px}.tbl th,.tbl td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:start;white-space:nowrap}
+.sv-owners{margin-top:12px;display:grid;gap:8px}
+.sv-t td.ll{font:500 12px Inter,monospace;color:var(--mut)}
+.ps-xy td.ll{font-size:9px;color:#444}
+html.mourn .tile::before{display:none}

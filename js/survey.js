@@ -2,7 +2,11 @@
 import './click.js';
 import * as F from './fb.js';
 import { toUTM, fromUTM, areaUTM, sides, hijri, greg, mapImage } from './geo.js';
-import { readDoc, aiReady } from './docread.js';
+import { readDoc, aiReady, ownerKind, ownerLabel } from './docread.js';
+import { importGIS } from './gisimport.js';
+import * as DECO from './deco.js';
+try { DECO.applyLite(); } catch (e) { }
+const AMANAH = 'https://maps.alriyadh.gov.sa/geoportal/geomap';
 import { initAI, aiBox, wireAiBox, pdfBar, autoPrint } from './deptcommon.js';
 const { auth, db } = F;
 const $ = (s, r = document) => r.querySelector(s);
@@ -26,10 +30,10 @@ const DEF_S = {
   dmap: { 'المناخ': 'قطاع جنوب مدينة الرياض' }, note: '',
   opts: { elev: true, nature: true, sat: true, sketch: true, tol: 0.5 }
 };
-async function loadS() { try { const s = await F.getDoc(F.doc(db, 'svSettings', 'main')); S = Object.assign(structuredClone(DEF_S), s.exists() ? s.data() : {}); S.hdr = Object.assign({}, DEF_S.hdr, S.hdr || {}); S.opts = Object.assign({}, DEF_S.opts, S.opts || {}); } catch (e) { S = structuredClone(DEF_S); toast('تعذّر تحميل إعدادات غرفة التحكم: ' + F.authMsg(e), 1); } return S; }
+async function loadS() { try { const s = await F.getDoc(F.doc(db, 'svSettings', 'main')); S = Object.assign(structuredClone(DEF_S), s.exists() ? s.data() : {}); S.hdr = Object.assign({}, DEF_S.hdr, S.hdr || {}); S.opts = Object.assign({}, DEF_S.opts, S.opts || {}); const B = DECO.cached().brand || {}; if (B.name) S.hdr.ar = B.name; if (B.en) S.hdr.en = B.en; if (B.logo) S.logo = B.logo; } catch (e) { S = structuredClone(DEF_S); toast('تعذّر تحميل إعدادات غرفة التحكم: ' + F.authMsg(e), 1); } return S; }
 const noStr = n => `${S.prefix} : ${String(n || '').padStart(S.pad || 7, '0')}`;
 
-const top = () => `<header class="top"><div class="top-in"><a class="brand" href="portal.html"><img src="assets/img/mark.png" alt="">قسم المساحة</a><div class="who"><span class="av">${esc(((isOwner ? 'المالك' : (emp && emp.name)) || '').slice(0, 1))}</span><button class="btn btn-ghost sm" id="lo">خروج</button></div></div></header>`;
+const top = () => `<header class="top"><div class="top-in"><a class="brand" href="portal.html"><img src="assets/img/mark.png" data-brand="logo" alt="">قسم المساحة</a><div class="who"><span class="av">${esc(((isOwner ? 'المالك' : (emp && emp.name)) || '').slice(0, 1))}</span><button class="btn btn-ghost sm" id="lo">خروج</button></div></div></header>`;
 const back = (href, label = 'رجوع') => `<a class="glass-back" href="${href}">→ ${label}</a>`;
 function frame(html) { root.innerHTML = top() + `<main class="shell sv">${html}</main>`; $('#lo').onclick = () => F.signOut(auth); }
 
@@ -45,7 +49,7 @@ function vHome() {
 
 /* ---------- التقرير (إنشاء / تعديل) ---------- */
 let R = null, map = null, layer = null, pts = []; // pts = [{lat,lng}]
-const blank = () => ({ owner: '', plot: '', plan: '', deedNo: '', deedDate: '', district: '', city: 'الرياض', sector: '', deedArea: '', surveyor: 0, note: '', elev: Array(10).fill(''), dd: {}, dl: {}, nd: {}, st: {}, pts: [] });
+const blank = () => ({ owner: '', ownerId: '', ownerKind: '', owners: [], plot: '', plan: '', deedNo: '', deedDate: '', district: '', city: 'الرياض', sector: '', deedArea: '', surveyor: 0, note: '', elev: Array(10).fill(''), dd: {}, dl: {}, nd: {}, st: {}, pts: [] });
 async function vEdit(id, keep) {
   await loadS(); if (map) { try { map.remove(); } catch (e) { } map = null; }
   if (!keep) { R = blank(); pts = []; }
@@ -55,12 +59,14 @@ async function vEdit(id, keep) {
   frame(`${back('#', 'قسم المساحة')}<h1 class="sv-h">${id ? 'تعديل تقرير ' + esc(noStr(R.no)) : 'تقرير مساحي جديد'}</h1>
   <section class="card sv-drop" id="drop"><div class="dz-ic">📄</div><b>اسحب الصك أو الرخصة هنا (PDF أو صورة)</b><small>الخانات اللي اتقرت بثقة بتظهر <span class="st-auto lg">خضرا</span>، واللي محتاجة مراجعة <span class="st-check lg">صفرا</span>.</small><input type="file" id="docIn" accept="application/pdf,image/*" hidden><button class="btn btn-ink sm" id="pick">اختار ملف</button><p id="dzMsg" class="hint"></p></section>
   <section class="card"><h3>بيانات القطعة والمالك</h3><div class="sv-grid">
-    ${fld('owner', 'المالك / مقدم الطلب', '', 1)}${fld('plot', 'رقم القطعة')}${fld('plan', 'رقم المخطط')}${fld('deedNo', 'رقم الوثيقة / الصك')}${fld('deedDate', 'تاريخ الوثيقة', 'هجري أو ميلادي')}${fld('district', 'الحي')}${fld('city', 'المدينة')}${fld('deedArea', 'المساحة حسب الصك (م²)')}
+    ${fld('owner', (R.ownerKind === 'co' ? 'الشركة/المؤسسة' : 'المالك') + ' / مقدم الطلب', '', 1)}${fld('ownerId', R.ownerKind === 'co' ? 'الرقم الموحد / السجل' : 'رقم الهوية')}<div class="fld"><label>نوع المالك</label><select data-k="ownerKind"><option value="ind" ${R.ownerKind !== 'co' ? 'selected' : ''}>فرد («المالك»)</option><option value="co" ${R.ownerKind === 'co' ? 'selected' : ''}>منشأة («الشركة/المؤسسة»)</option></select><small class="hint">بيتحدد لوحده من الاسم ورقم الهوية</small></div>${fld('plot', 'رقم القطعة')}${fld('plan', 'رقم المخطط')}${fld('deedNo', 'رقم الوثيقة / الصك')}${fld('deedDate', 'تاريخ الوثيقة', 'هجري أو ميلادي')}${fld('district', 'الحي')}${fld('city', 'المدينة')}${fld('deedArea', 'المساحة حسب الصك (م²)')}
     <div class="fld"><label>القطاع (سعادة رئيس…)</label><select data-k="sector" class="${R.st.sector ? 'st-' + R.st.sector : ''}"><option value="">— اختار —</option>${secs.map(s => `<option ${s === R.sector ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select><small class="hint" id="secHint"></small></div>
     <div class="fld"><label>المساح</label><select data-k="surveyor">${(S.surveyors || []).map((s, i) => `<option value="${i}" ${+R.surveyor === i ? 'selected' : ''}>${esc(s.name)}</option>`).join('')}</select></div>
-  </div></section>
+  </div>
+  <div class="sv-owners"><b>الملاك ونسبهم</b> <small class="hint">لو الصك فيه أكتر من مالك</small><div id="ownT"></div><button class="btn btn-ghost sm" id="addO">＋ مالك</button></div></section>
   <section class="card"><h3>أركان القطعة على الخريطة</h3><p class="hint">اضغط على الخريطة عند كل ركن بالترتيب (مع عقارب الساعة أو عكسها). تقدر تسحب أي نقطة، أو تكتب الإحداثيات بإيدك في الجدول. UTM منطقة 38N.</p>
     <div class="sv-mapbar"><input id="q" class="in" placeholder="ابحث عن مكان أو الصق إحداثيات (24.6, 46.7)"><button class="btn btn-ghost sm" id="qb">بحث</button><button class="btn btn-ghost sm" id="undo">↶ تراجع</button><button class="btn btn-ghost sm" id="clr" style="color:var(--red)">مسح النقاط</button></div>
+    <div class="sv-mapbar"><label class="btn btn-ink sm" style="cursor:pointer">📥 استيراد من بوابة الأمانة<input type="file" id="gisIn" accept=".zip,.shp,.kml,.kmz,.geojson,.json" hidden></label><a class="btn btn-ghost sm" href="${AMANAH}" target="_blank" rel="noopener">🗺 افتح على بوابة الأمانة</a><small class="hint">من البوابة: حدد القطعة ← تصدير ← Shapefile أو KML، وارفع الملف هنا والأركان بتترسم لوحدها.</small></div>
     <div id="map" class="sv-map"></div>
     <div class="sv-tw"><table class="sv-t" id="ptT"></table></div><button class="btn btn-ghost sm" id="addP">＋ إضافة ركن بالإحداثيات</button>
     <div class="sv-calc" id="calc"></div>
@@ -70,7 +76,9 @@ async function vEdit(id, keep) {
   <section class="card"><div class="fld"><label>ملاحظة</label><textarea data-k="note" placeholder="${esc(S.note || '')}">${esc(R.note || '')}</textarea></div></section>
   <div class="sv-act"><button class="btn btn-red" id="rev">مراجعة البيانات ←</button></div>${pdfBar('📄 مراجعة وطباعة PDF')}`);
   // الحقول
-  $$('[data-k]').forEach(el => el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', () => { const k = el.dataset.k; R[k] = k === 'surveyor' ? +el.value : el.value; if (R.st[k]) { delete R.st[k]; el.className = ''; const n = el.nextElementSibling; if (n && n.classList.contains('rv')) n.remove(); } if (k === 'district') autoSector(); }));
+  $$('[data-k]').forEach(el => el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', () => { const k = el.dataset.k; R[k] = k === 'surveyor' ? +el.value : el.value; if (R.st[k]) { delete R.st[k]; el.className = ''; const n = el.nextElementSibling; if (n && n.classList.contains('rv')) n.remove(); } if (k === 'district') autoSector(); if ((k === 'owner' || k === 'ownerId') && !R._kindManual) { const nk2 = ownerKind(R.owner, R.ownerId); if (nk2 && nk2 !== R.ownerKind) { R.ownerKind = nk2; const sel = $('select[data-k=ownerKind]'); if (sel) sel.value = nk2; } } if (k === 'ownerKind') R._kindManual = 1; }));
+  paintOwners(); $('#addO').onclick = () => { R.owners.push({ name: '', id: '', share: '' }); paintOwners(); };
+  $('#gisIn').onchange = async e => { const f = e.target.files[0]; e.target.value = ''; if (!f) return; try { const g = await importGIS(f); pts = g.pts.map(p => g.utm ? Object.assign(fromUTM(p.x, p.y, g.zone), { u: { e: p.x, n: p.y } }) : { lat: p.y, lng: p.x }); paintPts(); if (map && pts.length) map.fitBounds(pts.map(p => [p.lat, p.lng]), { padding: [40, 40], maxZoom: 19 }); toast(`اترسمت ${pts.length} أركان من الملف ✓`); } catch (x) { toast(x.message || 'الملف مش مفهوم', 1); } };
   $$('[data-el]').forEach(el => el.oninput = () => { R.elev[+el.dataset.el] = el.value; });
   // الملف
   const din = $('#docIn'); $('#pick').onclick = () => din.click(); din.onchange = () => din.files[0] && takeDoc(din.files[0]);
@@ -78,6 +86,15 @@ async function vEdit(id, keep) {
   $('#addP').onclick = () => { const c = map ? map.getCenter() : (pts.length ? fromUTM(U()[pts.length - 1].e + 10, U()[pts.length - 1].n) : { lat: 24.7136, lng: 46.6753 }); pts.push({ lat: c.lat, lng: c.lng }); paintPts(); };
   initMap(); paintPts(); paintBounds(); autoSector(true);
   $('#rev').onclick = vReview; $('#pdfGo').onclick = vReview;
+}
+function paintOwners() {
+  const t = $('#ownT'); if (!t) return;
+  t.innerHTML = R.owners.length ? `<table class="sv-t"><tr><th>الاسم</th><th>رقم الهوية / الموحد</th><th>النسبة %</th><th></th></tr>${R.owners.map((o, i) => `<tr><td><input data-on="${i}" value="${esc(o.name)}"></td><td><input data-oi="${i}" value="${esc(o.id)}" dir="ltr"></td><td><input data-os="${i}" value="${esc(o.share)}" dir="ltr" inputmode="decimal" style="max-width:80px"></td><td><button class="x" data-ox="${i}">×</button></td></tr>`).join('')}</table>` : '<small class="hint">مالك واحد (من الخانة فوق)</small>';
+  const sync = () => { if (R.owners.length) { R.owner = R.owners.map(o => o.name).filter(Boolean).join(' و '); const el = $('input[data-k=owner]'); if (el) el.value = R.owner; } };
+  $$('[data-on]', t).forEach(e => e.oninput = () => { R.owners[+e.dataset.on].name = e.value; sync(); });
+  $$('[data-oi]', t).forEach(e => e.oninput = () => { R.owners[+e.dataset.oi].id = e.value; });
+  $$('[data-os]', t).forEach(e => e.oninput = () => { R.owners[+e.dataset.os].share = e.value; });
+  $$('[data-ox]', t).forEach(b => b.onclick = () => { R.owners.splice(+b.dataset.ox, 1); paintOwners(); sync(); });
 }
 function autoSector(quiet) {
   const d = nk(R.district || ''), h = $('#secHint'); if (!h) return; if (!d) { h.textContent = ''; return; }
@@ -87,7 +104,7 @@ function autoSector(quiet) {
 }
 async function takeDoc(file) {
   const m = $('#dzMsg'); m.textContent = 'جارٍ القراءة…';
-  try { const r = await readDoc(file, toast); Object.entries(r.v).forEach(([k, val]) => { if (k.startsWith('_') || k.startsWith('ds_')) return; if (k.startsWith('dd_')) R.dd[k.slice(3)] = val; else if (k.startsWith('dl_')) R.dl[k.slice(3)] = val; else R[k] = val; }); Object.assign(R.st, r.st);
+  try { const r = await readDoc(file, toast); Object.entries(r.v).forEach(([k, val]) => { if (k === '_owners') { R.owners = val.length > 1 ? val.map(o => ({ name: o.name, id: o.id, share: o.share })) : []; return; } if (k === '_kind') { R.ownerKind = val; return; } if (k.startsWith('_') || k.startsWith('ds_')) return; if (k.startsWith('dd_')) R.dd[k.slice(3)] = val; else if (k.startsWith('dl_')) R.dl[k.slice(3)] = val; else R[k] = val; }); Object.assign(R.st, r.st);
     if (r.v._lat && !pts.length) R._center = [r.v._lat, r.v._lng];
     if (r.v.sector && !(S.sectors || []).includes(r.v.sector)) S.sectors = [...(S.sectors || []), r.v.sector];
     m.textContent = r.found ? `اتقرا ${r.found} خانة${r.ocr ? ' (بالـ OCR — راجعها كلها)' : ''}. راجع الصفرا قبل ما تكمّل.` : 'مقدرتش أقرا بيانات من الملف — اكتبها بإيدك.';
@@ -101,6 +118,9 @@ function initMap() {
   map = L.map('map', { layers: [sat], zoomControl: true }).setView(pts[0] ? [pts[0].lat, pts[0].lng] : R._center || [24.7136, 46.6753], pts[0] || R._center ? 18 : 11);
   L.control.layers({ 'قمر صناعي': sat, 'شوارع': osm }).addTo(map); layer = L.layerGroup().addTo(map);
   if (pts.length > 1) map.fitBounds(pts.map(p => [p.lat, p.lng]), { padding: [40, 40], maxZoom: 19 });
+  else if (!pts.length && !R._center && R.district) fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=sa&q=' + encodeURIComponent(String(R.district).replace(/^حي\s*/, 'حي ') + '، ' + (R.city || 'الرياض'))).then(r => r.json()).then(r => { if (r[0] && map) map.setView([+r[0].lat, +r[0].lon], 16); }).catch(() => { });
+  // طبقة رسمية اختيارية من غرفة التحكم (WMS أو ArcGIS)
+  try { const o = S.ovl || {}; if (o.url) { const ly = o.type === 'wms' ? L.tileLayer.wms(o.url, { layers: o.layers || '0', format: 'image/png', transparent: true, opacity: .7 }) : L.tileLayer(o.type === 'arcgis' ? o.url.replace(/\/$/, '') + '/tile/{z}/{y}/{x}' : o.url, { opacity: .7, maxZoom: 20 }); ly.addTo(map); L.control.layers({}, { [o.name || 'طبقة الأمانة']: ly }).addTo(map); } } catch (e) { }
   map.on('click', e => { pts.push({ lat: e.latlng.lat, lng: e.latlng.lng }); paintPts(); });
   $('#undo').onclick = () => { pts.pop(); paintPts(); }; $('#clr').onclick = () => { if (confirm('تمسح كل النقاط؟')) { pts = []; paintPts(); } };
   const go = async () => { const q = F.toEn($('#q').value.trim()); const m = q.match(/(-?\d+\.\d+)\s*[, ]\s*(-?\d+\.\d+)/); if (m) { map.setView([+m[1], +m[2]], 18); return; }
@@ -111,7 +131,7 @@ const U = () => pts.map(p => p.u ? { e: p.u.e, n: p.u.n } : toUTM(p.lat, p.lng))
 function paintPts() {
   if (layer) { layer.clearLayers(); if (pts.length > 2) L.polygon(pts.map(p => [p.lat, p.lng]), { color: '#E1262B', weight: 2, fillOpacity: .18 }).addTo(layer); else if (pts.length === 2) L.polyline(pts.map(p => [p.lat, p.lng]), { color: '#E1262B' }).addTo(layer);
     pts.forEach((p, i) => { const mk = L.marker([p.lat, p.lng], { draggable: true, icon: L.divIcon({ className: 'sv-pin', html: `<b>${i + 1}</b>`, iconSize: [26, 26], iconAnchor: [13, 13] }) }).addTo(layer); mk.on('dragend', e => { const l = e.target.getLatLng(); pts[i] = { lat: l.lat, lng: l.lng }; paintPts(); }); }); }
-  const u = U(), t = $('#ptT'); if (t) { t.innerHTML = `<tr><th>P.NO</th><th>EASTING</th><th>NORTHING</th><th></th></tr>` + u.map((p, i) => `<tr><td>${i + 1}</td><td><input data-pe="${i}" value="${p.e.toFixed(4)}" dir="ltr" inputmode="decimal"></td><td><input data-pn="${i}" value="${p.n.toFixed(4)}" dir="ltr" inputmode="decimal"></td><td><button class="x" data-del="${i}" title="مسح">×</button></td></tr>`).join('');
+  const u = U(), t = $('#ptT'); if (t) { t.innerHTML = `<tr><th>P.NO</th><th>X (EASTING)</th><th>Y (NORTHING)</th><th>LATITUDE</th><th>LONGITUDE</th><th></th></tr>` + u.map((p, i) => `<tr><td>${i + 1}</td><td><input data-pe="${i}" value="${p.e.toFixed(4)}" dir="ltr" inputmode="decimal"></td><td><input data-pn="${i}" value="${p.n.toFixed(4)}" dir="ltr" inputmode="decimal"></td><td class="ll" dir="ltr">${pts[i].lat.toFixed(7)}</td><td class="ll" dir="ltr">${pts[i].lng.toFixed(7)}</td><td><button class="x" data-del="${i}" title="مسح">×</button></td></tr>`).join('');
     $$('[data-pe],[data-pn]', t).forEach(el => el.onchange = () => setTimeout(() => { const i = +(el.dataset.pe ?? el.dataset.pn), q = U()[i], e = num($(`[data-pe="${i}"]`, t).value), n = num($(`[data-pn="${i}"]`, t).value); if (!isFinite(e) || !isFinite(n)) return toast('رقم مش صحيح', 1); pts[i] = Object.assign(fromUTM(e, n), { u: { e, n } }); paintPts(); if (map && i === 0) map.setView([pts[0].lat, pts[0].lng], 18); }));
     $$('[data-del]', t).forEach(b => b.onclick = () => { pts.splice(+b.dataset.del, 1); paintPts(); }); }
   const c = $('#calc'); if (c) { const ar = u.length > 2 ? areaUTM(u) : 0, da = num(R.deedArea); c.innerHTML = u.length > 2 ? `<span>المساحة على الطبيعة: <b>${f2(ar)} م²</b></span>${isFinite(da) ? `<span>حسب الصك: <b>${f2(da)} م²</b></span><span class="${Math.abs(ar - da) / da > .01 ? 'bad' : 'ok'}">الفرق: ${f2(ar - da)} م² (${(Math.abs(ar - da) / da * 100).toFixed(2)}%)</span>` : ''}` : '<span>حدد 3 أركان على الأقل</span>'; }
@@ -147,7 +167,7 @@ function vReview() {
   ok.onclick = async () => { ok.disabled = true; ok.textContent = 'جارٍ الحفظ…'; try { const id = await save(); ov.remove(); location.hash = 'p/' + id + '?print=1'; } catch (e) { toast(F.authMsg(e), 1); ok.disabled = false; ok.textContent = 'حفظ وطباعة PDF'; } };
 }
 async function save() {
-  const u = U(), ns = natSides(), data = { owner: R.owner, plot: R.plot, plan: R.plan, deedNo: R.deedNo, deedDate: R.deedDate, district: R.district, city: R.city, sector: R.sector, deedArea: R.deedArea, surveyor: +R.surveyor || 0, surveyorName: ((S.surveyors || [])[R.surveyor] || {}).name || '', note: R.note || '', elev: R.elev, dd: R.dd, dl: R.dl, nd: R.nd, st: {}, pts: pts.map(p => Object.assign({ lat: p.lat, lng: p.lng }, p.u ? { u: p.u } : {})), utm: u.map(p => ({ e: +p.e.toFixed(4), n: +p.n.toFixed(4) })), area: +areaUTM(u).toFixed(2), nl: ns, ack: { by: me.uid, name: isOwner ? 'المالك' : (emp && emp.name) || '', at: new Date().toISOString() }, upd: F.serverTimestamp() };
+  const u = U(), ns = natSides(), data = { owner: R.owner, ownerId: R.ownerId || '', ownerKind: R.ownerKind || ownerKind(R.owner, R.ownerId), owners: (R.owners || []).filter(o => o.name), plot: R.plot, plan: R.plan, deedNo: R.deedNo, deedDate: R.deedDate, district: R.district, city: R.city, sector: R.sector, deedArea: R.deedArea, surveyor: +R.surveyor || 0, surveyorName: ((S.surveyors || [])[R.surveyor] || {}).name || '', note: R.note || '', elev: R.elev, dd: R.dd, dl: R.dl, nd: R.nd, st: {}, pts: pts.map(p => Object.assign({ lat: p.lat, lng: p.lng }, p.u ? { u: p.u } : {})), utm: u.map(p => ({ e: +p.e.toFixed(4), n: +p.n.toFixed(4) })), area: +areaUTM(u).toFixed(2), nl: ns, ack: { by: me.uid, name: isOwner ? 'المالك' : (emp && emp.name) || '', at: new Date().toISOString() }, upd: F.serverTimestamp() };
   // تذكّر الحي ← القطاع
   const dmapNew = R.district && R.sector && (S.dmap || {})[R.district] !== R.sector;
   if (R.id) { await F.updateDoc(F.doc(db, 'surveys', R.id), data); if (dmapNew) await F.setDoc(F.doc(db, 'svSettings', 'main'), { dmap: { [R.district]: R.sector }, sectors: S.sectors }, { merge: true }); return R.id; }
@@ -169,9 +189,9 @@ async function vPrint(id) {
    <div class="ps-r">
      <div class="ps-hd"><img src="${esc(S.logo || 'assets/img/mark.png')}" class="ps-logo" alt=""><div class="ps-co"><b>${esc(H.ar)}</b><span class="en">${esc(H.en)}</span><span>${esc(H.addr)}</span><span>${esc(H.street)}</span><span>الترخيص <b dir="ltr">${esc(H.lic)}</b> &nbsp; السجل التجاري <b dir="ltr">${esc(H.cr)}</b></span><span>البريد الالكتروني <b dir="ltr">${esc(H.email)}</b></span></div></div>
      <div class="ps-to"><b>سعادة رئيس ${esc(String(r.sector || '').replace(/^رئيس\s*/, ''))}</b><span>الحي / <b>${esc(r.district)}</b></span></div>
-     <table class="ps-t ps-own"><tr><td class="lb">تقدم للمكتب</td><td colspan="3" class="v">${esc(r.owner)}</td><td class="lb">مالك القطعة رقم</td><td class="v">${esc(r.plot)}</td></tr><tr><td class="lb">مخطط رقم</td><td class="v">${esc(r.plan)}</td><td class="lb">بموجب الوثيقة رقم</td><td class="v" dir="ltr">${esc(r.deedNo)}</td><td class="lb">بتاريخ</td><td class="v" dir="ltr">${esc(r.deedDate)}</td></tr></table>
+     <table class="ps-t ps-own"><tr><td class="lb">تقدم للمكتب</td><td colspan="3" class="v">${(r.owners || []).length > 1 ? r.owners.map(o => `${esc(o.name)}${o.share ? ` <small>(${esc(o.share)}%)</small>` : ''}`).join(' و ') : esc(r.owner)}${r.ownerId ? ` <small dir="ltr">— ${esc(r.ownerId)}</small>` : ''}</td><td class="lb">${(r.owners || []).length > 1 ? 'ملاك القطعة رقم' : (r.ownerKind === 'co' ? 'الشركة/المؤسسة مالكة القطعة رقم' : 'مالك القطعة رقم')}</td><td class="v">${esc(r.plot)}</td></tr><tr><td class="lb">مخطط رقم</td><td class="v">${esc(r.plan)}</td><td class="lb">بموجب الوثيقة رقم</td><td class="v" dir="ltr">${esc(r.deedNo)}</td><td class="lb">بتاريخ</td><td class="v" dir="ltr">${esc(r.deedDate)}</td></tr></table>
      <div class="ps-two">
-       <div><h4>إحداثيات أركان العقار</h4><table class="ps-t ps-xy"><tr><th>P.NO</th><th>EASTING</th><th>NORTHING</th></tr>${(r.utm || []).map((p, i) => `<tr><td>${i + 1}</td><td class="red">${p.e.toFixed(4)}</td><td class="red">${p.n.toFixed(4)}</td></tr>`).join('')}${Array(Math.max(0, 5 - (r.utm || []).length)).fill(0).map((_, i) => `<tr><td>${(r.utm || []).length + i + 1}</td><td></td><td></td></tr>`).join('')}</table></div>
+       <div><h4>إحداثيات أركان العقار</h4><table class="ps-t ps-xy"><tr><th>P.NO</th><th>X</th><th>Y</th><th>LAT</th><th>LONG</th></tr>${(r.utm || []).map((p, i) => { const g = (r.pts || [])[i] || fromUTM(p.e, p.n); return `<tr><td>${i + 1}</td><td class="red">${p.e.toFixed(4)}</td><td class="red">${p.n.toFixed(4)}</td><td class="ll">${(+g.lat).toFixed(7)}</td><td class="ll">${(+g.lng).toFixed(7)}</td></tr>`; }).join('')}${Array(Math.max(0, 5 - (r.utm || []).length)).fill(0).map((_, i) => `<tr><td>${(r.utm || []).length + i + 1}</td><td></td><td></td><td></td><td></td></tr>`).join('')}</table></div>
        ${S.opts.elev ? `<div><h4>مناسيب الأرض</h4><table class="ps-t ps-xy"><tr><th>P.NO</th><th>ELEVATION</th><th>P.NO</th><th>ELEVATION</th></tr>${[0, 1, 2, 3, 4].map(i => `<tr><td>${i + 1}</td><td>${esc(el[i] || '')}</td><td>${i + 6}</td><td>${esc(el[i + 5] || '')}</td></tr>`).join('')}</table></div>` : ''}
      </div>
      ${btab('الحدود والأطوال حسب الصك', r.dd || {}, r.dl || {})}
@@ -212,6 +232,7 @@ async function vCtl(keep) {
   <section class="card"><h3>المساحين</h3><div id="svs"></div><button class="btn btn-ghost sm" id="addSv">＋ مساح جديد</button></section>
   <section class="card"><h3>القطاعات</h3><p class="hint">سطر لكل قطاع — بيظهر في «سعادة رئيس…».</p><textarea id="secs" rows="5" class="in">${esc((s.sectors || []).join('\n'))}</textarea></section>
   <section class="card"><h3>جدول الأحياء ← القطاع</h3><p class="hint">لما المهندس يختار قطاع لحي جديد بيتضاف هنا لوحده.</p><div id="dm"></div><button class="btn btn-ghost sm" id="addDm">＋ حي</button></section>
+  <section class="card"><h3>طبقة الأمانة الرسمية على الخريطة (اختياري)</h3><p class="hint">مفيش API عام لبوابة الأمانة، فالربط بيكون باستيراد الملفات. لو عندكم رابط خدمة WMS أو ArcGIS رسمي حطه هنا ويظهر كطبقة فوق الخريطة.</p><div class="sv-grid"><div class="fld wide"><label>رابط الخدمة</label><input id="ovU" dir="ltr" value="${esc((s.ovl || {}).url || '')}" placeholder="https://…/MapServer أو …/wms"></div><div class="fld"><label>النوع</label><select id="ovT">${[['arcgis', 'ArcGIS MapServer (مكعبات)'], ['wms', 'WMS'], ['xyz', 'رابط مكعبات {z}/{x}/{y}']].map(([k, l]) => `<option value="${k}" ${(s.ovl || {}).type === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div><div class="fld"><label>الطبقات (WMS)</label><input id="ovL" dir="ltr" value="${esc((s.ovl || {}).layers || '')}"></div><div class="fld"><label>اسم الطبقة</label><input id="ovN" value="${esc((s.ovl || {}).name || 'طبقة الأمانة')}"></div></div></section>
   ${aiBox(isOwner)}
   <section class="card"><h3>خيارات التقرير</h3><div style="display:grid;gap:10px">
     <label class="switch"><input type="checkbox" data-o="elev" ${s.opts.elev ? 'checked' : ''}><span></span> جدول مناسيب الأرض</label>
@@ -233,7 +254,7 @@ async function vCtl(keep) {
   $$('[data-up]').forEach(b => b.onclick = () => $(`[data-img="${b.dataset.up}"]`).click());
   $$('[data-img]').forEach(e => e.onchange = async () => { if (!e.files[0]) return; s[e.dataset.img] = await imgToData(e.files[0], e.dataset.img === 'stamp' ? 520 : 420); const y = scrollY; collect(); vCtl2(); scrollTo(0, y); });
   $$('[data-rm]').forEach(b => b.onclick = () => { s[b.dataset.rm] = ''; collect(); const y = scrollY; vCtl2(); scrollTo(0, y); });
-  function collect() { s.prefix = $('#pf').value.trim(); s.next = Math.max(1, parseInt(F.toEn($('#nx').value)) || s.next); s.pad = Math.min(10, Math.max(1, parseInt($('#pd').value) || 7)); $$('[data-h]').forEach(e => s.hdr[e.dataset.h] = e.value); s.mgr = $('#mgr').value; s.sectors = $('#secs').value.split('\n').map(x => x.trim()).filter(Boolean); s.dmap = readDm(); $$('[data-o]').forEach(e => s.opts[e.dataset.o] = e.checked); s.opts.tol = num($('#tol').value) || .5; s.note = $('#nt').value; }
+  function collect() { s.prefix = $('#pf').value.trim(); s.next = Math.max(1, parseInt(F.toEn($('#nx').value)) || s.next); s.pad = Math.min(10, Math.max(1, parseInt($('#pd').value) || 7)); $$('[data-h]').forEach(e => s.hdr[e.dataset.h] = e.value); s.mgr = $('#mgr').value; s.sectors = $('#secs').value.split('\n').map(x => x.trim()).filter(Boolean); s.dmap = readDm(); $$('[data-o]').forEach(e => s.opts[e.dataset.o] = e.checked); s.opts.tol = num($('#tol').value) || .5; s.note = $('#nt').value; s.ovl = { url: $('#ovU').value.trim(), type: $('#ovT').value, layers: $('#ovL').value.trim(), name: $('#ovN').value.trim() }; }
   const vCtl2 = () => vCtl(true);
   $('#sv').onclick = async () => { collect(); const b = $('#sv'); b.disabled = true; try { const o = JSON.parse(JSON.stringify(s)); delete o.dmap; await F.setDoc(F.doc(db, 'svSettings', 'main'), o, { merge: true }); await F.updateDoc(F.doc(db, 'svSettings', 'main'), { dmap: s.dmap }); toast('اتحفظ ✓'); } catch (e) { toast(F.authMsg(e), 1); } b.disabled = false; };
 }

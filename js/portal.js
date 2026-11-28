@@ -1,6 +1,15 @@
 import './click.js';
 // بوابة الموظفين: دخول، تسجيل بكود دعوة، انتظار موافقة، الأقسام، الدعم الفني، أرشيف التقارير
 import * as F from './fb.js';
+import { micButton, voiceHTML, wireVoices } from './voice.js';
+import * as DECO from './deco.js';
+import * as PERM from './perms.js';
+// تذكّرني + الخروج + الخلفية (نجدي افتراضي للبوابة)
+const logout = () => { try { localStorage.removeItem('sh.staff'); localStorage.setItem('sh.rem', '0'); } catch (e) { } return F.signOut(auth); };
+const decoNow = () => { const c = DECO.cached(); const t = Object.assign({}, c.theme || {}); if (!t.bg) t.bg = 'najdi'; DECO.apply({ ...c, theme: t }); };
+try { decoNow(); } catch (e) { }
+F.getDoc(F.doc(F.db, 'site', 'content')).then(d => { if (!d.exists()) return; const x = d.data(); const D = x.json ? JSON.parse(x.json) : x.data; if (D) { DECO.save(D); decoNow(); } }).catch(() => { });
+PERM.splash();
 const { auth, db, MODULES } = F;
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -42,7 +51,7 @@ function viewLogin(msg) {
     if (!u || !p) return er.textContent = 'اكتب اسم المستخدم وكلمة السر';
     $('#b').disabled = true; $('#b').textContent = 'جارٍ الدخول…';
     try { await F.setPersistence(auth, $('#rm').checked ? F.indexedDBLocalPersistence : F.browserSessionPersistence); } catch (x) { }
-    try { await F.signInWithEmailAndPassword(auth, u.includes('@') ? u : F.toEmail(u), p); try { localStorage.setItem('sh-user', u); localStorage.setItem('sh.staff', '1'); } catch (x) { } }
+    try { await F.signInWithEmailAndPassword(auth, u.includes('@') ? u : F.toEmail(u), p); try { localStorage.setItem('sh-user', u); localStorage.setItem('sh.staff', '1'); localStorage.setItem('sh.rem', $('#rm').checked ? '1' : '0'); } catch (x) { } }
     catch (x) { er.textContent = F.authMsg(x); $('#b').disabled = false; $('#b').textContent = 'دخول'; }
   };
 }
@@ -80,26 +89,26 @@ function viewRegister() {
 function viewPending(req) {
   root.innerHTML = shell(`<div class="pending"><div class="spinner"></div><h1>طلبك عند الإدارة</h1><p class="sub" style="margin:0">أهلاً ${esc(req && req.name || '')} 👋 — أول ما المالك يوافق على حسابك ويحدد صلاحياتك، الصفحة هتفتح لوحدها.</p>
     <span class="chip warn">في انتظار الموافقة</span><button class="btn btn-ghost" id="lo">تسجيل خروج</button></div>`);
-  $('#lo').onclick = () => F.signOut(auth);
+  $('#lo').onclick = logout;
 }
 function viewBlocked() {
   root.innerHTML = shell(`<div class="pending">${logo}<h1>الحساب غير مفعّل</h1><p class="sub" style="margin:0">حسابك موقوف أو ملوش طلب تسجيل. كلّم الإدارة.</p><button class="btn btn-ghost" id="lo">تسجيل خروج</button></div>`);
-  $('#lo').onclick = () => F.signOut(auth);
+  $('#lo').onclick = logout;
 }
 
 /* ---------- app ---------- */
 function top() {
   const name = isOwner ? 'المالك' : (emp && emp.name) || '';
-  return `<header class="top"><div class="top-in"><a class="brand" href="portal.html"><img src="assets/img/mark.png" alt="">بوابة الشمراني</a><div class="who"><span class="av">${esc(name.slice(0, 1))}</span><span>${esc(name)}</span><button class="btn btn-ghost sm" id="lo" title="خروج">${IC.out}</button></div></div></header>`;
+  return `<header class="top"><div class="top-in"><a class="brand" href="portal.html"><img src="assets/img/mark.png" data-brand="logo" alt="">بوابة الشمراني</a><div class="who"><span class="av">${esc(name.slice(0, 1))}</span><span>${esc(name)}</span><button class="btn btn-ghost sm" id="lo" title="خروج">${IC.out}</button></div></div></header>`;
 }
 let counts = { tickets: 0, chats: 0, reviews: 0 };
 function viewHome() {
   if (!can('report') && can('reports') && !mods().includes('report')) { /* يشوف تقارير الكل */ }
   const h = new Date().getHours(), gr = h < 12 ? 'صباح الخير' : 'مساء الخير';
-  const tiles = mods().map((k, i) => { const m = MODULES[k]; if (!m || m.tile === false || (k === 'report' && false)) return ''; const b = k === 'support' && (counts.tickets + counts.chats) ? `<span class="badge">${counts.tickets + counts.chats}</span>` : ''; return `<a class="tile" style="animation-delay:${i * 60}ms" href="${m.href}" data-k="${k}">${b}<span class="ic">${IC[m.ic]}</span><h3>${esc(m.t)}</h3><p>${esc(m.d)}</p></a>`; }).join('');
-  root.innerHTML = top() + `<main class="shell"><div class="hello"><div><p>${gr} 👋</p><h1>${esc(isOwner ? 'أهلاً بالمالك' : 'أهلاً ' + ((emp && emp.name) || '').split(' ')[0])}</h1></div><a class="btn btn-ghost" href="index.html">${IC.globe} الموقع</a></div>
+  const tiles = mods().map((k, i) => { const m = MODULES[k]; if (!m || m.tile === false || (k === 'report' && false)) return ''; const b = k === 'support' && (counts.tickets + counts.chats) ? `<span class="badge">${counts.tickets + counts.chats}</span>` : ''; return `<a class="tile t-${esc(m.ic)}" style="animation-delay:${i * 60}ms;--ti:${i}" href="${m.href}" data-k="${k}">${b}<span class="ic">${IC[m.ic]}</span><h3>${esc(m.t)}</h3><p>${esc(m.d)}</p></a>`; }).join('');
+  root.innerHTML = top() + `<main class="shell"><div class="hello"><div><p>${gr} 👋</p><h1>${esc(isOwner ? 'أهلاً بالمالك' : 'أهلاً ' + ((emp && emp.name) || '').split(' ')[0])}</h1></div><div style="display:flex;gap:8px"><a class="btn btn-ghost" href="#perms">🔐 الصلاحيات</a><a class="btn btn-ghost" href="index.html">${IC.globe} الموقع</a></div></div>
     <div class="tiles">${tiles || '<p class="empty">لسه مفيش أقسام متحددة لحسابك — كلّم الإدارة.</p>'}</div></main>`;
-  $('#lo').onclick = () => F.signOut(auth);
+  $('#lo').onclick = logout;
   $$('.tile[data-k=support],.tile[data-k=reports]').forEach(t => t.onclick = e => { e.preventDefault(); location.hash = t.dataset.k; });
 }
 
@@ -112,7 +121,7 @@ function viewSupport() {
   root.innerHTML = top() + `<main class="shell"><div class="hello"><div><a class="back glass-back" href="#">→ رجوع</a><h1>الدعم والمحادثات</h1><p>كل الطلبات اللي جاية من الموقع والتطبيق</p></div></div>
     ${tabsHtml}<div class="toolbar"><div class="seg" id="seg"><button data-f="active" class="on">المفتوحة</button><button data-f="new">جديد</button><button data-f="done">تم الحل</button><button data-f="all">الكل</button></div><input id="q" placeholder="بحث بالاسم أو الجوال أو الرقم" style="flex:1;min-width:180px;padding:9px 12px;border-radius:12px;border:1.5px solid var(--line)"></div>
     <div class="list" id="tl"><p class="empty">جارٍ التحميل…</p></div></main>`;
-  $('#lo').onclick = () => F.signOut(auth);
+  $('#lo').onclick = logout;
   $('#seg').onclick = e => { const b = e.target.closest('button'); if (!b) return; tFilter = b.dataset.f; $$('#seg button').forEach(x => x.classList.toggle('on', x === b)); paintTickets(); };
   $('#q').oninput = paintTickets;
   paintTickets();
@@ -152,7 +161,7 @@ const supTabs = cur => `<div class="seg" style="margin-bottom:14px"><a href="#su
 async function viewBotlogs() {
   if (!can('support')) return viewHome();
   root.innerHTML = top() + `<main class="shell"><div class="hello"><div><a class="back glass-back" href="#">→ رجوع</a><h1>أسئلة المساعد</h1><p>اللي الزوار سألوه للمساعد الآلي — من غير أسماء. لو حد عايز يكلّم موظف بيظهر في «المحادثات المباشرة».</p></div></div>${supTabs('botlogs')}<div class="list" id="bl"><p class="empty">جارٍ التحميل…</p></div></main>`;
-  $('#lo').onclick = () => F.signOut(auth);
+  $('#lo').onclick = logout;
   try {
     const s = await F.getDocs(F.query(F.collection(db, 'botlogs'), F.orderBy('upd', 'desc'), F.limit(120)));
     const DV = { iphone: '📱', android: '🤖', ipad: '📲', desktop: '💻' };
@@ -166,7 +175,7 @@ function viewReviews() {
   if (!isOwner) return viewHome();
   root.innerHTML = top() + `<main class="shell"><div class="hello"><div><a class="back glass-back" href="#">→ رجوع</a><h1>آراء العملاء</h1><p>كل رأي جديد بيستنى موافقتك قبل ما يظهر على الموقع. الرفض أو الحذف بيخليه ميظهرش خالص.</p></div></div>${supTabs('reviews')}
   <div class="seg" id="rvF" style="margin-bottom:12px">${[['pending', 'قيد المراجعة'], ['approved', 'المنشورة'], ['rejected', 'المرفوضة'], ['all', 'الكل']].map(([k, l], i) => `<a href="#" data-f="${k}" class="${i ? '' : 'on'}" style="padding:6px 12px;border-radius:999px;font-weight:700">${l}</a>`).join('')}</div><div class="list" id="rvl"><p class="empty">جارٍ التحميل…</p></div></main>`;
-  $('#lo').onclick = () => F.signOut(auth);
+  $('#lo').onclick = logout;
   $('#rvF').onclick = e => { const a = e.target.closest('a[data-f]'); if (!a) return; e.preventDefault(); $$('#rvF a').forEach(x => x.classList.toggle('on', x === a)); paintReviews(); };
   paintReviews();
 }
@@ -197,7 +206,7 @@ function notify(what) {
 function viewChats() {
   if (!can('support')) return viewHome();
   root.innerHTML = top() + `<main class="shell"><div class="hello"><div><a class="back glass-back" href="#">→ رجوع</a><h1>المحادثات المباشرة</h1><p>العملاء اللي طلبوا يكلّموا موظف من المساعد في الموقع</p></div></div>${supTabs('chats')}<div class="list" id="cl"></div></main>`;
-  $('#lo').onclick = () => F.signOut(auth); paintChats();
+  $('#lo').onclick = logout; paintChats();
 }
 function paintChats() {
   const el = $('#cl'); if (!el) return;
@@ -224,14 +233,14 @@ function renderChatSheet() {
   const rows = (c.msgs || []).map(m => { if (m.sys) { const dl0 = dayL(m.at || Date.now()); const sep0 = dl0 !== lastDay ? `<div class="wa-day"><span>${dl0}</span></div>` : ''; lastDay = dl0; return sep0 + `<div class="wa-day"><span>💬 ${esc(m.text)} · ${m.at ? tm(m.at) : ''}</span></div>`; } const dl = dayL(m.at || Date.now()); const sep = dl !== lastDay ? `<div class="wa-day"><span>${dl}</span></div>` : ''; lastDay = dl;
     const mine = m.from !== 'c'; const seen = mine && (c.seenAt || 0) >= (m.at || 0);
     if (m.del) return sep + `<div class="wa-m ${mine ? 'out' : 'in'} wa-deleted"><i>🚫 تم حذف هذه الرسالة</i><span class="wa-meta">${m.at ? tm(m.at) : ''}</span></div>`;
-    return sep + `<div class="wa-m ${mine ? 'out' : 'in'}" data-at="${m.at}" data-from="${m.from}"><button type="button" class="wa-mx" title="خيارات">⌄</button>${m.ed ? '<small class="wa-ed">معدّلة</small>' : ''}${mine ? `<b class="wa-by">${esc(m.by || 'الفريق')}</b>` : ''}${m.file ? (/^image\//.test(m.file.type || '') ? `<img class="wa-img" data-mid="${esc(m.file.id)}" alt="">` : `<button type="button" class="wa-pdf" data-mid="${esc(m.file.id)}"><span>PDF</span><b>${esc(m.file.name || 'file.pdf')}</b></button>`) : ''}${m.text ? `<div class="wa-t">${nl(m.text)}</div>` : ''}<span class="wa-meta">${m.at ? tm(m.at) : ''}${mine ? `<i class="wa-tick ${seen ? 'seen' : ''}">✓✓</i>` : ''}</span></div>`; }).join('');
+    return sep + `<div class="wa-m ${mine ? 'out' : 'in'}" data-at="${m.at}" data-from="${m.from}"><button type="button" class="wa-mx" title="خيارات">⌄</button>${m.ed ? '<small class="wa-ed">معدّلة</small>' : ''}${mine ? `<b class="wa-by">${esc(m.by || 'الفريق')}</b>` : ''}${m.file ? (/^audio\//.test(m.file.type || '') ? voiceHTML(esc(m.file.id), m.file.dur, 'cm-voice wa-voice' + (mine && (c.heard || {})[m.file.id] ? ' heard' : '')) : /^image\//.test(m.file.type || '') ? `<img class="wa-img" data-mid="${esc(m.file.id)}" alt="">` : `<button type="button" class="wa-pdf" data-mid="${esc(m.file.id)}"><span>PDF</span><b>${esc(m.file.name || 'file.pdf')}</b></button>`) : ''}${m.text ? `<div class="wa-t">${nl(m.text)}</div>` : ''}<span class="wa-meta">${m.at ? tm(m.at) : ''}${mine ? `<i class="wa-tick ${seen ? 'seen' : ''}">✓✓</i>` : ''}</span></div>`; }).join('');
   sh.innerHTML = `<div class="wa-win"><header class="wa-h"><button class="x wa-back" aria-label="رجوع">→</button><span class="wa-av">${esc((c.name || '؟').trim().slice(0, 1))}</span><div class="wa-who"><b>${esc(c.name)}</b><small>${online ? '<i class="wa-on"></i> متصل الآن' : (last ? 'آخر رسالة ' + tm(last.at) : '')}${c.page ? ' · من صفحة ' + esc(c.page.replace(/^#\/?/, '') || 'الرئيسية') : ''}</small></div>
     <div class="wa-acts"><button type="button" class="wa-ic" id="waMute" title="الصوت">${localStorage.getItem('sh.pmute') === '1' ? '🔕' : '🔔'}</button>${ph ? `<a href="tel:${esc(c.phone)}" title="اتصال" class="wa-ic">📞</a><a href="${waL}" target="_blank" rel="noopener" title="واتساب" class="wa-ic wa-g">${IC.wa}</a>` : '<span class="chip" title="العميل مدخلش رقم">بدون رقم</span>'}</div></header>
     <div class="wa-info" id="waInfo"><button type="button" class="btn btn-ghost sm" id="waDelChat" style="color:#c0262b;grid-column:1/-1;justify-self:start">🗑 حذف المحادثة كلها</button>${[['الاسم', c.name], ['الجوال', c.phone ? `<a href="tel:${esc(c.phone)}" dir="ltr">${esc(c.phone)}</a>` : '—', 1], ['الحساب', c.uid ? 'عميل مسجّل على الموقع' : 'زائر'], ['الجهاز', ({ iphone: 'آيفون', android: 'أندرويد', ipad: 'آيباد', desktop: 'كمبيوتر' })[c.dev] || '—'], ['من صفحة', c.page ? c.page.replace(/^#\/?/, '') || 'الرئيسية' : 'الرئيسية'], ['بدأت', c.at && c.at.toDate ? c.at.toDate().toLocaleString('ar-SA') : '']].map(([k, v, raw]) => `<div><small>${k}</small><b>${raw ? v : esc(v || '—')}</b></div>`).join('')}<div id="waCust" style="display:contents"></div></div>
     ${c.botLog && c.botLog.length ? `<div class="wa-note">🤖 سأل المساعد قبل كده: ${esc(c.botLog.join(' · ').slice(0, 160))}</div>` : ''}
     <div class="wa-body" id="thr">${rows}</div>
     <div class="wa-quick">${QUICK.map(q => `<button type="button" data-q="${esc(q)}">${esc(q)}</button>`).join('')}</div>
-    <form id="cf" class="wa-in"><label class="wa-att" title="إرفاق صورة أو PDF"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 11l-8.5 8.5a5 5 0 0 1-7-7L14 4a3.5 3.5 0 0 1 5 5l-8.6 8.6a2 2 0 0 1-2.8-2.8L15 7.5"/></svg><input type="file" accept="image/*,application/pdf" hidden id="waF"></label><textarea rows="1" placeholder="اكتب رسالة…" title="Enter للإرسال، Shift+Enter لسطر جديد">${esc(keep)}</textarea><button class="wa-send" aria-label="إرسال"><svg viewBox="0 0 24 24"><path d="M3 20l18-8L3 4l3 8-3 8zm3-8h8"/></svg></button></form></div>`;
+    <form id="cf" class="wa-in"><label class="wa-att" title="إرفاق صورة أو PDF"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 11l-8.5 8.5a5 5 0 0 1-7-7L14 4a3.5 3.5 0 0 1 5 5l-8.6 8.6a2 2 0 0 1-2.8-2.8L15 7.5"/></svg><input type="file" accept="image/*,application/pdf" hidden id="waF"></label><span id="waMicH"></span><textarea rows="1" placeholder="اكتب رسالة…" title="Enter للإرسال، Shift+Enter لسطر جديد">${esc(keep)}</textarea><button class="wa-send" aria-label="إرسال"><svg viewBox="0 0 24 24"><path d="M3 20l18-8L3 4l3 8-3 8zm3-8h8"/></svg></button></form></div>`;
   $('.wa-back', sh).onclick = closeChat; const thr = $('#thr', sh); thr.scrollTop = 1e6;
   // تعديل/حذف الرسايل: المهندس يعدّل ويحذف رسايله، ويقدر يحذف رسايل العميل
   const editMsgs = async (fn) => { const ref = F.doc(db, 'chats', c.id); let mids = []; await F.runTransaction(db, async tx => { const d = await tx.get(ref); if (!d.exists()) return; const msgs = (d.data().msgs || []).map(m => { const r = fn(m); if (r && r.del && m.file) mids.push(m.file.id); return r || m; }); tx.update(ref, { msgs, upd: F.serverTimestamp() }); }); mids.forEach(id => F.deleteDoc(F.doc(db, 'chatmedia', id)).catch(() => { })); };
@@ -257,6 +266,21 @@ function renderChatSheet() {
       const ref = F.doc(F.collection(db, 'chatmedia')); await F.setDoc(ref, { chat: c.id, by: 's', name, type, data, at: Date.now() });
       await F.updateDoc(F.doc(db, 'chats', c.id), { msgs: F.arrayUnion({ from: 's', text: '', file: { id: ref.id, name, type }, by: isOwner ? 'الإدارة' : ((emp && emp.name) || 'الفريق').split(' ')[0], at: Date.now() }), upd: F.serverTimestamp(), unread: 0 }); snd('send');
     } catch (x) { toast(F.authMsg(x), 1); } };
+  // الفويس نوت من الموظف
+  { const vb = document.createElement('div'); vb.className = 'vn-bar'; vb.hidden = true; $('#cf', sh).before(vb);
+    const mb = micButton({ bar: vb, toast: x => toast(x, 1), onSend: async (data, type, dur) => { try { const ref = F.doc(F.collection(db, 'chatmedia')); await F.setDoc(ref, { chat: c.id, by: 's', name: 'voice', type, data, at: Date.now() });
+      await F.updateDoc(F.doc(db, 'chats', c.id), { msgs: F.arrayUnion({ from: 's', text: '', file: { id: ref.id, name: 'voice', type, dur: Math.round(dur) }, by: isOwner ? 'الإدارة' : ((emp && emp.name) || 'الفريق').split(' ')[0], at: Date.now() }), upd: F.serverTimestamp(), unread: 0 }); snd('send'); } catch (x) { toast(F.authMsg(x), 1); } } });
+    $('#waMicH', sh).replaceWith(mb); }
+  wireVoices(sh, async id => { try { const d = await F.getDoc(F.doc(db, 'chatmedia', id)); return d.exists() ? d.data().data : null; } catch (e) { return null; } }, id => { const m = (c.msgs || []).find(x => x.file && x.file.id === id); if (m && m.from === 'c' && !(c.heard || {})[id]) F.updateDoc(F.doc(db, 'chats', c.id), { ['heard.' + id]: Date.now() }).catch(() => { }); });
+  // ربط حساب العميل بملف مشروعه من الشات
+  if (c.uid) F.getDoc(F.doc(db, 'customers', c.uid)).then(d => { if (!d.exists() || d.data().clientNo != null) return; const w = $('#waInfo', sh); if (!w || $('#waLink', sh)) return;
+    const bx = document.createElement('div'); bx.id = 'waLink'; bx.className = 'wa-link'; bx.innerHTML = `<small>🔗 ربط حساب عميل · كود <b dir="ltr">SH-${esc(c.uid.slice(0, 6).toUpperCase())}</b></small><div><input id="waLinkNo" inputmode="numeric" placeholder="رقم ملف العميل في الإشراف"><button type="button" class="btn btn-ink sm" id="waLinkGo">ربط</button></div>`; w.after(bx);
+    $('#waLinkGo', sh).onclick = async () => { const no = F.toEn($('#waLinkNo', sh).value).replace(/\D/g, ''); if (!no) return toast('اكتب رقم الملف', 1);
+      try { let cl = null; try { const q = await F.getDoc(F.doc(db, 'clients', no)); cl = q.exists() ? q.data() : null; } catch (e) { }
+        if (!confirm(`تربط حساب «${c.name}» بملف ${no}${cl ? ' — ' + cl.name : ''}؟`)) return;
+        await F.updateDoc(F.doc(db, 'customers', c.uid), { clientNo: +no, clientName: (cl && cl.name) || '', linkedBy: auth.currentUser.uid, linkedAt: F.serverTimestamp() });
+        await F.updateDoc(F.doc(db, 'chats', c.id), { msgs: F.arrayUnion({ from: 's', text: `تم ربط حسابك بملف مشروعك رقم ${no} ✓ تقدر تتابعه من «مشروعي»`, by: 'الدعم الفني', at: Date.now() }), upd: F.serverTimestamp() });
+        toast('اتربط ✓'); bx.remove(); } catch (x) { toast(F.authMsg(x), 1); } }; }).catch(() => { });
   const ta = $('textarea', sh); const fit = () => { ta.style.height = 'auto'; ta.style.height = Math.min(140, ta.scrollHeight) + 'px'; }; ta.oninput = fit; fit();
   ta.onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); $('#cf', sh).requestSubmit(); } };
   $$('[data-q]', sh).forEach(b => b.onclick = () => { ta.value = b.dataset.q; fit(); ta.focus(); });
@@ -271,7 +295,7 @@ function viewReports() {
   if (!can('reports') && !can('report')) return viewHome();
   root.innerHTML = top() + `<main class="shell"><div class="hello"><div><a class="back glass-back" href="#">→ رجوع</a><h1>أرشيف تقارير الإشراف</h1><p>${can('reports') ? 'كل التقارير المحفوظة' : 'تقاريرك المحفوظة'}</p></div>${can('report') ? '<a class="btn btn-red" href="report/">+ تقرير جديد</a>' : ''}</div>
     <div class="toolbar"><input id="q" placeholder="بحث باسم المشروع أو رقم الطلب أو المهندس" style="flex:1;padding:9px 12px;border-radius:12px;border:1.5px solid var(--line)"></div><div class="list" id="rl"><p class="empty">جارٍ التحميل…</p></div></main>`;
-  $('#lo').onclick = () => F.signOut(auth);
+  $('#lo').onclick = logout;
   $('#q').oninput = paintReports; loadReports();
 }
 async function loadReports() {
@@ -296,6 +320,7 @@ function route() {
   if (h === 'botlogs') return viewBotlogs();
   if (h === 'reviews') return viewReviews();
   if (h === 'reports') return viewReports();
+  if (h === 'perms') { root.innerHTML = top() + `<main class="shell"><a class="glass-back" href="#">← رجوع</a><div id="permBox" style="margin-top:14px"></div></main>`; $('#lo').onclick = logout; return PERM.statusPage($('#permBox')); }
   viewHome();
 }
 addEventListener('hashchange', () => { navDepth++; route(); });
@@ -313,6 +338,7 @@ F.onAuthStateChanged(auth, async u => {
   if (!u) { if (location.hash === '#register') viewRegister(); else viewLogin(); return; }
   isOwner = await F.ownerOf(u.uid);
   try { localStorage.setItem('sh.staff', '1'); } catch (e) { }
+  setTimeout(() => { PERM.onboard(); PERM.registerPush(); }, 1200);
   if (isOwner) { startLive(); return route(); }
   unsubs.push(F.onSnapshot(F.doc(db, 'employees', u.uid), async s => {
     if (s.exists()) {
@@ -333,7 +359,7 @@ function startLive() {
     if (openChat) { const oc = chats.find(x => x.id === openChat); const n = oc ? (oc.msgs || []).filter(m => m.from === 'c').length : 0; if (window._ocN != null && window._ocKey === openChat && n > window._ocN) snd('recv'); window._ocN = n; window._ocKey = openChat; }
     if (location.hash === '#chats') paintChats(); else if (openChat) renderChatSheet();
     notify('رسالة جديدة في المحادثات المباشرة');
-    const b = $('.tile[data-k=support]'); if (b) { let bd = b.querySelector('.badge'); const n = counts.tickets + counts.chats; if (n) { if (!bd) { bd = document.createElement('span'); bd.className = 'badge'; b.prepend(bd); } bd.textContent = n; } else if (bd) bd.remove(); }
+    PERM.badge(counts.tickets + counts.chats); const b = $('.tile[data-k=support]'); if (b) { let bd = b.querySelector('.badge'); const n = counts.tickets + counts.chats; if (n) { if (!bd) { bd = document.createElement('span'); bd.className = 'badge'; b.prepend(bd); } bd.textContent = n; } else if (bd) bd.remove(); }
   }, () => { }));
   if (isOwner) unsubs.push(F.onSnapshot(F.query(F.collection(db, 'reviews'), F.orderBy('at', 'desc'), F.limit(300)), s => {
     const before = counts.reviews; reviews = s.docs.map(d => ({ id: d.id, ...d.data() })); counts.reviews = reviews.filter(r => (r.status || 'pending') === 'pending').length;

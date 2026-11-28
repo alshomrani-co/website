@@ -1,4 +1,7 @@
 import { setCfg as sndCfg } from './click.js';
+import { micButton, voiceHTML, wireVoices } from './voice.js';
+import * as DECO from './deco.js';
+import * as PERM from './perms.js';
 // شركة سعد الشمراني — الموقع العام (صفحة واحدة بروابط #) — عربي / English
 import { DEFAULT, migrate, PAGE_BLOCKS } from './data.js';
 import { EN } from './data-en.js';
@@ -103,7 +106,8 @@ const ext = href => /^https?:|^mailto:|^tel:/.test(href) ? 'target="_blank" rel=
 function applyDesign() {
   const pgk = (location.hash.replace(/^#\/?/, '').split(/[/?]/)[0]) || 'home';
   const d0 = C.design || {}, d = { ...d0, ...((d0.pageStyle || {})[pgk] || {}) }, r = document.documentElement.style;
-  const ok = activeOcc(C.occasion), oc = ok && OCC[ok], red = (oc && oc.red) || d.red, gold = (oc && oc.gold) || d.gold;
+  DECO.save(C); const mourn = DECO.apply(DECO.cached(), activeOcc(C.occasion)).mourn;
+  const ok = mourn ? null : activeOcc(C.occasion), oc = ok && OCC[ok], red = (oc && oc.red) || d.red, gold = (oc && oc.gold) || d.gold;
   if (red) { r.setProperty('--red', red); r.setProperty('--red2', `color-mix(in srgb, ${red} 82%, #000)`); } else { r.removeProperty('--red'); r.removeProperty('--red2'); }
   if (gold) r.setProperty('--gold', gold); else r.removeProperty('--gold');
   if (ok) document.documentElement.dataset.occ = ok; else delete document.documentElement.dataset.occ;
@@ -117,7 +121,7 @@ function applyDesign() {
   if (fam) { if (!document.getElementById('fx-font')) { const l = document.createElement('link'); l.id = 'fx-font'; l.rel = 'stylesheet'; document.head.appendChild(l); } document.getElementById('fx-font').href = `https://fonts.googleapis.com/css2?family=${fam.replace(/ /g, '+')}:wght@400;500;700;800&display=swap`; r.setProperty('--hd', `'${fam}',system-ui,sans-serif`); r.setProperty('--bd', `'${fam}',system-ui,sans-serif`); }
   else { r.removeProperty('--hd'); r.removeProperty('--bd'); }
   // اللوجو
-  const logo = d.logo ? src(d.logo) : 'assets/img/mark.png';
+  const bl = (C.brand || {}).logo, logo = bl && /^data:image/.test(bl) ? bl : d.logo ? src(d.logo) : 'assets/img/mark.png'; // لوجو «هوية الشركة» ليه الأولوية
   $$('img[data-logo]').forEach(i => { i.src = logo; if (d.logo && d.logo.startsWith('m:')) i.dataset.m = d.logo.slice(2); });
 }
 
@@ -128,7 +132,7 @@ function chrome() {
   const v = V();
   document.documentElement.lang = LANG; document.documentElement.dir = LANG === 'en' ? 'ltr' : 'rtl';
   document.title = v.seo.title; applyDesign(); seoMeta(v);
-  $('#bShort').textContent = v.brand.short; $('#bSub').textContent = t('company');
+  $('#bShort').textContent = v.brand.short; $('#bSub').textContent = (LANG !== 'en' && v.brand.sub) || t('company');
   $('#langBtn').textContent = t('langBtn'); $('#langBtn').title = t('langName');
   $('#reqBtn').textContent = t('request');
   paintAcc();
@@ -153,7 +157,7 @@ function chrome() {
 }
 /* المناسبة الحالية: شريط تهنئة + زينة متحركة (الزائر يقدر يقفلها) */
 function paintOcc(v) {
-  const k = activeOcc(C.occasion), o = C.occasion || {}, en = LANG === 'en'; let fx = $('#occFx');
+  const k = DECO.isMourning() ? null : activeOcc(C.occasion), o = C.occasion || {}, en = LANG === 'en'; let fx = $('#occFx');
   const off = store('sh.occFx', 'session') === '0' || o.fx === false || matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (!k || off) { if (fx) fx.remove(); } else if (!fx || fx.dataset.k !== k + (o.level || 'heavy')) { if (fx) fx.remove(); fx = document.createElement('div'); fx.id = 'occFx'; fx.className = 'occ-fx'; fx.dataset.k = k + (o.level || 'heavy'); fx.setAttribute('aria-hidden', 'true'); fx.innerHTML = fxHTML(k, matchMedia('(max-width:700px)').matches || document.documentElement.classList.contains('is-phone'), o.level || 'heavy'); document.body.appendChild(fx); }
   if (!k) return false;
@@ -260,19 +264,22 @@ function wireX() {
   const show = (el, user) => { const i = +el.dataset.xi, sv = V().services[i]; if (!sv) return; $$('.h7-xi').forEach(x => { x.classList.toggle('on', x === el); x.setAttribute('aria-selected', x === el); x.classList.remove('run'); });
     p.classList.add('sw'); setTimeout(() => { p.innerHTML = svcPanel(sv, i); if (user && mob()) { el.after(p); el.scrollIntoView({ behavior: 'smooth', block: 'start' }); } p.classList.remove('sw'); arm(el); }, mob() && user ? 0 : 180); };
   // الموبايل: أكورديون — التفاصيل بتنزل تحت العنوان، واللي قبلها تقفل، والمفتوح بينوّر
-  const acc = el => { const open = el.classList.contains('on'); $$('.h7-xi').forEach(x => { x.classList.remove('on', 'run'); x.setAttribute('aria-expanded', 'false'); }); if (open) { p.classList.add('acc-x'); return; }
+  let mStop = false, mNext = 0;
+  const acc = (el, auto) => { const open = el.classList.contains('on'); $$('.h7-xi').forEach(x => { x.classList.remove('on', 'run'); x.setAttribute('aria-expanded', 'false'); }); if (open) { p.classList.add('acc-x'); return; }
     const i = +el.dataset.xi; p.innerHTML = svcPanel(V().services[i], i); el.after(p); el.classList.add('on'); el.setAttribute('aria-expanded', 'true'); p.classList.remove('acc-x', 'acc-in'); void p.offsetWidth; p.classList.add('acc-in');
-    setTimeout(() => scrollTo({ top: el.getBoundingClientRect().top + scrollY - 96, behavior: 'smooth' }), 60); };
-  $$('.h7-xi').forEach(el => el.onclick = () => { if (mob()) return acc(el); hold = Date.now(); if (!el.classList.contains('on')) show(el, 1); });
+    if (!auto) setTimeout(() => scrollTo({ top: el.getBoundingClientRect().top + scrollY - 96, behavior: 'smooth' }), 60); };
+  $$('.h7-xi').forEach(el => el.onclick = () => { if (mob()) { mStop = true; return acc(el); } hold = Date.now(); if (!el.classList.contains('on')) show(el, 1); });
   // الماوس على خدمة في القائمة يفتحها على طول، والماوس في أي حتة تانية الحركة مكمّلة
   $$('.h7-xi').forEach(el => { el.addEventListener('mouseenter', () => { if (mob()) return; hold = 1; if (!el.classList.contains('on')) show(el); else $$('.h7-xi.run').forEach(x => x.classList.remove('run')); });
     el.addEventListener('mouseleave', () => { if (hold === 1) { hold = 0; const on = $('.h7-xi.on'); if (on) arm(on); } }); });
-  if (mob()) { $$('.h7-xi').forEach(x => x.classList.remove('on', 'run')); p.classList.add('acc-x'); }
+  if (mob()) { $$('.h7-xi').forEach(x => x.classList.remove('on', 'run')); p.classList.add('acc-x'); p.addEventListener('pointerdown', () => { mStop = true; }); }
   const start = () => { if (mob()) return; const on = $('.h7-xi.on'); if (!on) return; const i = +on.dataset.xi; p.innerHTML = svcPanel(V().services[i], i); arm(on, 2); };
   try { new IntersectionObserver(e => { vis = e[0].isIntersecting; if (vis) sec.classList.add('xin'); if (vis && !seen) { seen = true; start(); } }, { threshold: .25 }).observe(sec); } catch (e) { vis = true; sec.classList.add('xin'); seen = true; start(); }
   xTimer = setInterval(() => {
     if (!document.body.contains(sec)) return clearInterval(xTimer);
-    if (mob()) return;
+    if (mob()) { // الموبايل: كل خدمة بتفتح تحت عنوانها كل ثانيتين بالترتيب، وتقف لما العميل يلمس
+      if (mStop || !vis || document.hidden || Date.now() < mNext) return; mNext = Date.now() + 2000;
+      const all = $$('.h7-xi'), cur = all.findIndex(x => x.classList.contains('on')); acc(all[(cur + 1) % all.length], 1); return; }
     if (hold > 1 && Date.now() - hold > 10000) { hold = 0; const on = $('.h7-xi.on'); if (on) arm(on); }
     if (!vis || hold || document.hidden) { nextAt += 200; return; }
     if (Date.now() < nextAt) return;
@@ -324,6 +331,7 @@ document.addEventListener('click', e => {
 });
 // معرض «مكتبنا»
 document.addEventListener('click', e => { const b = e.target.closest('[data-off]'); if (!b) return; const L = ((V().office || {}).imgs || []).map(src); lightbox(L, +b.dataset.off); });
+document.addEventListener('click', async e => { const b = e.target.closest('.cb-cp'); if (!b) return; try { await navigator.clipboard.writeText(b.dataset.code); } catch (x) { } toast(LANG === 'en' ? 'Copied ✓' : 'اتنسخ ✓'); });
 let instEv = null;
 addEventListener('beforeinstallprompt', e => { e.preventDefault(); instEv = e; });
 addEventListener('appinstalled', () => { instEv = null; toast(LANG === 'en' ? 'App installed ✓' : 'التطبيق اتثبت ✓'); });
@@ -409,8 +417,9 @@ function homeV7() {
   };
   let order = (d.sections && d.sections.length ? d.sections.slice() : DEFAULT.design.sections.slice());
   return `<section class="h7-hero" data-blk="hero">${h.video && vsrc ? `<video autoplay muted loop playsinline preload="auto" poster="${esc(src(h.poster))}"><source src="${esc(vsrc)}" type="video/mp4"></video>` : `<img class="poster" src="${esc(src(h.poster))}" alt="">`}<div class="shade"></div>
-    <div class="wrap h7-hero-c">${d.heroLogo !== false ? `<div class="h7-logo" data-hold>${d.logo ? `<span class="hl-cube custom">${img(d.logo, '')}</span>` : `<span class="hl-cube"><img class="g" src="assets/img/cube-gray.png" alt=""><img class="r" src="assets/img/cube-red.png" alt=""></span>`}<span class="h7-lt"><b>${esc(v.brand.short)}</b><small>${t('company')}</small></span></div>` : ''}<div class="h7-eyb"><i></i>${esc(h.eyebrow)}</div><h1 class="h7-h1">${esc(h.title)} <em>${esc(h.highlight)}</em></h1><p class="h7-lead">${esc(h.lead)}</p>
+    <div class="wrap h7-hero-c">${d.heroLogo !== false ? `<div class="h7-logo" data-hold>${d.logo ? `<span class="hl-cube custom">${img(d.logo, '')}</span>` : `<span class="hl-cube"><img class="g" src="assets/img/cube-gray.png" alt=""><img class="r" src="assets/img/cube-red.png" alt=""></span>`}<span class="h7-lt"><b>${esc(v.brand.short)}</b><small>${esc((!en && v.brand.sub) || t('company'))}</small></span></div>` : ''}<div class="h7-eyb"><i></i>${esc(h.eyebrow)}</div><h1 class="h7-h1">${esc(h.title)} <em>${esc(h.highlight)}</em></h1><p class="h7-lead">${esc(h.lead)}</p>
     <div class="h7-btns"><a class="h7-red" href="#/request">${esc(h.cta1)} ${ARW}</a><a class="h7-ghost" href="#/projects">${esc(h.cta2)}</a></div>
+    ${ACC.signedIn() ? `<a class="my-follow" href="#/my">📂 ${en ? 'Tap here to follow your project' : 'اضغط هنا لمتابعة مشروعك'}</a>${store('sh.custLinked') !== '1' && store('sh.custCode') ? `<div class="code-ban"><span>${en ? 'Your customer code' : 'كود العميل'}: <b dir="ltr">${esc(store('sh.custCode'))}</b></span><small>${en ? 'Send it to your engineer or via chat to link your project' : 'ابعته للمهندس أو في الشات علشان نربطك بمشروعك'}</small><button type="button" class="cb-cp" data-code="${esc(store('sh.custCode'))}">📋 ${en ? 'Copy' : 'نسخ'}</button></div>` : ''}` : ''}
     ${appStrip(v)}
     <div class="h7-stats">${v.stats.map(x => `<div><b class="h7-num">${x.pre ? `<em>${esc(x.pre)}</em>` : ''}<span data-count="${+x.n || 0}" data-from="${x.plain ? (+x.n || 0) - 12 : 0}">${x.plain ? (+x.n || 0) : 0}</span>${esc(x.suf || '')}</b><small>${esc(x.l)}</small></div>`).join('')}</div></div></section>
   ${order.map(k => S[k] ? S[k]().replace(/^\s*<section/, `<section data-blk="${k}"`) : '').join('')}`;
@@ -687,8 +696,11 @@ function paintWiz() {
       if (wiz.name.trim().length < 2) return $('#wErr').textContent = t('writeName');
       if (ph.length < 9) return $('#wErr').textContent = t('writePhone');
       nx.disabled = true; nx.textContent = t('sending');
-      try { wiz.code = await createTicket({ name: wiz.name.trim(), phone: ph, dept: wiz.s, ptype: wiz.type === OTH ? `${wiz.type}: ${(wiz.other || '').trim()}` : wiz.type, city: wiz.city, msg: wiz.msg.trim(), img: wiz.img }); wiz.step = 4; paintWiz(); }
-      catch (e) { $('#wErr').innerHTML = `${t('sendFail')} <a style="color:var(--red)" target="_blank" href="${wa(`${wiz.s}\n${wiz.type} — ${wiz.city}\n${wiz.msg}\n${wiz.name} ${wiz.phone}`)}">${t('sendFail2')}</a>`; nx.disabled = false; nx.textContent = t('send'); }
+      // الطلب بيتحفظ في الموقع (بيوصل البوابة + إشعار) وكمان بيفتح واتساب الشركة برسالة جاهزة فيها رقم الطلب
+      let waWin = null; try { waWin = window.open('', '_blank'); if (waWin) waWin.document.write('<p style="font:16px sans-serif;text-align:center;margin-top:40vh">⏳ جارٍ فتح واتساب…</p>'); } catch (e) { }
+      try { wiz.code = await createTicket({ name: wiz.name.trim(), phone: ph, dept: wiz.s, ptype: wiz.type === OTH ? `${wiz.type}: ${(wiz.other || '').trim()}` : wiz.type, city: wiz.city, msg: wiz.msg.trim(), img: wiz.img }); wiz.step = 4; paintWiz();
+        const wl = wa(`${t('aboutReq')}${wiz.code}\n${wiz.s}\n${wiz.type === OTH && wiz.other ? wiz.other : wiz.type} — ${wiz.city}\n${wiz.msg}\n${wiz.name.trim()} ${ph}`); try { if (waWin && !waWin.closed) waWin.location.href = wl; } catch (e) { } }
+      catch (e) { try { waWin && waWin.close(); } catch (x) { } $('#wErr').innerHTML = `${t('sendFail')} <a style="color:var(--red)" target="_blank" href="${wa(`${wiz.s}\n${wiz.type} — ${wiz.city}\n${wiz.msg}\n${wiz.name} ${wiz.phone}`)}">${t('sendFail2')}</a>`; nx.disabled = false; nx.textContent = t('send'); }
       return;
     }
     wiz.step++; paintWiz(); $('#wiz').scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -727,6 +739,7 @@ async function doTrack(e) {
   } catch (z) { $('#trOut').innerHTML = ''; er.textContent = t('connErr'); }
 }
 
+P.perms = () => `<section class="phead"><div class="wrap"><h1>${LANG === 'en' ? 'Permissions' : 'الصلاحيات'}</h1></div></section><section class="sec tight" style="padding-top:10px"><div class="wrap" style="max-width:520px" id="permBox"></div></section>`;
 /* ---------- router ---------- */
 let curPath = null;
 function render(soft) {
@@ -763,6 +776,7 @@ function wire(r) {
   if (r === 'track') { $('#trForm').onsubmit = doTrack; if ($('#trCode').value && new URLSearchParams(location.hash.split('?')[1] || '').get('c')) doTrack(); }
   if (r === 'media') paintFeed();
   if (r === 'account') ACC.wireAccount(); if (r === 'my') ACC.wireMy();
+  if (r === 'perms') PERM.statusPage($('#permBox'));
   const v = $('.hero video'); if (v) { v.play().catch(() => { }); }
 }
 let io = null;
@@ -831,6 +845,7 @@ function toast(x) { const el = $('#toast'); el.textContent = x; el.classList.add
 function copy(x) { navigator.clipboard ? navigator.clipboard.writeText(x).then(() => toast(t('copied'))) : toast(x); }
 
 /* ---------- assistant ---------- */
+let misses = 0;
 const bot = makeBot({ V, lang: () => LANG, t, wa, tel: () => tel() });
 function botSay(html, me, chips) {
   const m = document.createElement('div'); m.className = 'bm ' + (me ? 'me' : 'bt'); m.innerHTML = html;
@@ -839,7 +854,10 @@ function botSay(html, me, chips) {
 }
 function botAsk(q) {
   botSay(esc(q), true); const ty = document.createElement('div'); ty.className = 'bm bt typing rb-ty'; ty.innerHTML = ROBOT('think') + '<span><i></i><i></i><i></i></span>'; $('#botMsgs').appendChild(ty); $('#botMsgs').scrollTop = 1e6;
-  const a = bot.answer(q); setTimeout(() => { ty.remove(); botSay(a.text, false, a.chips); }, 500 + Math.min(900, a.text.length * 6));
+  const a = bot.answer(q); misses = a.miss ? misses + 1 : (a.human ? misses : 0);
+  setTimeout(() => { ty.remove(); botSay(a.text, false, a.chips);
+    if (a.human || misses >= 2) { misses = 0; setTimeout(() => { botSay((LANG === 'en' ? 'Sorry I couldn\'t help enough 🙏 Would you like to talk to our engineer?' : 'أعتذر إني ما قدرتش أساعدك كفاية 🙏 تحب أحوّلك للمهندس المختص؟') + `<br><button type="button" class="to-eng">👷 ${LANG === 'en' ? 'Talk to the engineer' : 'كلّم المهندس المختص'}</button>`); const b2 = [...$$('#botMsgs .to-eng')].pop(); if (b2) b2.onclick = () => { $$('#botMsgs .to-eng').forEach(x => x.remove()); startEngineer(); }; }, 700); }
+  }, 500 + Math.min(900, a.text.length * 6));
   try { const h = JSON.parse(sessionStorage.getItem('sh.botlog') || '[]'); h.push({ q, at: Date.now() }); sessionStorage.setItem('sh.botlog', JSON.stringify(h.slice(-50))); } catch (e) { }
   logBot(q, a);
 }
@@ -864,11 +882,12 @@ function botMini(on) {
 }
 function resetBot() { $('#botMsgs').innerHTML = ''; $('#botQuick').innerHTML = ''; if (!$('#bot').hidden) openBot(); }
 function openBot() {
+  { const dy = new Date().toDateString(); if (store('sh.chatDay') !== dy) { storeSet('sh.chatDay', dy); if (!unreadC) { chatMode = false; $('#botMsgs').innerHTML = ''; $('#botQuick').innerHTML = ''; misses = 0; } } }
   $('#bot').hidden = false; $('#botFab').classList.add('hide'); track('bot');
   botMini(false);
-  if (!$('#botMsgs').children.length && chatId) { startChat(); hideTease(); return; }
+  if (!$('#botMsgs').children.length && chatId && store('sh.liveDay') === new Date().toDateString()) { startChat(); hideTease(); return; }
   if (unreadC && chatId && !chatMode) { startChat(); hideTease(); return; }
-  if (!$('#botMsgs').children.length) { $('#bot').classList.remove('live', 'asst'); $('#botSubT').textContent = LANG === 'en' ? 'How can we help?' : 'نخدمك إزاي؟'; botSay(LANG === 'en' ? 'Hi 👋 Who would you like to talk to?' : 'أهلاً بيك 👋 تحب تتكلم مع مين؟'); showChoice(); }
+  if (!$('#botMsgs').children.length) { setAssist(); }
   hideTease();
   if (matchMedia('(hover:hover)').matches) setTimeout(() => $('#botIn').focus(), 200);
 }
@@ -939,6 +958,9 @@ function initBot() {
   $('#botFab').onclick = openBot;
   const at = document.createElement('label'); at.className = 'bot-att'; at.title = LANG === 'en' ? 'Attach image or PDF' : 'إرفاق صورة أو PDF'; at.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 11l-8.5 8.5a5 5 0 0 1-7-7L14 4a3.5 3.5 0 0 1 5 5l-8.6 8.6a2 2 0 0 1-2.8-2.8L15 7.5"/></svg><input type="file" accept="image/*,application/pdf" hidden>'; $('#botForm').prepend(at);
   $('input', at).onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (chatMode) pickFile(f); };
+  { const vb = document.createElement('div'); vb.className = 'vn-bar'; vb.hidden = true; $('#botForm').before(vb);
+    const mic = micButton({ bar: vb, en: LANG === 'en', toast, onSend: (data, type, dur) => { if (!chatMode) return; const id = 'M' + Date.now().toString(36) + Array.from(crypto.getRandomValues(new Uint8Array(6)), b => ALPH[b % ALPH.length]).join(''); CMEDIA[id] = { data }; chatSend('', { id, name: 'voice', type, data, dur }); } });
+    $('#botForm').insertBefore(mic, $('#botSend')); }
   const mu = document.createElement('button'); mu.type = 'button'; mu.className = 'bot-mute'; const pm = () => { const m = store('sh.mute') === '1'; mu.textContent = m ? '🔕' : '🔔'; mu.title = m ? (LANG === 'en' ? 'Sound off' : 'الصوت مقفول') : (LANG === 'en' ? 'Sound on' : 'الصوت شغال'); }; pm();
   mu.onclick = () => { storeSet('sh.mute', store('sh.mute') === '1' ? '0' : '1'); pm(); if (store('sh.mute') !== '1') snd('recv'); }; $('#bot header').insertBefore(mu, $('#botX'));
   if (chatId && !store('sh.chatPend')) setTimeout(listen, 2500);
@@ -1109,18 +1131,21 @@ function chatForm() {
 }
 const chatQ = () => { try { return JSON.parse(store('sh.chatQ') || '[]'); } catch (e) { return []; } };
 const setQ = q => storeSet('sh.chatQ', JSON.stringify(q));
-let serverMsgs = [], flushing = false, flushT = null, staffSeen = -1, unreadC = 0;
+let chatHeard = {}; let serverMsgs = [], flushing = false, flushT = null, staffSeen = -1, unreadC = 0;
 const ENG_HI = () => LANG === 'en' ? 'Hi 🌷 Write your question and our engineer will reply here shortly during working hours.' : 'أهلاً بك 🌷 اكتب سؤالك، والمهندس المختص هيرد عليك هنا خلال دقايق في وقت الدوام.';
 const CMEDIA = {};
 async function mediaGet(id) { if (CMEDIA[id]) return CMEDIA[id]; const F = await fb(); const d = await F.getDoc(F.doc(F.db, 'chatmedia', id)); return (CMEDIA[id] = d.exists() ? d.data() : null); }
-const fileHtml = (f, local) => { if (!f) return ''; const isImg = /^image\//.test(f.type || ''); return isImg ? `<img class="cm-img" data-mid="${esc(f.id)}" ${local && f.data ? `src="${f.data}"` : ''} alt="${esc(f.name || '')}">` : `<button type="button" class="cm-pdf" data-mid="${esc(f.id)}"><span>PDF</span><b>${esc(f.name || 'file.pdf')}</b></button>`; };
+const fileHtml = (f, local, mine) => { if (!f) return ''; if (/^audio\//.test(f.type || '')) return voiceHTML(f.id, f.dur, 'cm-voice' + (mine && chatHeard[f.id] ? ' heard' : '')); const isImg = /^image\//.test(f.type || ''); return isImg ? `<img class="cm-img" data-mid="${esc(f.id)}" ${local && f.data ? `src="${f.data}"` : ''} alt="${esc(f.name || '')}">` : `<button type="button" class="cm-pdf" data-mid="${esc(f.id)}"><span>PDF</span><b>${esc(f.name || 'file.pdf')}</b></button>`; };
 function paintChat() {
   if (!chatMode) return; const box = $('#botMsgs'); box.innerHTML = '';
   const add = (cls, html) => { const el = document.createElement('div'); el.className = 'bm ' + cls; el.innerHTML = html; box.appendChild(el); };
   const tk = (c, ttl) => `<i class="tk${c === '✓' ? ' dlv' : ''}" title="${ttl}">${c === '✓' ? '<svg viewBox="0 0 20 16" width="17" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1.5 8.5l3 3 7-7"/><path d="M7.5 11.5l7-7"/></svg>' : '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5"/></svg>'}</i>`;
   if (!serverMsgs.some(x => x.from === 's')) add('bt', esc(ENG_HI()));
   const en = LANG === 'en', DEL = `<i class="m-del">🚫 ${en ? 'This message was deleted' : 'تم حذف هذه الرسالة'}</i>`, ED = `<small class="m-ed">${en ? 'edited' : 'معدّلة'}</small>`;
-  serverMsgs.filter(x => !x.sys).forEach(x => { if (x.del) return add((x.from === 'c' ? 'me' : 'bt staff') + ' deleted', DEL); const body = fileHtml(x.file) + (x.text ? nl(x.text) : '') + (x.ed ? ED : '');
+  const d0 = new Date(); d0.setHours(0, 0, 0, 0); const lastOpen = +(store('sh.chatOpen') || 0);
+  const vis = serverMsgs.filter(x => !x.sys && ((x.at || 0) >= d0.getTime() || (x.from === 's' && (x.at || 0) > lastOpen)));
+  if (serverMsgs.length && vis.length < serverMsgs.filter(x => !x.sys).length) add('bt sys-day', LANG === 'en' ? '— New day · earlier messages are kept with our team —' : '— يوم جديد · المحادثات القديمة محفوظة عند فريقنا —');
+  vis.forEach(x => { if (x.del) return add((x.from === 'c' ? 'me' : 'bt staff') + ' deleted', DEL); const body = fileHtml(x.file, 0, x.from === 'c') + (x.text ? nl(x.text) : '') + (x.ed ? ED : '');
     if (x.from === 'c') { add('me mine', tk('✓', LANG === 'en' ? 'Delivered' : 'وصلت') + body + `<button type="button" class="m-x" data-del="${x.at}">🗑 ${en ? 'Delete' : 'حذف'}</button>`); box.lastChild.dataset.at = x.at; } else add('bt staff', `<b class="who">${esc(x.by || t('team'))}</b>` + body); });
   chatQ().forEach(x => add('me pend', tk('⏳', LANG === 'en' ? 'Sending…' : 'جارٍ الإرسال') + fileHtml(x.file, 1) + (x.text ? nl(x.text) : '')));
   $$('.cm-img[data-mid]:not([src])', box).forEach(async im => { try { const m = await mediaGet(im.dataset.mid); if (m) im.src = m.data; } catch (e) { } });
@@ -1128,6 +1153,8 @@ function paintChat() {
   $$('.bm.mine', box).forEach(el => el.onclick = e => { if (e.target.closest('.m-x,.cm-pdf,.cm-img')) return; const on = el.classList.contains('sel'); $$('.bm.sel', box).forEach(x => x.classList.remove('sel')); if (!on) el.classList.add('sel'); });
   $$('.m-x', box).forEach(b => b.onclick = e => { e.stopPropagation(); if (confirm(LANG === 'en' ? 'Delete this message for everyone?' : 'تحذف الرسالة دي عندك وعند المهندس؟')) delMsg(+b.dataset.del); });
   $$('.cm-pdf', box).forEach(b => b.onclick = async () => { try { const m = await mediaGet(b.dataset.mid); if (!m) return; const bl = await (await fetch(m.data)).blob(); window.open(URL.createObjectURL(bl), '_blank'); } catch (e) { toast(t('connErr')); } });
+  wireVoices(box, async id => { if (CMEDIA[id] && CMEDIA[id].data) return CMEDIA[id].data; try { const m = await mediaGet(id); return m && m.data; } catch (e) { return null; } }, async id => { const m = serverMsgs.find(x => x.file && x.file.id === id); if (!m || m.from === 'c' || chatHeard[id]) return; try { const F = await fb(); await F.updateDoc(F.doc(F.db, 'chats', chatId), { ['heard.' + id]: Date.now() }); } catch (e) { } });
+  storeSet('sh.chatOpen', String(Date.now()));
   box.scrollTop = 1e6;
 }
 // العميل بيحذف رسالته (بتتمسح عند الكل)
@@ -1139,13 +1166,13 @@ async function delMsg(at) {
     if (mid) F.deleteDoc(F.doc(F.db, 'chatmedia', mid)).catch(() => { });
   } catch (e) { toast(t('connErr')); }
 }
-function fabBadge() { const f = $('#botFab'); if (!f) return; f.dataset.n = unreadC || ''; f.classList.toggle('has-n', !!unreadC); if ($('#botMini')) botMini(true); }
+function fabBadge() { PERM.badge(unreadC); const f = $('#botFab'); if (!f) return; f.dataset.n = unreadC || ''; f.classList.toggle('has-n', !!unreadC); if ($('#botMini')) botMini(true); }
 let snapOn = false;
 async function listen() {
   if (snapOn || !chatId || store('sh.chatPend')) return; const F = await fb(); if (chatUnsub) chatUnsub(); snapOn = true;
   chatUnsub = F.onSnapshot(F.doc(F.db, 'chats', chatId), d => {
     if (!d.exists()) { if (!store('sh.chatPend')) { storeSet('sh.chat', ''); chatId = null; } return; }
-    serverMsgs = d.data().msgs || [];
+    serverMsgs = d.data().msgs || []; chatHeard = d.data().heard || {};
     const sc = serverMsgs.filter(x => x.from === 's').length;
     if (staffSeen >= 0 && sc > staffSeen) { // رد جديد من المهندس
       snd('recv'); try { navigator.vibrate && navigator.vibrate([40, 60, 40]); } catch (e) { }
@@ -1170,7 +1197,7 @@ async function flushChat() {
       try { localStorage.removeItem('sh.chatPend'); } catch (e) { } }
     let q = chatQ();
     while (q.length) { const m = q[0]; const msg = { from: 'c', text: m.text || '', at: m.at };
-      if (m.file) { if (m.file.data) await F.setDoc(F.doc(F.db, 'chatmedia', m.file.id), { chat: chatId, by: 'c', name: m.file.name, type: m.file.type, data: m.file.data, at: Date.now() }); msg.file = { id: m.file.id, name: m.file.name, type: m.file.type }; }
+      if (m.file) { if (m.file.data) await F.setDoc(F.doc(F.db, 'chatmedia', m.file.id), { chat: chatId, by: 'c', name: m.file.name, type: m.file.type, data: m.file.data, at: Date.now() }); msg.file = Object.assign({ id: m.file.id, name: m.file.name, type: m.file.type }, m.file.dur ? { dur: Math.round(m.file.dur) } : {}); }
       await F.updateDoc(F.doc(F.db, 'chats', chatId), { msgs: F.arrayUnion(msg), upd: F.serverTimestamp(), unread: F.increment(1) });
       if (!serverMsgs.some(x => x.at === msg.at && x.from === 'c')) serverMsgs = [...serverMsgs, msg]; q = chatQ().slice(1); setQ(q); paintChat(); }
     listen();
@@ -1178,7 +1205,8 @@ async function flushChat() {
   flushing = false;
 }
 async function startChat() {
-  chatMode = true; unreadC = 0; fabBadge(); $('#bot').classList.remove('asst'); $('#bot').classList.add('live'); $('#botSubT').textContent = ENG(); $('#botQuick').innerHTML = ''; paintSwitch();
+  setTimeout(() => { try { if (window.Notification && Notification.permission === 'granted' && chatId) PERM.registerPush({ chatId }); } catch (e) { } }, 3000);
+  storeSet('sh.liveDay', new Date().toDateString()); chatMode = true; unreadC = 0; fabBadge(); $('#bot').classList.remove('asst'); $('#bot').classList.add('live'); $('#botSubT').textContent = ENG(); $('#botQuick').innerHTML = ''; paintSwitch();
   paintChat(); if (store('sh.chatPend') || chatQ().length) flushChat(); else listen();
 }
 function stopChat() { return setAssist(); }
@@ -1222,6 +1250,8 @@ function boot() {
   $('#lb').insertAdjacentHTML('beforeend', `<button class="lb-nav p" aria-label="prev">${I.prev}</button><button class="lb-nav n" aria-label="next">${I.next}</button>`); $('#lb .lb-nav.p').onclick = () => lbStep(LANG === 'en' ? -1 : 1); $('#lb .lb-nav.n').onclick = () => lbStep(LANG === 'en' ? 1 : -1);
   { let sx = 0; $('#lb').addEventListener('touchstart', e => { sx = e.touches[0].clientX; }, { passive: true }); $('#lb').addEventListener('touchend', e => { const dx = e.changedTouches[0].clientX - sx; if (Math.abs(dx) > 50) lbStep(dx > 0 ? 1 : -1); }); }
   document.addEventListener('touchstart', () => { }, { passive: true }); // يفعّل تأثير الضغط :active على الآيفون
+  try { DECO.apply(DECO.cached()); } catch (e) { }
+  PERM.splash(); if (PERM.standalone()) setTimeout(() => PERM.onboard(), 1500);
   chrome(); render(); initBot(); initTease(); initHold(); popup(); initGlow(); initWa(); initStats(); initInstBar(); initViewBtn(); fabLabel();
   loadRemote();
 }

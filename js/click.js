@@ -26,6 +26,7 @@ export const SOUNDS = {
   soft: { ar: 'نقرة هادية', fn: (t, o) => tone(t, 520, 480, .05, .14, 'sine', o) }
 };
 export function play(name, vol) {
+  if (document.documentElement.classList.contains('mourn')) return; // وضع الحداد: مفيش أصوات
   try { const a = ctx(), c = getCfg(), s = SOUNDS[name || c.s] || SOUNDS.mouse, g = a.createGain(); g.gain.value = Math.max(0, Math.min(1.5, vol == null ? +c.v : vol)); g.connect(a.destination); s.fn(a.currentTime + .005, g); } catch (e) { }
 }
 export function tick(force) { const now = performance.now(); if ((!force && now - last < 45) || muted()) return; last = now; play(); }
