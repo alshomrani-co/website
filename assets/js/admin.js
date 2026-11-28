@@ -5,6 +5,9 @@ import { DEFAULT, migrate } from './data.js';
 import * as V5 from './admin-v5.js';
 import { EN } from './data-en.js';
 import * as X from './admin-x.js';
+import * as V15 from './admin-v15.js';
+import * as DECO from './deco.js';
+try { DECO.applyLite(); } catch (e) { }
 const { auth, db, MODULES } = F;
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -44,6 +47,9 @@ const SECTIONS = [
   { id: 'team', t: 'الموظفين والصلاحيات', ic: '☺', own: 1 },
   { id: 'owners', t: 'المُلّاك', ic: '♛', own: 1 },
   { id: 'tickets', t: 'الدعم والمحادثات', ic: '✉', href: 'portal.html#support' },
+  { id: 'botqa', t: 'أسئلة المساعد', ic: '🤖' },
+  { id: 'archive', t: 'مركز الأرشفة', ic: '🗄', own: 1 },
+  { id: 'push', t: 'الإشعارات والصلاحيات', ic: '🔔' },
   { id: 'sup', t: 'الإشراف والعملاء', ic: '▤', href: 'supervision.html' },
   { h: 'الشكل' },
   { id: 'design', t: 'اللوجو والألوان والخطوط', ic: '🎨' },
@@ -51,6 +57,8 @@ const SECTIONS = [
   { id: 'pages', t: 'الصفحات (ترتيب وأحجام)', ic: '☰' },
   { id: 'occasion', t: 'المناسبات والأعياد', ic: '🎉' },
   { id: 'sound', t: 'الأصوات', ic: '🔊' },
+  { id: 'look', t: 'الخلفيات والحداد', ic: '🖼' },
+  { id: 'identity', t: 'هوية الشركة', ic: '🏷', own: 1 },
   { h: 'المحتوى' },
   { id: 'hero', t: 'الواجهة والأرقام', keys: ['hero', 'stats'], ic: '◧', d: 'العنوان الكبير والأزرار والأرقام اللي تحت الفيديو.' },
   { id: 'offer', t: 'العروض', keys: ['offer', 'announce', 'popup'], ic: '🎁', d: 'عرض يظهر للناس بشكل واضح في الرئيسية بعدّاد تنازلي، وشريط أعلى الموقع، ونافذة منبثقة.' },
@@ -87,7 +95,12 @@ async function loadContent() {
   migrate(D, EN);
   saved = JSON.stringify(D);
 }
+let brandOK = false;
+const brandKey = o => { try { const b = (o && o.brand) || {}; return JSON.stringify([b.short, b.sub, b.en, b.name, b.logo]); } catch (e) { return ''; } };
 async function save() {
+  // تغيير هوية الشركة (الاسم/اللوجو) محتاج تأكيد باسورد المالك
+  if (!brandOK && brandKey(D) !== brandKey(JSON.parse(saved || '{}'))) { const ctx0 = { F, isOwner: () => isOwner, toast, esc }; if (!(await V15.reauth(ctx0, 'تأكيد تغيير هوية الشركة', 'غيّرت اسم الشركة أو اللوجو — لازم تأكيد المالك.'))) return; }
+  brandOK = false;
   const json = JSON.stringify(D);
   if (json.length > 950000) return toast('المحتوى كبير جداً — قلّل النصوص أو استخدم رفع الصور', 1);
   const b = $('#saveBtn'); b.disabled = true; b.textContent = 'جارٍ الحفظ…';
@@ -95,7 +108,7 @@ async function save() {
     const warn = X.emptyWarnings(D); if (warn && !confirm(warn + '\n\nتكمّل الحفظ؟')) { b.disabled = false; b.textContent = 'حفظ ونشر'; return; }
     // بيتحفظ كنص واحد: Firestore مش بيقبل جداول جوه جداول (زي أرقام التراخيص)
     await F.setDoc(F.doc(db, 'site', 'content'), { json, at: F.serverTimestamp(), by: me.uid, v: 2 });
-    saved = json; try { localStorage.setItem('sh.site', json); } catch (e) { } dirty(); toast('اتنشر على الموقع ✓');
+    saved = json; try { localStorage.setItem('sh.site', json); DECO.save(D); } catch (e) { } dirty(); toast('اتنشر على الموقع ✓');
   } catch (e) { toast(F.authMsg(e), 1); }
   b.disabled = false; b.textContent = 'حفظ ونشر';
 }
@@ -236,11 +249,12 @@ function rerender() {
   if (cur === 'dash') return viewDash(mp);
   if (cur === 'team') return viewTeam(mp);
   if (cur === 'json') return viewJson(mp);
-  const ctx = { F, db, D: () => D, setD: v => { D = v; }, dirty, rerender, toast, esc, me: () => me, isOwner: () => isOwner, upload, mediaURL, bindEditor, field, EN, DEFAULT, clone, deepMerge };
+  const ctx = { F, db, save, brandOK: () => { brandOK = true; }, D: () => D, setD: v => { D = v; }, dirty, rerender, toast, esc, me: () => me, isOwner: () => isOwner, upload, mediaURL, bindEditor, field, EN, DEFAULT, clone, deepMerge };
   if (cur === 'owners') return V5.vOwners(mp, ctx);
   if (cur === 'pages' || cur === 'layout') return V5.vPages(mp, ctx);
   if (cur === 'occasion') return V5.vOccasion(mp, ctx);
   if (X.VIEWS[cur]) return X.VIEWS[cur](mp, ctx);
+  if (V15.VIEWS15[cur]) return V15.VIEWS15[cur](mp, ctx);
   const open = $$('details.item[open]', mp).map(d => [...d.parentElement.children].indexOf(d) + '|' + d.parentElement.dataset.arr);
   const y = scrollY;
   mp.innerHTML = `<h2>${esc(s.t)}</h2><p class="desc">${esc(s.d || '')}</p><div class="form-grid" id="ed">${s.keys.map(k => {

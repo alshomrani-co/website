@@ -44,8 +44,13 @@ export const DEFAULT = {
     chatLabel: 'تحدث معنا',
     en: 'Saad M. Al-Shamrani Engineering Consultancy',
     tagline: 'من المخطط إلى التسليم',
-    founded: 2016
+    founded: 2016,
+    sub: 'للاستشارات الهندسية',
+    logo: ''
   },
+  theme: { bg: 'plain', auto: false, op: null },
+  mourn: { on: false, text: '', until: '' },
+  botQA: [],
   contact: {
     img: 'assets/img/contact.webp',
     phone: '0570086833', phone2: '', whatsapp: '966570086833', email: 's3adalshomrani2022@gmail.com',
@@ -311,6 +316,10 @@ export function migrate(D, EN) {
     if (!Array.isArray(D.aboutHome.imgs) || !D.aboutHome.imgs.length) D.aboutHome.imgs = DEFAULT.aboutHome.imgs.slice();
     if (!D.office) D.office = structuredClone(DEFAULT.office);
     if (D.contact && !D.contact.img) D.contact.img = 'assets/img/contact.webp';
+  }
+  if ((D._mig || 0) < 13) {
+    D._mig = 13; D.brand = Object.assign({ sub: 'للاستشارات الهندسية', logo: '' }, D.brand || {});
+    if (!D.theme) D.theme = { bg: 'plain', auto: false, op: null }; if (!D.mourn) D.mourn = { on: false, text: '', until: '' }; if (!Array.isArray(D.botQA)) D.botQA = [];
   }
   return D;
 }

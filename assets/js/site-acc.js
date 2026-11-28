@@ -8,6 +8,15 @@ const EN = () => document.documentElement.lang === 'en';
 const T = (ar, en) => EN() ? en : ar;
 const st = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { return null; } };
 export const signedIn = () => !!st('sh.cust');
+export const custCode = uid => 'SH-' + String(uid || '').slice(0, 6).toUpperCase();
+// شاشة الكود بعد التسجيل: نسخ ← يرجع للرئيسية
+function showCode(uid) {
+  const el = $('#acc'); const code = custCode(uid); st('sh.custCode', code); st('sh.custLinked', '0');
+  if (!el) { location.hash = '#/'; return; }
+  el.innerHTML = `<div class="code-done"><div class="ic">🎉</div><h3>${T('اتسجل حسابك بنجاح', 'Your account is ready')}</h3><p>${T('كود العميل بتاعك:', 'Your customer code:')}</p><div class="code" dir="ltr">${code}</div><button type="button" class="btn btn-red" id="cpCode">📋 ${T('نسخ', 'Copy')}</button><p class="code-note">${T('إذا كان لديك مشاريع لدينا احتفظ بالكود وارسله الي المهندس او تواصل مع الدعم الفني من خلال الشات لربطك بالمشروع', 'If you have projects with us, keep this code and send it to your engineer, or contact support via chat to link you to your project.')}</p><a href="#/" class="btn btn-ghost sm">${T('الرئيسية', 'Home')}</a></div>`;
+  $('#cpCode').onclick = async () => { try { await navigator.clipboard.writeText(code); } catch (e) { const t = document.createElement('textarea'); t.value = code; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); } catch (x) { } t.remove(); }
+    toast(T('اتنسخ الكود ✓', 'Code copied ✓')); setTimeout(() => { location.hash = '#/'; }, 1200); };
+}
 const YEAR = 365 * 864e5;
 
 export const CATS = {
@@ -62,9 +71,13 @@ function paintAcc() {
 async function afterLogin(F, u, extra) {
   const ref = F.doc(F.db, 'customers', u.uid); let s = null; try { s = await F.getDoc(ref); } catch (e) { }
   const base = { email: u.email || '', name: (extra && extra.name) || u.displayName || '', upd: F.serverTimestamp() };
-  if (!s || !s.exists()) await F.setDoc(ref, { ...base, phone: (extra && extra.phone) || '', clientNo: null, at: F.serverTimestamp(), via: (extra && extra.via) || 'email' });
+  const isNew = !s || !s.exists();
+  if (isNew) await F.setDoc(ref, { ...base, phone: (extra && extra.phone) || '', clientNo: null, code: custCode(u.uid), at: F.serverTimestamp(), via: (extra && extra.via) || 'email' });
   else await F.updateDoc(ref, { upd: F.serverTimestamp(), ...(extra && extra.phone ? { phone: extra.phone } : {}), ...(base.name && !s.data().name ? { name: base.name } : {}) });
-  st('sh.cust', u.uid); st('sh.custName', base.name || ''); if (extra && extra.phone) st('sh.custPhone', extra.phone); gUser = null; location.hash = '#/my';
+  st('sh.cust', u.uid); st('sh.custName', base.name || ''); if (extra && extra.phone) st('sh.custPhone', extra.phone); gUser = null;
+  const linked = !isNew && s.data().clientNo != null; st('sh.custLinked', linked ? '1' : '0'); st('sh.custCode', custCode(u.uid));
+  if (isNew) return showCode(u.uid);
+  location.hash = linked ? '#/my' : '#/';
 }
 async function persist(F) { const rem = !$('#aRem') || $('#aRem').checked; st('sh.rem', rem ? '1' : '0'); try { await F.setPersistence(F.auth, rem ? F.indexedDBLocalPersistence : F.browserSessionPersistence); } catch (e) { } }
 async function google() {
@@ -132,18 +145,18 @@ export async function wireMy() {
     st('sh.cust', u.uid);
     const top = `<div class="my-top glass"><span class="my-av">${cu && cu.photo ? `<img src="${cu.photo}" alt="">` : esc(((cu && cu.name) || u.email || '؟').trim().slice(0, 1))}</span><div style="flex:1;min-width:0"><b>${esc((cu && cu.name) || u.displayName || u.email)}</b><small dir="ltr">${esc(u.email || '')}</small></div><button class="btn btn-ghost sm" onclick="window.SH_review&&SH_review()">⭐ ${T('قيّم تجربتك', 'Rate us')}</button><button class="btn btn-ghost sm" id="myEdit">✎ ${T('بياناتي', 'My details')}</button><button class="btn btn-ghost sm" id="myOut">${T('خروج', 'Sign out')}</button></div><div id="myProf"></div>`;
     if (!cu || cu.clientNo == null) {
-      const code = u.uid.slice(0, 6).toUpperCase();
-      box.innerHTML = top + `<div class="my-wait glass"><div class="ic">⏳</div><h3>${T('حسابك لسه مش مربوط بمشروع', 'Your account is not linked yet')}</h3><p>${T('المهندس المسؤول هيربط حسابك بملف مشروعك. لو عايز تسرّع، ابعتلنا رقم مشروعك أو اسم المالك مع الكود ده:', 'Our engineer will link your account to your project. To speed it up, send us your project number or owner name with this code:')}</p><div class="code">${code}</div><a class="btn btn-red" target="_blank" rel="noopener" href="https://wa.me/966570086833?text=${encodeURIComponent(T('السلام عليكم، سجلت حساب في الموقع وعايز أربطه بمشروعي. الكود: ', 'Hello, I created an account and want to link it to my project. Code: ') + code)}">${T('ابعت الكود واتساب', 'Send code on WhatsApp')}</a></div>`;
+      const code = custCode(u.uid); st('sh.custLinked', '0'); st('sh.custCode', code);
+      box.innerHTML = top + `<div class="my-wait glass"><div class="ic">⏳</div><h3>${T('حسابك لسه مش مربوط بمشروع', 'Your account is not linked yet')}</h3><p>${T('المهندس المسؤول هيربط حسابك بملف مشروعك. لو عايز تسرّع، ابعتلنا رقم مشروعك أو اسم المالك مع الكود ده:', 'Our engineer will link your account to your project. To speed it up, send us your project number or owner name with this code:')}</p><div class="code" dir="ltr">${code}</div><p class="code-note">${T('إذا كان لديك مشاريع لدينا احتفظ بالكود وارسله الي المهندس او تواصل مع الدعم الفني من خلال الشات لربطك بالمشروع', 'If you have projects with us, keep this code and send it to your engineer, or contact support via chat.')}</p><a class="btn btn-red" target="_blank" rel="noopener" href="https://wa.me/966570086833?text=${encodeURIComponent(T('السلام عليكم، سجلت حساب في الموقع وعايز أربطه بمشروعي. الكود: ', 'Hello, I created an account and want to link it to my project. Code: ') + code)}">${T('ابعت الكود واتساب', 'Send code on WhatsApp')}</a></div>`;
       $('#myOut').onclick = () => out(F); $('#myEdit').onclick = () => profile(F, u, cu); return;
     }
-    ctx = { F, u, cu, no: cu.clientNo };
+    ctx = { F, u, cu, no: cu.clientNo }; st('sh.custLinked', '1');
     box.innerHTML = top + `<div class="year-note">ⓘ ${T('البيانات متاحة هنا لمدة سنة واحدة فقط على الموقع والتطبيق، وتحتفظ الشركة بنسخة كاملة دائمة في أرشيفها.', 'Data is available here for one year only on the website and app; the company keeps a complete permanent copy in its archive.')}</div><div id="myBody"><p class="empty">${T('جارٍ التحميل…', 'Loading…')}</p></div>`;
     $('#myOut').onclick = () => out(F); $('#myEdit').onclick = () => profile(F, u, cu);
     loadMy();
   });
 }
 async function afterLoginQuiet(F, u) { await F.setDoc(F.doc(F.db, 'customers', u.uid), { email: u.email || '', name: u.displayName || '', phone: '', clientNo: null, at: F.serverTimestamp(), upd: F.serverTimestamp(), via: 'auto' }); }
-async function out(F) { await F.signOut(F.auth); st('sh.cust', null); location.hash = '#/account'; }
+async function out(F) { await F.signOut(F.auth); st('sh.cust', null); st('sh.custLinked', null); st('sh.custCode', null); location.hash = '#/account'; }
 let MY = { client: null, reports: [], files: [], comments: [] };
 async function loadMy() {
   const { F, no } = ctx; const since = Date.now() - YEAR;

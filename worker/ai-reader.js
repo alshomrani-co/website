@@ -5,6 +5,7 @@
 //   FIREBASE_PROJECT   (Text)    alshmorani-1a1a2
 //   ALLOWED_ORIGINS    (Text)    https://alshomrani-co.github.io
 //   MODEL              (Text)    اختياري — الافتراضي claude-sonnet-5-5
+//   ANTHROPIC_WORKSPACE (Text)   اختياري — لو المفتاح مش مربوط بـ Workspace
 //   DAILY_LIMIT        (Text)    اختياري — أقصى عدد قراءات لكل مستخدم في اليوم (الافتراضي 80)
 // اختياري: KV Namespace باسم RL لعدّ القراءات اليومية.
 
@@ -65,7 +66,7 @@ export default {
     let body; try { body = await req.json(); } catch (e) { return json({ error: 'bad json' }, 400, H); }
     const imgs = (body.images || []).slice(0, 4).map(d => { const m = /^data:(image\/(?:jpeg|png|webp|gif));base64,(.+)$/.exec(d || ''); return m && { type: 'image', source: { type: 'base64', media_type: m[1], data: m[2] } }; }).filter(Boolean);
     if (!imgs.length) return json({ error: 'مفيش صور' }, 400, H);
-    const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+    const r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: Object.assign({ 'x-api-key': env.ANTHROPIC_API_KEY, Authorization: 'Bearer ' + env.ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' }, env.ANTHROPIC_WORKSPACE ? { 'anthropic-workspace-id': env.ANTHROPIC_WORKSPACE } : {}),
       body: JSON.stringify({ model: env.MODEL || 'claude-sonnet-5-5', max_tokens: 2000, messages: [{ role: 'user', content: [...imgs, { type: 'text', text: PROMPT + (body.hint ? '\nملاحظة: ' + String(body.hint).slice(0, 200) : '') }] }] }) });
     if (!r.ok) return json({ error: 'AI ' + r.status, detail: (await r.text()).slice(0, 300) }, 502, H);
     const out = await r.json(), txt = (out.content || []).map(c => c.text || '').join(''), m = txt.match(/\{[\s\S]*\}/);

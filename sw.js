@@ -1,5 +1,5 @@
 // كاش خفيف للموقع: الشبكة أولاً (التحديثات توصل فوراً) والكاش وقت انقطاع النت
-const CACHE = 'shamrani-site-v14';
+const CACHE = 'shamrani-site-v15';
 const SHELL = ['./', './index.html', './assets/css/site.css?v=3', './assets/js/site.js?v=3', './assets/js/data.js', './assets/js/data-en.js', './assets/js/i18n.js', './assets/js/bot.js', './config.js', './manifest.json', './assets/img/mark.png', './assets/img/icon-192.png', './assets/video/hero-poster.jpg'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).catch(() => {}).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(k => Promise.all(k.filter(x => x.startsWith('shamrani-site-') && x !== CACHE).map(x => caches.delete(x)))).then(() => self.clients.claim())); });
@@ -13,4 +13,20 @@ self.addEventListener('fetch', e => {
     if (res && res.ok) { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); }
     return res;
   }).catch(() => caches.match(req, { ignoreSearch: true }).then(hit => hit || (req.mode === 'navigate' ? caches.match('./index.html') : undefined))));
+});
+
+// إشعارات وهو مقفول (FCM من سكربت جوجل) — بنعرض الإشعار بنفسنا من غير مكتبة
+self.addEventListener('push', e => {
+  let j = {}; try { j = e.data ? e.data.json() : {}; } catch (x) { j = { notification: { body: e.data && e.data.text() } }; }
+  const n = j.notification || {}, d = j.data || {};
+  const title = n.title || d.title || 'الشمراني', body = n.body || d.body || '';
+  const url = d.url || (n.click_action) || './';
+  e.waitUntil(Promise.all([
+    self.registration.showNotification(title, { body, icon: 'assets/img/icon-192.png', badge: 'assets/img/icon-192.png', dir: 'rtl', lang: 'ar', tag: d.tag || undefined, renotify: !!d.tag, data: { url } }),
+    (self.navigator && navigator.setAppBadge) ? navigator.setAppBadge(+(d.badge || 1)).catch(() => {}) : null
+  ]));
+});
+self.addEventListener('notificationclick', e => {
+  e.notification.close(); const url = new URL((e.notification.data && e.notification.data.url) || './', self.registration.scope).href;
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(L => { const w = L.find(c => c.url.split('#')[0] === url.split('#')[0]); if (w) { w.focus(); return w.navigate ? w.navigate(url) : null; } return self.clients.openWindow(url); }));
 });

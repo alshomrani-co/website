@@ -1,10 +1,12 @@
 // قسم المعماري: ملف المشروع ← 10 مستندات منفصلة، كل واحد بشكل ورقته الأصلية ← مراجعة إجبارية ← PDF
 import './click.js';
 import * as F from './fb.js';
-import { readDoc, fileToImages, fileURL, shrink, isPdf, aiRead, aiReady, fromAI, nk, num } from './docread.js';
+import { readDoc, fileToImages, fileURL, shrink, isPdf, aiRead, aiReady, fromAI, nk, num, ownerKind } from './docread.js';
 import { hijri, greg } from './geo.js';
 import { initAI, aiBox, wireAiBox, pdfBar, autoPrint } from './deptcommon.js';
 import * as D from './archdocs.js';
+import * as DECO from './deco.js';
+try { DECO.applyLite(); } catch (e) { }
 const { auth, db } = F, { DOCS, NEEDS, LABELS, DIRS, TXT } = D;
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -20,11 +22,11 @@ const DEF_S = {
   mgr: 'م/ سعد مفرح الشمراني', mgrFull: 'سعد مفرح مبارك الشمراني', mgrTitle: 'المدير العام', mgrSig: '', stamp: '', amanahLogo: '',
   amanah: ['أمــــانة منطــــقة الريــــاض', 'الوكــالة المساعـدة للتعمـير', 'الإدارة العامة لرقابة المباني'],
   pledge: TXT.owner, officeTxt: TXT.office, declOwner: TXT.declOwner, declOffice: TXT.declOffice, insurance: TXT.insurance, waste: TXT.waste, fence: TXT.fence, letter: TXT.letter, philo: TXT.philo, techNotes: [],
-  projTypes: ['سكني', 'سكني تجاري', 'تجاري', 'عمارة سكنية', 'فيلا سكنية', 'دبلكس'], reqs: ['تعديل مكونات الرخصة', 'تجديد الرخصة', 'إصدار رخصة', 'إضافة أدوار', 'ترميم']
+  excDepth: 1.5, dmap: {}, projTypes: ['سكني', 'سكني تجاري', 'تجاري', 'عمارة سكنية', 'فيلا سكنية', 'دبلكس'], reqs: ['تعديل مكونات الرخصة', 'تجديد الرخصة', 'إصدار رخصة', 'إضافة أدوار', 'ترميم']
 };
-async function loadS() { try { const s = await F.getDoc(F.doc(db, 'archSettings', 'main')); S = Object.assign(structuredClone(DEF_S), s.exists() ? s.data() : {}); S.office = Object.assign({}, DEF_S.office, S.office || {}); } catch (e) { S = structuredClone(DEF_S); } return S; }
+async function loadS() { try { const s = await F.getDoc(F.doc(db, 'archSettings', 'main')); S = Object.assign(structuredClone(DEF_S), s.exists() ? s.data() : {}); S.office = Object.assign({}, DEF_S.office, S.office || {}); } catch (e) { S = structuredClone(DEF_S); } const B = DECO.cached().brand || {}; if (B.name) S.office.name = B.name; return S; }
 
-const top = () => `<header class="top"><div class="top-in"><a class="brand" href="portal.html"><img src="assets/img/mark.png" alt="">قسم المعماري</a><div class="who"><span class="av">${esc(((isOwner ? 'المالك' : (emp && emp.name)) || '').slice(0, 1))}</span><button class="btn btn-ghost sm" id="lo">خروج</button></div></div></header>`;
+const top = () => `<header class="top"><div class="top-in"><a class="brand" href="portal.html"><img src="assets/img/mark.png" data-brand="logo" alt="">قسم المعماري</a><div class="who"><span class="av">${esc(((isOwner ? 'المالك' : (emp && emp.name)) || '').slice(0, 1))}</span><button class="btn btn-ghost sm" id="lo">خروج</button></div></div></header>`;
 const back = (href, label = 'رجوع') => `<a class="glass-back" href="${href}">→ ${label}</a>`;
 function frame(html) { root.innerHTML = top() + `<main class="shell sv">${html}</main>`; $('#lo').onclick = () => F.signOut(auth); }
 
@@ -36,9 +38,30 @@ async function getImg(id) { if (!id) return ''; if (imgCache[id]) return imgCach
 const I = async id => id ? `<img src="${await getImg(id)}" alt="">` : '';
 function busy(on, t = 'جارٍ التجهيز…') { let b = $('#busy'); if (on) { if (!b) { b = document.createElement('div'); b.id = 'busy'; b.className = 'pdf-busy'; document.body.appendChild(b); } b.innerHTML = `<div><span class="spinner"></span><b>${t}</b></div>`; } else if (b) b.remove(); }
 
+/* ---------- التعبئة التلقائية: صك واحد (+ الرخصة) بيملى الـ 9 مستندات ---------- */
+let SVMAP = null;
+async function sectorMap() { if (SVMAP) return SVMAP; SVMAP = Object.assign({}, S.dmap || {}); try { const s = await F.getDoc(F.doc(db, 'svSettings', 'main')); if (s.exists()) SVMAP = Object.assign({}, s.data().dmap || {}, SVMAP); } catch (e) { } return SVMAP; }
+async function autoFill() {
+  const set = (k, v, sure) => { if (v == null || v === '' || (P[k] && P.st[k] !== 'auto' && P.st[k] !== 'calc')) return; if (P[k] === v) return; P[k] = v; P.st[k] = sure ? 'auto' : 'check'; };
+  // القطاع من جدول الأحياء
+  if (P.district) { const m = await sectorMap(), d = nk(P.district).replace(/^حي /, ''); const hit = Object.entries(m).find(([k]) => nk(k).replace(/^حي /, '') === d); if (hit) set('sector', hit[1], true); }
+  // سنة الطلب = السنة الهجرية الحالية
+  if (!P.reqYear || P.st.reqYear === 'auto' || P.reqYear === '1447' && hijri().split('/')[0] !== '1447') { P.reqYear = hijri().split('/')[0] || P.reqYear; P.st.reqYear = 'auto'; }
+  // نوع الخطاب والمطلوب من نوع الرخصة
+  const lt = nk(P.licType || ''); if (lt) { if (/تجديد/.test(lt)) { set('letterType', 'تجديد', true); set('req', 'تجديد الرخصة', true); } else if (/تعديل/.test(lt)) { set('letterType', 'تعديل', true); set('req', 'تعديل مكونات الرخصة', true); } else if (/اصدار/.test(lt)) set('req', 'إصدار رخصة', true); else if (/ترميم/.test(lt)) set('req', 'ترميم', true); }
+  // نوع المبنى من استعمال الأرض
+  const lu = nk(P.landUse || ''); if (lu) set('projType', /سكني/.test(lu) && /تجاري/.test(lu) ? 'سكني تجاري' : /تجاري/.test(lu) ? 'تجاري' : /سكني/.test(lu) ? 'سكني' : '', true);
+  // كمية المخلفات = المساحة × عمق الحفر (من غرفة التحكم) — صفرا للمراجعة
+  const a = num(P.deedArea), dep = +S.excDepth || 1.5; if (isFinite(a) && a > 0 && (!P.wasteQty || P.st.wasteQty === 'calc')) { P.wasteQty = String(Math.round(a * dep)); P.st.wasteQty = 'calc'; }
+  // فرد ولا منشأة
+  P.ownerKind = ownerKind(P.owner, P.ownerId) || P.ownerKind || 'ind';
+}
+// جاهزية كل مستند: ✓ جاهز أو «ناقص N»
+const missing = k => (NEEDS[k] || []).filter(f => !String(P[f] ?? '').trim());
+
 /* ---------- المشروع ---------- */
 let P = null;
-const blankP = () => ({ owner: '', ownerId: '', nationality: 'سعودي', ownerPhone: '', plot: '', plan: '', district: '', city: 'الرياض', sector: '', streetWidth: '', licNo: '', licType: '', licDate: '', deedNo: '', deedDate: '', deedArea: '', projType: 'سكني', req: 'تعديل مكونات الرخصة', transNo: '', buildCoef: '', designGuide: '', wasteQty: '', buildingDesc: '', serviceNo: '', reqYear: '1447', letterType: 'تعديل', letterReq: '', st: {}, compsOld: [], compsNew: [], bounds: { N: {}, S: {}, E: {}, W: {} }, plans: [], facade: '', site: [], siteNote: 'ارض فضاء', system: '', notes: [], fz: {}, fenceImg: '', tray: [], docs: {} });
+const blankP = () => ({ landUse: '', ownerKind: '', owner: '', ownerId: '', nationality: 'سعودي', ownerPhone: '', plot: '', plan: '', district: '', city: 'الرياض', sector: '', streetWidth: '', licNo: '', licType: '', licDate: '', deedNo: '', deedDate: '', deedArea: '', projType: 'سكني', req: 'تعديل مكونات الرخصة', transNo: '', buildCoef: '', designGuide: '', wasteQty: '', buildingDesc: '', serviceNo: '', reqYear: '1447', letterType: 'تعديل', letterReq: '', st: {}, compsOld: [], compsNew: [], bounds: { N: {}, S: {}, E: {}, W: {} }, plans: [], facade: '', site: [], siteNote: 'ارض فضاء', system: '', notes: [], fz: {}, fenceImg: '', tray: [], docs: {} });
 async function loadP(id) { const s = await F.getDoc(F.doc(db, 'archProjects', id)); if (!s.exists()) throw new Error('المشروع مش موجود'); P = Object.assign(blankP(), s.data(), { id }); P.bounds = Object.assign({ N: {}, S: {}, E: {}, W: {} }, P.bounds || {}); P.fz = P.fz || {}; return P; }
 async function saveP(quiet) {
   const { id, ...data } = P; data.upd = F.serverTimestamp();
@@ -57,10 +80,11 @@ async function vNew() { await loadS(); P = blankP(); busy(1, 'بنفتح مشر�
 const SLOTS = { before: 'مخطط قبل التعديل', after: 'مخطط بعد التعديل', facade: 'صورة الواجهة', site: 'صورة من الطبيعة', system: 'نظام البناء', fence: 'كروكي السور', aerial: 'صورة جوية (الواجهات)', skip: 'تجاهل' };
 async function vProject(id) {
   await loadS(); try { await loadP(id); } catch (e) { return toast(e.message || F.authMsg(e), 1); }
+  { const before = JSON.stringify(P); await autoFill(); if (JSON.stringify(P) !== before) saveP(true).catch(() => { }); }
   frame(`${back('#list', 'كل المشاريع')}<div class="ar-head"><div><h1 class="sv-h">${esc(P.owner || 'مشروع جديد')}</h1><p class="desc">${P.plot ? `قطعة ${esc(P.plot)} — مخطط ${esc(P.plan)} — ${esc(P.district)}` : 'ارفع الصك والرخصة عشان البيانات تتملى'}${P.licNo ? ` — رخصة <span dir="ltr">${esc(P.licNo)}</span>` : ''}</p></div><a class="btn btn-ghost sm" href="#e/${id}">✎ البيانات المشتركة</a></div>
   <section class="card sv-drop" id="drop"><div class="dz-ic">📥</div><b>ارفع كل الورق هنا مرة واحدة: الصك، الرخصة، المخططات، صور الواجهة والموقع</b><small>${aiReady() ? 'الـ AI بيعرف كل ورقة ويحطها في مكانها، وانت تقدر تغيّر.' : 'الـ PDF الإلكتروني بيتقرا لوحده. الصور اختار مكانها من القائمة (ولو وصّلت قارئ الـ AI هيختار لوحده).'}</small><input type="file" id="docIn" accept="application/pdf,image/*" multiple hidden><button class="btn btn-ink sm" id="pick">اختار ملفات</button><p id="dzMsg" class="hint"></p></section>
   <div id="tray"></div>
-  <h3 style="margin:18px 0 10px">المستندات</h3><div class="ar-docs">${DOCS.map(d => `<a class="ar-doc ${d.soon ? 'off' : ''}" ${d.soon ? '' : `href="#f/${id}/${d.k}"`}><span class="i">${d.ic}</span><b>${d.t}</b><small>${d.soon ? 'ابعت نسخة منها عشان تتعمل' : (P.docs && P.docs[d.k] ? 'اتطبع ' + esc(P.docs[d.k].at || '') : 'جاهز')}</small></a>`).join('')}</div>`);
+  <h3 style="margin:18px 0 10px">المستندات</h3><div class="ar-docs">${DOCS.map(d => `<a class="ar-doc ${d.soon ? 'off' : ''}" ${d.soon ? '' : `href="#f/${id}/${d.k}"`}><span class="i">${d.ic}</span><b>${d.t}</b><small>${d.soon ? 'ابعت نسخة منها عشان تتعمل' : (P.docs && P.docs[d.k] ? 'اتطبع ' + esc(P.docs[d.k].at || '') : '')}</small>${d.soon ? '' : (n => n.length ? `<em class="rd no" title="${esc(n.map(f => LABELS[f] || f).join('، '))}">ناقص ${n.length}</em>` : '<em class="rd ok">✓ جاهز</em>')(missing(d.k))}</a>`).join('')}</div>`);
   paintTray();
   const din = $('#docIn'); $('#pick').onclick = () => din.click(); din.onchange = () => takeAll([...din.files]);
   const dz = $('#drop'); ['dragover', 'dragenter'].forEach(t => dz.addEventListener(t, e => { e.preventDefault(); dz.classList.add('ov'); })); ['dragleave', 'drop'].forEach(t => dz.addEventListener(t, () => dz.classList.remove('ov'))); dz.addEventListener('drop', e => { e.preventDefault(); takeAll([...e.dataTransfer.files]); });
@@ -100,7 +124,7 @@ async function takeAll(files) {
       for (const im of imgs) { const id = await putImg(im); const it = { img: id, name: f.name, slot: kindToSlot(kind, stage) || (imgs.length > 1 ? 'after' : 'site'), title: title || '', ai: !!kind }; P.tray.push(it); place(it); }
     } catch (e) { toast(f.name + ': ' + ((e && e.message) || e), 1); }
   }
-  try { await saveP(true); } catch (e) { toast(F.authMsg(e), 1); }
+  await autoFill(); try { await saveP(true); } catch (e) { toast(F.authMsg(e), 1); }
   busy(0); await vProject(P.id); $('#dzMsg').textContent = `اتقرا ${n} خانة${P.tray.length ? ' — والصور اتحطت تحت، راجع مكان كل واحدة' : ''}. راجع البيانات الصفرا في «البيانات المشتركة».`;
 }
 function paintTray() {
@@ -227,10 +251,10 @@ async function vCtl(keep) {
   ${aiBox(isOwner)}
   ${ta('am', 'رأس نماذج الأمانة', s.amanah, 3)}${ta('pl', 'نص تعهد المالك', s.pledge, 10, 'فقرة في كل سطر')}${ta('ofT', 'نص تعهد المكتب الهندسي المشرف', s.officeTxt, 12, 'فقرة في كل سطر')}
   ${ta('dO', 'إقرار مالك العقار', s.declOwner, 4)}${ta('dF', 'إقرار المكتب المصمم', s.declOffice, 4)}${ta('ins', 'تعهد التأمين', s.insurance, 3)}${ta('ws', 'تعهد المخلفات ({qty} = الكمية)', s.waste, 3)}${ta('fn', 'تعهد السور', s.fence, 4)}${ta('lt', 'نص الخطاب ({office} و {req})', s.letter, 2)}${ta('ph', 'الفلسفة التصميمية الافتراضية', s.philo, 5)}${ta('tn', 'ملاحظات التقرير الفني الافتراضية', s.techNotes, 3)}
-  <section class="card"><h3>القوائم</h3><div class="row2"><div class="fld"><label>أنواع المشاريع</label><textarea id="pt" class="in" rows="5">${esc(s.projTypes.join('\n'))}</textarea></div><div class="fld"><label>المطلوب</label><textarea id="rq" class="in" rows="5">${esc(s.reqs.join('\n'))}</textarea></div></div><button class="btn btn-ghost sm" id="reset">رجّع كل النصوص الأصلية</button></section>
+  <section class="card"><h3>القوائم</h3><div class="row2"><div class="fld"><label>أنواع المشاريع</label><textarea id="pt" class="in" rows="5">${esc(s.projTypes.join('\n'))}</textarea></div><div class="fld"><label>المطلوب</label><textarea id="rq" class="in" rows="5">${esc(s.reqs.join('\n'))}</textarea></div></div><div class="fld" style="max-width:300px;margin-top:10px"><label>عمق الحفر لحساب كمية المخلفات (م)</label><input id="exD" type="number" step="0.1" dir="ltr" value="${esc(s.excDepth || 1.5)}"><small class="hint">الكمية = مساحة الأرض × العمق — بتطلع صفرا للمراجعة</small></div><button class="btn btn-ghost sm" id="reset">رجّع كل النصوص الأصلية</button></section>
   <div class="sv-act sticky"><button class="btn btn-red" id="sv">حفظ الإعدادات</button></div>`);
   const lines = id => $(id).value.split('\n').map(x => x.trim()).filter(Boolean);
-  const collect = () => { $$('[data-o]').forEach(e => s.office[e.dataset.o] = e.value); s.mgr = $('#mgr').value; s.mgrFull = $('#mgrFull').value; s.amanah = lines('#am'); s.pledge = lines('#pl'); s.officeTxt = lines('#ofT'); s.declOwner = $('#dO').value.trim(); s.declOffice = $('#dF').value.trim(); s.insurance = $('#ins').value.trim(); s.waste = $('#ws').value.trim(); s.fence = $('#fn').value.trim(); s.letter = $('#lt').value.trim(); s.philo = lines('#ph'); s.techNotes = lines('#tn'); s.projTypes = lines('#pt'); s.reqs = lines('#rq'); };
+  const collect = () => { $$('[data-o]').forEach(e => s.office[e.dataset.o] = e.value); s.mgr = $('#mgr').value; s.mgrFull = $('#mgrFull').value; s.amanah = lines('#am'); s.pledge = lines('#pl'); s.officeTxt = lines('#ofT'); s.declOwner = $('#dO').value.trim(); s.declOffice = $('#dF').value.trim(); s.insurance = $('#ins').value.trim(); s.waste = $('#ws').value.trim(); s.fence = $('#fn').value.trim(); s.letter = $('#lt').value.trim(); s.philo = lines('#ph'); s.techNotes = lines('#tn'); s.projTypes = lines('#pt'); s.reqs = lines('#rq'); s.excDepth = +$('#exD').value || 1.5; };
   $('#reset').onclick = async () => { if (!confirm('ترجّع كل النصوص للصياغة الأصلية؟')) return; Object.assign(s, { pledge: TXT.owner, officeTxt: TXT.office, declOwner: TXT.declOwner, declOffice: TXT.declOffice, insurance: TXT.insurance, waste: TXT.waste, fence: TXT.fence, letter: TXT.letter, philo: TXT.philo }); await vCtl(true); };
   $$('[data-up]').forEach(b => b.onclick = () => $(`[data-img="${b.dataset.up}"]`).click());
   $$('[data-img]').forEach(e => e.onchange = async () => { if (!e.files[0]) return; collect(); s[e.dataset.img] = await imgData(e.files[0]); const y = scrollY; await vCtl(true); scrollTo(0, y); });

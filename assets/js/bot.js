@@ -13,6 +13,10 @@ const SVC_KW = {
   pm: /اداره مشاريع|اداره المشروع|دراسه جدوي|مستخلص|عقود|تمثيل المالك|project manag|cost estim/,
   '3d': /3d|ثري دي|ثلاثي|ريندر|مجسم|تصور|render|visuali/
 };
+// تصحيح الأخطاء الإملائية: كلمة قريبة (فرق حرف أو اتنين) من كلمة مفتاحية بتتحسب
+const lev = (a, b) => { if (Math.abs(a.length - b.length) > 2) return 9; const d = Array.from({ length: a.length + 1 }, (_, i) => [i]); for (let j = 1; j <= b.length; j++) d[0][j] = j; for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); return d[a.length][b.length]; };
+const SVC_WORDS = { survey: ['مساحه', 'مساحي', 'كروكي', 'تجزئه', 'فرز', 'رفع', 'احداثيات', 'اقرار'], design: ['تصميم', 'تصاميم', 'مخطط', 'مخططات', 'معماري', 'انشائي', 'واجهه', 'واجهات'], permits: ['رخصه', 'رخص', 'ترخيص', 'بلدي', 'اشغال', 'ترميم'], supervision: ['اشراف', 'مشرف', 'خارطه'], safety: ['سلامه', 'حريق', 'دفاع'], mep: ['تكييف', 'كهربا', 'سباكه'], '3d': ['ريندر', 'ثلاثي', 'مجسم'] };
+function fuzzySvc(n) { const w = n.split(' ').filter(x => x.length >= 4); for (const id in SVC_WORDS) for (const k of SVC_WORDS[id]) for (const x of w) if (lev(x, k) <= (k.length >= 6 ? 2 : 1)) return id; return null; }
 const I = [
   { k: 'salam', re: /(^|\s)(السلام|سلام عليكم|سلام عليك|السلام عليكم|سلام)(\s|$)|assalam|salam/ },
   { k: 'hello', re: /^(مرحبا|مرحبتين|هلا|هلا والله|اهلا|اهلين|هاي|صباح|مساء|يا هلا|hi|hello|hey|good (morning|evening))/ },
@@ -32,6 +36,9 @@ const I = [
   { k: 'offer', re: /عرض|عروض|تخفيض|offer|discount|promo/ },
   { k: 'social', re: /انستا|تيك|سناب|يوتيوب|تويتر|اكس|سوشيال|instagram|tiktok|snap|youtube|twitter|social/ },
   { k: 'who', re: /مين انتم|من انتم|عن الشركه|نبذه|مين انت|من انت|who are you|about you|about the company/ },
+  { k: 'project', re: /مشروعي|متابعه مشروع|تقرير مشروعي|تقارير|كود|الكود|ربط|حسابي|my project|follow my|my reports|code/ },
+  { k: 'deed', re: /صك|صكوك|وثيقه|عقد|رقم القطعه|قطعه|مخطط رقم|deed|plot/ },
+  { k: 'lost', re: /مش فاهم|ما فهمت|مافهمت|مو فاهم|مفيش فايده|ما في فايده|غلط|مو هذا|مش ده|not helpful|wrong answer|you don.?t understand/ },
   { k: 'want', re: /ابغي|ابغا|ابي|اريد|احتاج|محتاج|عندي|ودي|need|want|looking for|i'd like/ }
 ];
 
@@ -43,7 +50,9 @@ export function makeBot(ctx) {
   const svcChips = () => ctx.V().services.map(v => chip(v.title, '#/service/' + v.id));
   const liveChip = () => chip(S('🧑‍💼 كلّم موظف هنا', '🧑‍💼 Chat with our team'), '#chat');
   const contactChips = q => [liveChip(), chip(S('📞 اتصال', '📞 Call'), ctx.tel(), 1), chip(S('💬 واتساب', '💬 WhatsApp'), ctx.wa(q), 1)];
-  function findSvc(q) { const n = norm(q); for (const id in SVC_KW) if (SVC_KW[id].test(n)) { const v = ctx.V().services.find(x => x.id === id); if (v) return v; } return null; }
+  function findSvc(q) { const n = norm(q); for (const id in SVC_KW) if (SVC_KW[id].test(n)) { const v = ctx.V().services.find(x => x.id === id); if (v) return v; } const f = fuzzySvc(n); return f ? ctx.V().services.find(x => x.id === f) || null : null; }
+  // أسئلة وأجوبة بتتضاف من لوحة التحكم (كلمات مفتاحية مفصولة بفاصلة)
+  function custom(q) { const n = norm(q), L = ctx.V().botQA || []; let best = null, sc = 0; L.forEach(x => { if (!x || !x.k || !x.a) return; const ks = String(x.k).split(/[،,]/).map(k => norm(k)).filter(Boolean); const s = ks.filter(k => n.includes(k) || n.split(' ').some(w => w.length >= 4 && lev(w, k) <= 1)).length; if (s > sc) { sc = s; best = x; } }); return sc ? best : null; }
   function faq(q) {
     const w = norm(q).split(' ').filter(x => x.length > 2); let best = null, sc = 0;
     ctx.V().faq.forEach(f => { const t = norm(f.q + ' ' + f.a), tq = norm(f.q); let s = 0; w.forEach(x => { if (t.includes(x)) s += tq.includes(x) ? 2 : 1; }); if (s > sc) { sc = s; best = f; } });
@@ -52,7 +61,11 @@ export function makeBot(ctx) {
   function answer(q) {
     const V = ctx.V(), n = norm(q), hit = k => I.find(x => x.k === k).re.test(n), C = V.contact;
     const svc = findSvc(q);
-    const out = (text, chips = []) => ({ text, chips });
+    const out = (text, chips = [], extra) => Object.assign({ text, chips }, extra || {});
+    const cq = custom(q); if (cq) return out(cq.a.replace(/\n/g, '<br>'), cq.link ? [chip(cq.btn || S('التفاصيل', 'Details'), cq.link, /^https?:/.test(cq.link) ? 1 : 0)] : []);
+    if (hit('lost')) return out(S('آسف إني ما فهمتك صح 🙏', 'Sorry I didn\'t get that right 🙏'), [], { human: 1 });
+    if (hit('project')) return out(S('تقدر تتابع مشروعك وتقاريره من «دخول» ← حسابك. لو حسابك لسه مش مربوط بمشروعك، ابعت الكود اللي ظهرلك وقت التسجيل للمهندس أو كلّمنا هنا ونربطك.', 'Follow your project from Login → your account. If it\'s not linked yet, send the code you got at sign-up to your engineer.'), [chip(S('دخول', 'Login'), '#/account')]);
+    if (hit('deed')) return out(S('ابعتلنا صورة الصك وموقع الأرض (لوكيشن) ونرد عليك بالمطلوب والتكلفة 👌 تقدر ترفع الصك من صفحة طلب الخدمة.', 'Send us the deed photo and land location 👌 You can upload it on the request page.'), [chip(S('اطلب خدمة وارفع الصك', 'Request & upload deed'), '#/request')].concat(contactChips(q).slice(2)));
     if (hit('salam')) return out(S('وعليكم السلام ورحمة الله وبركاته 🌷 حيّاك الله في شركة سعد الشمراني. وش اللي تحتاجه اليوم؟', 'Wa alaikum assalam 🌷 Welcome to Al-Shamrani Engineering. How can we help you today?'), svcChips().slice(0, 4).concat([chip(S('كل الخدمات', 'All services'), '#/services')]));
     if (hit('hello') && !svc) return out(S('هلا والله وغلا 👋 حيّاك الله! وش اللي تحتاجه؟ تصميم، رخصة، رفع مساحي، إشراف، أو سلامة؟', 'Hello and welcome 👋 What do you need? Design, permits, surveying, supervision or safety?'), svcChips().slice(0, 5));
     if (hit('howru')) return out(S('الحمد لله بخير، الله يسلّمك 🌷 كيف أقدر أخدمك؟', 'All good, thank you 🌷 How can I help you?'), svcChips().slice(0, 4));
@@ -77,7 +90,8 @@ export function makeBot(ctx) {
     if (svc) return out(`<b>${svc.title}</b><br>${svc.desc}`, [chip(S('تفاصيل الخدمة', 'Service details'), '#/service/' + svc.id), chip(S('اطلب الخدمة', 'Request it'), '#/request?s=' + svc.id)].concat(contactChips(q).slice(1)));
     const f = faq(q); if (f) return out(f.a, [chip(S('مركز الدعم', 'Support centre'), '#/support')]);
     if (hit('want')) return out(S('أبشر 👌 اختر الخدمة اللي تحتاجها:', 'Sure 👌 pick the service you need:'), svcChips());
-    return out(S(`ما فهمت طلبك تماماً 🙏 تقدر تكلّم فريقنا مباشرة على <b dir="ltr">${C.phone}</b> وبيخدمونك.`, `I didn\'t quite get that 🙏 You can call our team directly on <b dir="ltr">${C.phone}</b>.`), contactChips(q).concat([chip(S('افتح طلب', 'Open a request'), '#/request')]));
+    return out(S(`ما فهمت طلبك تماماً 🙏 تقدر تكلّم فريقنا مباشرة على <b dir="ltr">${C.phone}</b> وبيخدمونك.`, `I didn\'t quite get that 🙏 You can call our team directly on <b dir="ltr">${C.phone}</b>.`), contactChips(q).concat([chip(S('افتح طلب', 'Open a request'), '#/request')]), { miss: 1 });
   }
-  return { answer };
+  const answer2 = q => { const a = answer(q); const n = norm(q); if (I.find(x => x.k === 'human').re.test(n)) a.human = 1; return a; };
+  return { answer: answer2 };
 }

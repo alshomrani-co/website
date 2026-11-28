@@ -4,6 +4,8 @@ import * as F from './fb.js';
 import { xlsx } from './xlsx-lite.js';
 const { auth, db } = F;
 import * as SX from './sup-x.js';
+import * as DECO from './deco.js';
+try { DECO.applyLite(); } catch (e) { }
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -20,7 +22,7 @@ let me = null, emp = null, isOwner = false, clients = null, unsubs = [];
 const can = m => isOwner || (emp && emp.active !== false && Array.isArray(emp.mods) && emp.mods.includes(m));
 const seeAll = () => can('reports');
 
-const top = () => `<header class="top"><div class="top-in"><a class="brand" href="portal.html"><img src="assets/img/mark.png" alt="">الإشراف</a><div class="who"><span class="av">${esc(((isOwner ? 'المالك' : (emp && emp.name)) || '').slice(0, 1))}</span><button class="btn btn-ghost sm" id="lo">خروج</button></div></div></header>`;
+const top = () => `<header class="top"><div class="top-in"><a class="brand" href="portal.html"><img src="assets/img/mark.png" data-brand="logo" alt="">الإشراف</a><div class="who"><span class="av">${esc(((isOwner ? 'المالك' : (emp && emp.name)) || '').slice(0, 1))}</span><button class="btn btn-ghost sm" id="lo">خروج</button></div></div></header>`;
 const back = (href, label = 'رجوع') => `<a class="glass-back" href="${href}" data-back>→ ${label}</a>`;
 function frame(html) { root.innerHTML = top() + `<main class="shell sup">${html}</main>`; $('#lo').onclick = () => F.signOut(auth); }
 

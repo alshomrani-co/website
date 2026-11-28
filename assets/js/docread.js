@@ -91,6 +91,29 @@ export async function readDoc(file, toast = () => { }, hint) {
   if (AI.url) { try { toast('الـ AI بيقرا المستند…'); const r = fromAI(await aiRead(images, hint)); r.images = images; return r; } catch (e) { toast('الـ AI: ' + e.message + ' — هنجرّب OCR', 1); } }
   const t = await ocrImages(images, toast); const r = parse([], t, true); r.images = images; return r;
 }
+// نوع المالك: هوية تبدأ بـ 1 أو 2 = فرد («المالك») — اسم فيه شركة/مؤسسة/مكتب أو رقم يبدأ بـ 7 = منشأة («الشركة/المؤسسة»)
+export function ownerKind(name, id) {
+  const n = nk(name || ''), d = toEn(String(id || '')).replace(/\D/g, '');
+  if (/(^|\s)(شركه|مؤسسه|موسسه|مكتب|مصنع|جمعيه|هيئه)(\s|$)/.test(n) || /^7/.test(d)) return 'co';
+  if (/^[12]/.test(d)) return 'ind'; return n ? 'ind' : '';
+}
+export const ownerLabel = k => k === 'co' ? 'الشركة/المؤسسة' : 'المالك';
+// جدول الملاك في صك السجل العقاري (ممكن أكتر من مالك بنسبهم)
+function deedOwners(items) {
+  const oh = items.find(i => eq(i.s, 'نسبه التملك')); if (!oh) return [];
+  const H = (L) => items.find(i => i.p === oh.p && Math.abs(i.y - oh.y) < 3 && eq(i.s, L));
+  const nh = H('مالك العقار'), na = H('الجنسيه'), idh = H('رقم الهويه'), ty = H('نوع الهويه');
+  const below = items.filter(i => i.p === oh.p && i.y < oh.y - 3 && oh.y - i.y < 260).sort((a, b) => b.y - a.y);
+  const rows = []; let last = oh.y;
+  for (const it of below) { if (last - it.y > 45) break; let r = rows.find(x => Math.abs(x.y - it.y) < 3); if (!r) { r = { y: it.y, it: [] }; rows.push(r); } r.it.push(it); last = it.y; }
+  const out = [];
+  rows.forEach(r => { const share = r.it.find(i => Math.abs(i.x - oh.x) < 40 && /^[\d.]+$/.test(i.s)); const id = r.it.find(i => /^\d{9,11}$/.test(i.s));
+    const cut = na ? (na.x + (nh ? nh.x : na.x + 120)) / 2 : oh.x + 60;
+    const name = r.it.filter(i => i.x > cut && !/^[\d.%()]+$/.test(i.s) && !HD.some(x => eq(i.s, x))).sort((a, b) => b.x - a.x).map(i => i.s).join(' ');
+    const nat = na ? r.it.filter(i => Math.abs(i.x - na.x) < 30 && !/^[\d.%]+$/.test(i.s)).map(i => i.s).join(' ') : '';
+    if (name || id) out.push({ name: N(name), id: id ? id.s : '', share: share ? String(+share.s) : '', nat: N(nat) }); });
+  return out.filter(o => o.name);
+}
 export function parse(items, text, ocr) {
   text = toEn(String(text || '').normalize('NFKC'));
   const v = {}, st = {}, put = (k, val, sure) => { val = N(val); if (!val || v[k]) return; v[k] = val; st[k] = sure && !ocr ? 'auto' : 'check'; };
@@ -99,6 +122,7 @@ export function parse(items, text, ocr) {
   const U = (k, L, md) => { const x = under(items, L, md); if (x) put(k, x, true); };
   U('plot', ['القطعة', 'رقم القطعة']); U('plan', ['المخطط', 'رقم المخطط']); U('district', ['الحي']); U('city', ['المدينة']); U('block', ['البلك']);
   const ar = under(items, ['المساحة', 'مساحة الأرض']); if (ar && isFinite(num(ar))) put('deedArea', String(num(ar)), true);
+  { const O = deedOwners(items); if (O.length) { v._owners = O; put('owner', O.map(o => o.name).join(' و '), true); if (O[0].id) put('ownerId', O[0].id, true); } }
   U('owner', ['مالك العقار', 'اسم المالك'], 90); U('ownerId', ['رقم الهوية'], 90); U('landUse', ['استعمالاتها']);
   const dn = (text.match(/رقم العقار\s*[:/]?\s*(\d{6,})/) || text.match(/(\d{6,})\s*\/?\s*\n?رقم العقار/) || text.match(/رقم الصك\s*[:/]?\s*(\d{6,})/) || [])[1]; if (dn) put('deedNo', dn, true);
   // الرخصة: مفيش عناوين في طبقة النص — بنقرأ بالأنماط وكله بيبقى «راجعها»
@@ -131,5 +155,6 @@ export function parse(items, text, ocr) {
   const sec = (text.match(/(قطاع\s+[^\n]{3,30}?مدينة\s+الرياض)/) || [])[1]; put('sector', sec, !!sec);
   if (!isLic) { const b = boundsText(text); Object.entries(b).forEach(([k, x]) => { v['dd_' + k] = x.desc; v['dl_' + k] = String(x.len); st['dd_' + k] = st['dl_' + k] = 'check'; }); }
   ['owner', 'district'].forEach(k => { if (v[k] && /\Sال\S/.test(v[k].replace(/(^|\s)(و|ب|ف|ك|ل)?ال/g, ' '))) st[k] = 'check'; });
+  v._kind = ownerKind(v.owner, v.ownerId);
   return { v, st, ocr, kind: isLic ? 'license' : isDeed ? 'deed' : 'doc', found: Object.keys(v).filter(k => !k.startsWith('_')).length };
 }
