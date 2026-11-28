@@ -346,7 +346,9 @@ service cloud.firestore {
       allow update: if (signedIn() && request.auth.uid == uid
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'phone', 'email', 'upd', 'city', 'idNo', 'photo'])
           && request.resource.data.get('photo', '').size() < 200000)
-        || hasMod('report') || hasMod('reports');
+        || hasMod('report') || hasMod('reports')
+        // v15: الدعم الفني بيربط حساب العميل بملفه من الشات
+        || (hasMod('support') && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['clientNo', 'clientName', 'linkedBy', 'linkedAt']));
       allow delete: if isOwner();
     }
     match /cfiles/{id} {
