@@ -55,6 +55,19 @@ function src(s) {
   if (s.startsWith('m:')) { const id = s.slice(2); if (MEDIA[id]) return MEDIA[id]; loadMedia(id); return 'data:image/gif;base64,R0lGODlhAQABAAAAACw='; }
   return s;
 }
+// v16: فيديو مرفوع من لوحة التحكم (v:<id>) — أجزاء في siteMedia، وبيتحفظ في كاش المتصفح بعد أول مرة
+const vidSrc = u => !u || /^v:/.test(u) ? '' : /^assets\//.test(u) ? u + '?v=16' : u;
+const vidTag = (u, poster) => `<video autoplay muted loop playsinline preload="auto" poster="${esc(poster)}"${/^v:/.test(u || '') ? ` data-v="${esc(u.slice(2))}"` : ''}>${vidSrc(u) ? `<source src="${esc(vidSrc(u))}" type="video/mp4">` : ''}</video>`;
+async function vidBlob(id) {
+  const key = 'https://vid.local/' + id; let c = null; try { c = await caches.open('sh-vid'); const hit = await c.match(key); if (hit) return URL.createObjectURL(await hit.blob()); } catch (e) { }
+  const F = await fb(); const m = await F.getDoc(F.doc(F.db, 'siteMedia', id)); if (!m.exists()) return '';
+  const { n, type } = m.data(); const parts = await Promise.all(Array.from({ length: n }, (_, i) => F.getDoc(F.doc(F.db, 'siteMedia', id + '_' + i)).then(d => d.data().data)));
+  const blob = new Blob(parts.map(b => Uint8Array.from(atob(b), ch => ch.charCodeAt(0))), { type: type || 'video/mp4' });
+  try { if (c) await c.put(key, new Response(blob, { headers: { 'content-type': blob.type } })); } catch (e) { }
+  return URL.createObjectURL(blob);
+}
+function hydrateVid() { $$('video[data-v]:not([data-ok])').forEach(async v => { v.dataset.ok = 1; try { const u = await vidBlob(v.dataset.v); if (u) { v.src = u; v.play().catch(() => { }); } } catch (e) { } }); }
+const heroPoster = h => (h.posterMobile && matchMedia('(max-width:700px) and (orientation:portrait)').matches) ? h.posterMobile : h.poster;
 const pending = new Set();
 async function loadMedia(id) {
   if (pending.has(id)) return; pending.add(id);
@@ -106,6 +119,10 @@ const ext = href => /^https?:|^mailto:|^tel:/.test(href) ? 'target="_blank" rel=
 function applyDesign() {
   const pgk = (location.hash.replace(/^#\/?/, '').split(/[/?]/)[0]) || 'home';
   const d0 = C.design || {}, d = { ...d0, ...((d0.pageStyle || {})[pgk] || {}) }, r = document.documentElement.style;
+  // v16: حجم الموقع للزوار من لوحة التحكم
+  { const ph = document.documentElement.classList.contains('is-phone'), md = document.documentElement.classList.contains('m-desk'), z = +((C.design || {})[ph ? 'scaleM' : 'scaleD'] || 100);
+    try { localStorage.setItem(ph ? 'sh.zoomM' : 'sh.zoomD', z); } catch (e) { }
+    if (!md) { document.documentElement.style.zoom = z !== 100 ? (z / 100).toFixed(2) : ''; document.documentElement.style.setProperty('--zf', z !== 100 ? (z / 100).toFixed(2) : 1); } }
   DECO.save(C); const mourn = DECO.apply(DECO.cached(), activeOcc(C.occasion)).mourn;
   const ok = mourn ? null : activeOcc(C.occasion), oc = ok && OCC[ok], red = (oc && oc.red) || d.red, gold = (oc && oc.gold) || d.gold;
   if (red) { r.setProperty('--red', red); r.setProperty('--red2', `color-mix(in srgb, ${red} 82%, #000)`); } else { r.removeProperty('--red'); r.removeProperty('--red2'); }
@@ -416,7 +433,7 @@ function homeV7() {
       </div></div></div></section>`; }
   };
   let order = (d.sections && d.sections.length ? d.sections.slice() : DEFAULT.design.sections.slice());
-  return `<section class="h7-hero" data-blk="hero">${h.video && vsrc ? `<video autoplay muted loop playsinline preload="auto" poster="${esc(src(h.poster))}"><source src="${esc(vsrc)}" type="video/mp4"></video>` : `<img class="poster" src="${esc(src(h.poster))}" alt="">`}<div class="shade"></div>
+  return `<section class="h7-hero" data-blk="hero">${h.video && vsrc ? vidTag(vsrc, src(heroPoster(h))) : `<img class="poster" src="${esc(src(heroPoster(h)))}" alt="">`}<div class="shade"></div>
     <div class="wrap h7-hero-c">${d.heroLogo !== false ? `<div class="h7-logo" data-hold>${d.logo ? `<span class="hl-cube custom">${img(d.logo, '')}</span>` : `<span class="hl-cube"><img class="g" src="assets/img/cube-gray.png" alt=""><img class="r" src="assets/img/cube-red.png" alt=""></span>`}<span class="h7-lt"><b>${esc(v.brand.short)}</b><small>${esc((!en && v.brand.sub) || t('company'))}</small></span></div>` : ''}<div class="h7-eyb"><i></i>${esc(h.eyebrow)}</div><h1 class="h7-h1">${esc(h.title)} <em>${esc(h.highlight)}</em></h1><p class="h7-lead">${esc(h.lead)}</p>
     <div class="h7-btns"><a class="h7-red" href="#/request">${esc(h.cta1)} ${ARW}</a><a class="h7-ghost" href="#/projects">${esc(h.cta2)}</a></div>
     ${ACC.signedIn() ? `<a class="my-follow" href="#/my">📂 ${en ? 'Tap here to follow your project' : 'اضغط هنا لمتابعة مشروعك'}</a>${store('sh.custLinked') !== '1' && store('sh.custCode') ? `<div class="code-ban"><span>${en ? 'Your customer code' : 'كود العميل'}: <b dir="ltr">${esc(store('sh.custCode'))}</b></span><small>${en ? 'Send it to your engineer or via chat to link your project' : 'ابعته للمهندس أو في الشات علشان نربطك بمشروعك'}</small><button type="button" class="cb-cp" data-code="${esc(store('sh.custCode'))}">📋 ${en ? 'Copy' : 'نسخ'}</button></div>` : ''}` : ''}
@@ -443,7 +460,7 @@ P[''] = () => {
   const order = (d.sections && d.sections.length ? d.sections.slice() : DEFAULT.design.sections.slice());
   if (!order.includes('stats') && !(d.hidden || []).includes('stats')) { const gi = order.indexOf('gallery'); order.splice(gi >= 0 ? gi + 1 : 0, 0, 'stats'); }
   const vsrc = (h.videoMobile && matchMedia('(max-width:700px) and (orientation:portrait)').matches) ? h.videoMobile : h.videoSrc;
-  return `<section class="hero" data-blk="hero">${h.video && vsrc ? `<video autoplay muted loop playsinline preload="auto" poster="${esc(src(h.poster))}"><source src="${esc(vsrc)}" type="video/mp4"></video>` : `<img class="poster" src="${esc(src(h.poster))}" alt="">`}
+  return `<section class="hero" data-blk="hero">${h.video && vsrc ? vidTag(vsrc, src(heroPoster(h))) : `<img class="poster" src="${esc(src(heroPoster(h)))}" alt="">`}
     <div class="hero-in"><div>
       ${d.heroLogo !== false ? `<div class="hero-logo">${d.logo ? `<span class="hl-cube custom">${img(d.logo, '')}</span>` : `<span class="hl-cube"><img class="g" src="assets/img/cube-gray.png" alt=""><img class="r" src="assets/img/cube-red.png" alt=""></span>`}<span class="hl-t"><b>${esc(v.brand.short)}</b><small>${t('company')}</small></span></div>` : ''}
       <span class="eyebrow">${esc(h.eyebrow)}</span><h1><span class="l"><span>${esc(h.title)}</span></span><span class="l"><span>${esc(h.highlight)}</span></span></h1><p class="lead">${esc(h.lead)}</p>
@@ -757,7 +774,7 @@ function render(soft) {
   applyDesign(); paintAcc(); wire(r); pageView();
 }
 function wire(r) {
-  wireX(); wireWork();
+  wireX(); wireWork(); hydrateVid();
   { const ab = $('#aboutH .ab-img'); if (ab) rotImgs(ab, 4500); }
   { const ab = $('#aboutH'); if (ab) { try { const io = new IntersectionObserver(e => { if (e[0].isIntersecting) { ab.classList.add('in'); io.disconnect(); } }, { threshold: .2 }); io.observe(ab); } catch (e) { ab.classList.add('in'); } } }
   $$('[data-inst]').forEach(b => b.onclick = () => { track('app:' + b.dataset.inst); doInstall(b.dataset.inst); });
@@ -965,7 +982,8 @@ function initBot() {
   mu.onclick = () => { storeSet('sh.mute', store('sh.mute') === '1' ? '0' : '1'); pm(); if (store('sh.mute') !== '1') snd('recv'); }; $('#bot header').insertBefore(mu, $('#botX'));
   if (chatId && !store('sh.chatPend')) setTimeout(listen, 2500);
   const sw = document.createElement('button'); sw.type = 'button'; sw.id = 'botSwitch'; sw.className = 'bot-switch'; sw.hidden = true; $('#botForm').after(sw);
-  sw.onclick = () => { if (chatMode) setAssist(); else startEngineer(); };
+  // v16: الزرار بيتبع الشاشة الظاهرة (فورم المهندس أو محادثته ← المساعد)، والمحادثة مع المهندس بتفضل محفوظة
+  sw.onclick = () => { if ($('#bot').classList.contains('live')) { storeSet('sh.liveDay', ''); setAssist(); } else startEngineer(); };
   $('.bot-av', $('#bot')).insertAdjacentHTML('beforeend', ROBOT('hd'));
   const mn = document.createElement('button'); mn.type = 'button'; mn.className = 'bot-min'; mn.id = 'botMin'; mn.setAttribute('aria-label', LANG === 'en' ? 'Minimize' : 'تصغير'); mn.title = LANG === 'en' ? 'Minimize' : 'تصغير'; mn.innerHTML = '<i></i>'; $('#bot header').insertBefore(mn, $('#botX'));
   mn.onclick = () => { $('#bot').hidden = true; botMini(true); };
@@ -1032,10 +1050,11 @@ const CUR_ICONS = {
 let CS = 'glow', curInit = false;
 function initGlow() {
   if (!matchMedia('(hover:hover) and (pointer:fine)').matches) return;
-  const d = C.design || {}; CS = d.cursorGlow === false ? 'none' : (d.cursor || 'glow'); const icon = d.cursorIcon || 'default';
+  const d = C.design || {}; CS = 'none'; const icon = 'default'; // v16: اتشال تأثير الماوس خالص بناءً على طلب صاحب الشركة
   let st = document.getElementById('cur-ic'); if (!st) { st = document.createElement('style'); st.id = 'cur-ic'; document.head.appendChild(st); }
   if (CUR_ICONS[icon]) { const [svg, x, y] = CUR_ICONS[icon]; const u = `url("data:image/svg+xml,${encodeURIComponent(svg)}") ${x} ${y}`; st.textContent = `html,body{cursor:${u},auto}a,button,summary,label,[data-lb],[data-prj],.st-item,.opt{cursor:${u},pointer}input,textarea{cursor:text}`; } else st.textContent = '';
   document.documentElement.dataset.cur = CS;
+  $$('.cursor-glow,.cursor-dot,.cursor-x').forEach(x => x.remove()); document.body.classList.remove('glow-on'); if (CS === 'none') return;
   if (curInit) { const ex = $('.cursor-x'); if (ex) ex.innerHTML = CS === 'cross' ? '<i class="h"></i><i class="v"></i><b></b>' : ''; return; }
   curInit = true;
   const g = document.createElement('div'); g.className = 'cursor-glow'; const dot = document.createElement('div'); dot.className = 'cursor-dot';

@@ -4,6 +4,7 @@ import * as F from './fb.js';
 import { micButton, voiceHTML, wireVoices } from './voice.js';
 import * as DECO from './deco.js';
 import * as PERM from './perms.js';
+import './uizoom.js';
 // تذكّرني + الخروج + الخلفية (نجدي افتراضي للبوابة)
 const logout = () => { try { localStorage.removeItem('sh.staff'); localStorage.setItem('sh.rem', '0'); } catch (e) { } return F.signOut(auth); };
 const decoNow = () => { const c = DECO.cached(); const t = Object.assign({}, c.theme || {}); if (!t.bg) t.bg = 'najdi'; DECO.apply({ ...c, theme: t }); };

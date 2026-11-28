@@ -42,7 +42,7 @@ function vDesignPage(mp, c) {
 }
 function vDesign(mp, c) {
   if (dsPg !== 'all') return vDesignPage(mp, c);
-  const D = c.D(); D.design = Object.assign({ logo: '', font: 'kufi', logoSize: 100, heroLogo: true, heroLogoSize: 100, fontScale: 100, red: '#E1262B', gold: '#C9A24B', glass: true, cursorGlow: true }, D.design || {});
+  const D = c.D(); D.design = Object.assign({ scaleD: 100, scaleM: 100, logo: '', font: 'kufi', logoSize: 100, heroLogo: true, heroLogoSize: 100, fontScale: 100, red: '#E1262B', gold: '#C9A24B', glass: true, cursorGlow: true }, D.design || {});
   const d = D.design; const rng = (k, l, a, b) => `<div class="fld"><label>${l}: <b id="rv-${k}">${d[k]}%</b></label><input type="range" min="${a}" max="${b}" step="5" value="${d[k]}" data-rng="${k}"></div>`;
   const sw = (k, l) => `<label class="switch"><input type="checkbox" data-sw="${k}" ${d[k] !== false ? 'checked' : ''}><span></span> ${l}</label>`;
   mp.innerHTML = `<h2>اللوجو والألوان والخطوط</h2><p class="desc">أي تغيير بيبان على طول في «👁 معاينة». اضغط «حفظ ونشر» علشان يوصل للناس.</p>${dsTabs(D)}
@@ -55,10 +55,9 @@ function vDesign(mp, c) {
     <p class="hint" style="color:var(--mut);font-size:12.5px">الأول = اللون الأساسي للأزرار والعناوين. التاني = اللون الدهبي للباقة المميزة والعروض.</p></section>
   <section class="card" style="display:grid;gap:14px"><h3 style="font-size:17px">الخط</h3><div class="fld"><label>نوع الخط</label><select id="fontSel">${Object.keys(FONTS).map(k => `<option value="${k}" ${d.font === k ? 'selected' : ''}>${FONTS[k]}</option>`).join('')}</select></div>
     ${rng('fontScale', 'حجم الكلام في الموقع', 85, 125)}</section>
-  <section class="card" style="display:grid;gap:14px"><h3 style="font-size:17px">تأثيرات</h3>${sw('glass', 'الكروت الزجاجية')}${sw('cursorGlow', 'تأثير الماوس على الكمبيوتر')}
-    <div class="fld"><label>شكل التأثير اللي ماشي مع الماوس</label><div class="cur-pick" id="curSt">${CUR_ST.map(([k, l, d2]) => `<button type="button" data-cur="${k}" class="${(d.cursor || 'glow') === k ? 'on' : ''}"><i class="cp cp-${k}"></i><b>${l}</b><small>${d2}</small></button>`).join('')}</div></div>
-    <div class="fld"><label>أيقونة الماوس نفسها</label><div class="cur-pick sm" id="curIc">${CUR_IC.map(([k, l, svg]) => `<button type="button" data-ic="${k}" class="${(d.cursorIcon || 'default') === k ? 'on' : ''}"><span class="ci">${svg}</span><b>${l}</b></button>`).join('')}</div></div>
-    <p class="hint" style="color:var(--mut);font-size:12.5px">جرّبها في «👁 معاينة» على الكمبيوتر. على الفون مفيش ماوس فمش بتظهر.</p></section></div>`;
+  <section class="card" style="display:grid;gap:14px"><h3 style="font-size:17px">حجم الموقع للزوار</h3>${sw('glass', 'الكروت الزجاجية')}
+    ${rng('scaleD', '🖥 حجم الموقع على الكمبيوتر', 70, 130)}${rng('scaleM', '📱 حجم الموقع على الفون', 80, 120)}
+    <p class="hint" style="color:var(--mut);font-size:12.5px">100% = الحجم الطبيعي. اسحب واضغط «👁 معاينة» تشوف الشكل قبل «حفظ ونشر».</p></section></div>`;
   c.bindEditor(mp);
   $$('[data-ds]', mp).forEach(b => b.onclick = () => { dsPg = b.dataset.ds; vDesign(mp, c); });
   $$('[data-rng]', mp).forEach(r => r.oninput = () => { d[r.dataset.rng] = +r.value; $('#rv-' + r.dataset.rng).textContent = r.value + '%'; c.dirty(); });
@@ -69,56 +68,79 @@ function vDesign(mp, c) {
   $$('[data-pre]', mp).forEach(b => b.onclick = () => { const [r, g] = b.dataset.pre.split('|'); d.red = r; d.gold = g; c.dirty(); c.rerender(); });
 }
 
-/* ---------- الفيديو (يترفع على GitHub مباشرة) ---------- */
-const GH_KEY = 'sh.gh';
-const gh = () => { try { return JSON.parse(localStorage.getItem(GH_KEY) || '{}'); } catch (e) { return {}; } };
-function b64(buf) { const u = new Uint8Array(buf); let s = ''; for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); }
-async function ghPut(path, file, msg, onp) {
-  const g = gh(); if (!g.token || !g.repo) throw new Error('حط مفتاح GitHub واسم الريبو الأول');
-  const api = `https://api.github.com/repos/${g.repo}/contents/${path}`, H = { Authorization: 'Bearer ' + g.token, Accept: 'application/vnd.github+json' };
-  let sha; try { const r = await fetch(api + '?ref=' + (g.branch || 'main'), { headers: H }); if (r.ok) sha = (await r.json()).sha; } catch (e) { }
-  onp && onp('جارٍ التجهيز…'); const content = b64(await file.arrayBuffer()); onp && onp('جارٍ الرفع على GitHub…');
-  const r = await fetch(api, { method: 'PUT', headers: H, body: JSON.stringify({ message: msg, content, branch: g.branch || 'main', ...(sha ? { sha } : {}) }) });
-  if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.message || ('GitHub ' + r.status)); }
+/* ---------- الفيديو ---------- */
+try { localStorage.removeItem('sh.gh'); } catch (e) { } // v16: مفتاح GitHub القديم بيتمسح من الجهاز
+// v16: الرفع من الكمبيوتر على طول (من غير GitHub) — الفيديو بيتقسم أجزاء في siteMedia، والصور بتتضغط
+const SPEC = {
+  videoSrc: { t: 'video', w: 1280, h: 720, maxMB: 3, dur: [6, 15], lbl: '1280×720 (عرضي 16:9)' },
+  videoMobile: { t: 'video', w: 720, h: 1280, maxMB: 2, dur: [6, 15], lbl: '720×1280 (طولي 9:16)' },
+  poster: { t: 'img', w: 1280, h: 720, maxKB: 300, lbl: '1280×720' },
+  posterMobile: { t: 'img', w: 720, h: 1280, maxKB: 200, lbl: '720×1280' }
+};
+const vMeta = f => new Promise((res, rej) => { const v = document.createElement('video'); v.preload = 'metadata'; v.muted = true; v.onloadedmetadata = () => res({ w: v.videoWidth, h: v.videoHeight, dur: v.duration, url: v.src }); v.onerror = () => rej(new Error('الفيديو مش مقروء — جرّب MP4 (H.264)')); v.src = URL.createObjectURL(f); });
+const iMeta = f => new Promise((res, rej) => { const im = new Image(); im.onload = () => res({ w: im.naturalWidth, h: im.naturalHeight, im }); im.onerror = () => rej(new Error('الصورة مش مقروءة')); im.src = URL.createObjectURL(f); });
+// تصغير الفيديو جوه المتصفح: 720p، من غير صوت، أقصى 15 ثانية (MP4 لو المتصفح بيدعم، زي كروم وإيدج)
+async function shrinkVideo(f, sp, onp) {
+  const mime = ['video/mp4;codecs=avc1.42E01E', 'video/mp4;codecs=avc1', 'video/mp4'].find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t));
+  if (!mime) throw new Error('المتصفح ده مش بيصغّر الفيديو — افتح لوحة التحكم من كروم أو إيدج، أو صغّره ببريمير (H.264، ' + sp.lbl + '، 2 ميجابت)');
+  const v = document.createElement('video'); v.muted = true; v.playsInline = true; v.src = URL.createObjectURL(f); await new Promise(r => v.onloadeddata = r);
+  const dur = Math.min(sp.dur[1], v.duration || sp.dur[1]), cv = document.createElement('canvas'); cv.width = sp.w; cv.height = sp.h; const g = cv.getContext('2d');
+  const sc = Math.max(sp.w / v.videoWidth, sp.h / v.videoHeight), dw = v.videoWidth * sc, dh = v.videoHeight * sc;
+  const st = cv.captureStream(30), rec = new MediaRecorder(st, { mimeType: mime, videoBitsPerSecond: Math.round(sp.maxMB * 8e6 * .85 / dur) }), ch = [];
+  rec.ondataavailable = e => e.data.size && ch.push(e.data);
+  const done = new Promise(r => rec.onstop = r); rec.start(500); v.currentTime = 0; await v.play();
+  await new Promise(r => { const tick = () => { g.drawImage(v, (sp.w - dw) / 2, (sp.h - dh) / 2, dw, dh); onp(`جارٍ التصغير… ${Math.min(100, Math.round(v.currentTime / dur * 100))}%`); if (v.currentTime >= dur || v.ended) return r(); requestAnimationFrame(tick); }; tick(); });
+  v.pause(); rec.stop(); await done; return new File([new Blob(ch, { type: 'video/mp4' })], 'hero.mp4', { type: 'video/mp4' });
 }
+const imgFit = (im, w, h, maxKB) => { const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const g = cv.getContext('2d'); const sc = Math.max(w / im.naturalWidth, h / im.naturalHeight); g.drawImage(im, (w - im.naturalWidth * sc) / 2, (h - im.naturalHeight * sc) / 2, im.naturalWidth * sc, im.naturalHeight * sc);
+  let q = .85, d = cv.toDataURL('image/jpeg', q); while (d.length * .75 > maxKB * 1024 && q > .4) { q -= .07; d = cv.toDataURL('image/jpeg', q); } return d; };
+const b64 = buf => { let s = '', u = new Uint8Array(buf); for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(s); };
+async function putVideo(c, file, meta, onp) {
+  const F = c.F, db = c.db, buf = await file.arrayBuffer(), CH = 700000, n = Math.ceil(buf.byteLength / CH);
+  const ref = F.doc(F.collection(db, 'siteMedia'));
+  for (let i = 0; i < n; i++) { onp(`جارٍ الرفع… ${Math.round(i / n * 100)}%`); await F.setDoc(F.doc(db, 'siteMedia', ref.id + '_' + i), { data: b64(buf.slice(i * CH, (i + 1) * CH)), at: F.serverTimestamp(), part: i }); }
+  await F.setDoc(ref, { data: '', kind: 'video', type: file.type || 'video/mp4', n, size: buf.byteLength, w: meta.w, h: meta.h, dur: Math.round(meta.dur * 10) / 10, at: F.serverTimestamp(), by: c.me().uid });
+  return 'v:' + ref.id;
+}
+async function dropVideo(c, val) { if (!/^v:/.test(val || '')) return; const F = c.F, id = val.slice(2); try { const m = await F.getDoc(F.doc(c.db, 'siteMedia', id)); const n = m.exists() ? m.data().n || 0 : 0; for (let i = 0; i < n; i++) await F.deleteDoc(F.doc(c.db, 'siteMedia', id + '_' + i)); await F.deleteDoc(F.doc(c.db, 'siteMedia', id)); } catch (e) { } }
 function vVideo(mp, c) {
-  const D = c.D(), h = D.hero; if (h.videoMobile === undefined) h.videoMobile = ''; const g = gh();
-  const slot = (k, label, path, accept, note) => `<section class="card" style="display:grid;gap:12px"><h3 style="font-size:17px">${label}</h3>
-    ${accept.startsWith('video') ? `<video src="${c.esc(h[k] || '')}" muted loop playsinline controls style="width:100%;max-height:260px;border-radius:14px;background:#000;${h[k] ? '' : 'display:none'}" id="pv-${k}"></video>` : ''}
-    ${c.field(k, h[k] || '', ['hero', k])}<p class="hint" style="color:var(--mut);font-size:12.5px">${note}</p>
-    <label class="btn btn-red sm" style="cursor:pointer;justify-self:start">⬆ رفع ملف جديد<input type="file" accept="${accept}" hidden data-up-gh="${k}" data-path="${path}"></label><p class="hint" id="st-${k}" style="font-weight:700"></p></section>`;
-  mp.innerHTML = `<h2>فيديو الواجهة</h2><p class="desc">ارفع الفيديو من هنا مباشرة. المقاس المناسب: 1920×1080، من 8 لـ 15 ثانية، أقل من 4 ميجا، ومن غير صوت.</p>
-  <section class="card" style="display:grid;gap:10px;margin-bottom:16px"><h3 style="font-size:17px">🔑 ربط GitHub (مرة واحدة على الجهاز ده)</h3>
-    <p style="color:var(--mut);font-size:13.5px;line-height:1.9">الفيديو أكبر من اللي قاعدة البيانات بتشيله، فبيترفع على ريبو الموقع نفسه.<br>
-    ١- افتح <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener" style="color:var(--red);font-weight:700">github.com/settings/personal-access-tokens/new</a><br>
-    ٢- Repository access ← Only select repositories ← اختار ريبو الموقع.<br>٣- Permissions ← Contents ← <b>Read and write</b> ← Generate token.<br>٤- انسخ المفتاح وحطه هنا. بيتحفظ على الجهاز ده بس، ومحدش غيرك يشوفه.</p>
-    <div class="row2"><input id="ghRepo" class="in" dir="ltr" placeholder="alshomrani-co/website" value="${c.esc(g.repo || 'alshomrani-co/website')}"><input id="ghBranch" class="in" dir="ltr" placeholder="main" value="${c.esc(g.branch || 'main')}"></div>
-    <input id="ghTok" class="in" dir="ltr" type="password" placeholder="github_pat_…" value="${c.esc(g.token || '')}"><div style="display:flex;gap:8px"><button class="btn btn-ink sm" id="ghSave">حفظ الربط</button><span class="hint" id="ghSt" style="align-self:center;font-weight:700"></span></div></section>
-  <div class="grid2">${slot('videoSrc', '🖥 فيديو الكمبيوتر (عرضي 16:9)', 'assets/video/hero.mp4', 'video/mp4', 'ده اللي بيظهر على الكمبيوتر، وعلى الفون لو مفيش فيديو طولي.')}${slot('videoMobile', '📱 فيديو الفون (طولي 9:16)', 'assets/video/hero-mobile.mp4', 'video/mp4', 'اختياري: 1080×1920. لو موجود بيظهر على الفون بدل العرضي.')}${slot('poster', '🖼 صورة الغلاف', 'assets/video/hero-poster.jpg', 'image/jpeg', 'بتظهر لحد ما الفيديو يحمّل. JPG أقل من 300KB.')}</div>
-  <label class="switch" style="margin-top:14px"><input type="checkbox" id="vOn" ${h.video ? 'checked' : ''}><span></span> تشغيل الفيديو في الواجهة (لو مقفول بتظهر صورة الغلاف بس)</label>`;
-  $$('.in', mp).forEach(i => i.style.cssText += ';padding:10px 12px;border-radius:12px;border:1.5px solid var(--line);width:100%');
-  c.bindEditor(mp);
+  const D = c.D(), h = D.hero; if (h.videoMobile === undefined) h.videoMobile = ''; if (h.posterMobile === undefined) h.posterMobile = '';
+  const ok = (b, t) => `<span class="${b ? 'ok' : 'no'}">${b ? '✓' : '✗'} ${t}</span>`;
+  const slot = (k, label, note) => { const sp = SPEC[k]; return `<section class="card up-slot" style="display:grid;gap:12px"><h3 style="font-size:17px">${label}</h3>
+    ${sp.t === 'video' ? `<video muted loop playsinline controls style="width:100%;max-height:280px;border-radius:14px;background:#000;display:none" id="pv-${k}"></video>` : `<img id="pv-${k}" alt="" style="width:100%;max-height:220px;object-fit:contain;border-radius:14px;background:#111;display:none">`}
+    <div class="spec"><b>المسموح:</b> ${sp.lbl}${sp.t === 'video' ? ` · ${sp.dur[0]}–${sp.dur[1]} ثانية · أقصى ${sp.maxMB} ميجا · MP4 من غير صوت` : ` · JPG أقصى ${sp.maxKB} كيلو`}</div>
+    <p class="hint" style="color:var(--mut);font-size:12.5px">${note}</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><label class="btn btn-red sm" style="cursor:pointer">⬆ اختار من الكمبيوتر<input type="file" accept="${sp.t === 'video' ? 'video/*' : 'image/*'}" hidden data-up="${k}"></label>${h[k] ? `<button type="button" class="btn btn-ghost sm" data-rm="${k}" style="color:var(--red)">إزالة</button>` : ''}</div>
+    <div class="chk" id="ck-${k}"></div><p class="hint" id="st-${k}" style="font-weight:700"></p></section>`; };
+  mp.innerHTML = `<h2>فيديو الواجهة</h2><p class="desc">اختار الفيديو أو الصورة من الكمبيوتر وبيترفعوا على طول. لو الملف أكبر من المسموح بيتظبط لوحده. بعدها اضغط «حفظ ونشر».</p>
+  <div class="grid2">${slot('videoSrc', '🖥 فيديو الكمبيوتر', 'ده اللي بيظهر على الكمبيوتر، وعلى الفون لو مفيش فيديو طولي.')}${slot('videoMobile', '📱 فيديو الفون (اختياري)', 'لو موجود بيظهر على الفون بدل العرضي.')}${slot('poster', '🖼 صورة الغلاف', 'بتظهر لحد ما الفيديو يحمّل.')}${slot('posterMobile', '🖼 غلاف الفون (اختياري)', 'لو مش موجود بيظهر غلاف الكمبيوتر.')}</div>
+  <label class="switch" style="margin-top:14px"><input type="checkbox" id="vOn" ${h.video ? 'checked' : ''}><span></span> تشغيل الفيديو في الواجهة (لو مقفول بتظهر صورة الغلاف بس)</label>
+  <p class="hint" style="margin-top:8px;color:var(--mut)">الفيديو بيتحفظ على جهاز الزائر بعد أول مرة، فالمرات اللي بعدها بيفتح على طول.</p>`;
   $('#vOn').onchange = e => { h.video = e.target.checked; c.dirty(); };
-  $('#ghSave').onclick = async () => {
-    const v = { repo: $('#ghRepo').value.trim().replace(/^https:\/\/github\.com\//, '').replace(/\/$/, ''), branch: $('#ghBranch').value.trim() || 'main', token: $('#ghTok').value.trim() };
-    try { localStorage.setItem(GH_KEY, JSON.stringify(v)); } catch (e) { }
-    $('#ghSt').textContent = 'جارٍ التأكد…';
-    try { const r = await fetch('https://api.github.com/repos/' + v.repo, { headers: { Authorization: 'Bearer ' + v.token } }); const j = await r.json(); $('#ghSt').textContent = r.ok && j.permissions && j.permissions.push ? '✓ متربط وجاهز للرفع' : '✗ المفتاح مش شغال أو مالوش صلاحية كتابة'; } catch (e) { $('#ghSt').textContent = '✗ تعذّر الاتصال'; }
-  };
-  $$('[data-up-gh]', mp).forEach(inp => inp.onchange = async () => {
-    const f = inp.files[0]; if (!f) return; const k = inp.dataset.upGh, st = $('#st-' + k);
-    if (f.size > 45e6) { st.textContent = '✗ الملف أكبر من 45 ميجا — اضغطه الأول'; return; }
-    if (k !== 'poster' && f.size > 6e6 && !confirm(`حجم الفيديو ${(f.size / 1e6).toFixed(1)} ميجا — كبير على الفون وهيبطّأ الموقع. ترفعه برضه؟`)) return;
+  // المعاينة الحالية
+  Object.keys(SPEC).forEach(async k => { const el = $('#pv-' + k), val = h[k]; if (!el || !val) return;
+    try { if (/^v:/.test(val)) { const F = c.F, id = val.slice(2), m = await F.getDoc(F.doc(c.db, 'siteMedia', id)); const { n, type } = m.data(); const parts = await Promise.all(Array.from({ length: n }, (_, i) => F.getDoc(F.doc(c.db, 'siteMedia', id + '_' + i)).then(d => d.data().data))); el.src = URL.createObjectURL(new Blob(parts.map(b => Uint8Array.from(atob(b), x => x.charCodeAt(0))), { type })); }
+      else el.src = /^m:/.test(val) ? await c.mediaURL(val) : val.split('?')[0]; el.style.display = ''; } catch (e) { } });
+  $$('[data-rm]', mp).forEach(b => b.onclick = async () => { const k = b.dataset.rm; if (!confirm('تشيل الملف ده؟')) return; await dropVideo(c, h[k]); h[k] = ''; c.dirty(); vVideo(mp, c); });
+  $$('[data-up]', mp).forEach(inp => inp.onchange = async () => {
+    let f = inp.files[0]; inp.value = ''; if (!f) return; const k = inp.dataset.up, sp = SPEC[k], st = $('#st-' + k), ck = $('#ck-' + k), pv = $('#pv-' + k); const onp = x => st.textContent = x;
     try {
-      await ghPut(inp.dataset.path, f, 'تحديث ' + inp.dataset.path + ' من لوحة التحكم', x => st.textContent = x);
-      h[k] = inp.dataset.path + '?v=' + Date.now(); if (k !== 'poster') h.video = true; c.dirty(); st.textContent = '✓ اترفع. اضغط «حفظ ونشر» — والموقع بيتحدث خلال دقيقة أو اتنين.'; c.toast('اترفع ✓');
-      const pv = $('#pv-' + k); if (pv) { pv.src = URL.createObjectURL(f); pv.style.display = ''; }
-      const i2 = $(`input[data-p='${JSON.stringify(['hero', k])}']`, mp); if (i2) i2.value = h[k];
-    } catch (e) { st.textContent = '✗ ' + e.message; }
-    inp.value = '';
+      if (sp.t === 'img') {
+        const m = await iMeta(f); ck.innerHTML = ok(m.w >= sp.w * .9 && m.h >= sp.h * .9, `المقاس ${m.w}×${m.h}`) + ok(f.size <= sp.maxKB * 1024, `الحجم ${Math.round(f.size / 1024)} كيلو`);
+        onp('جارٍ الضغط والرفع…'); const data = imgFit(m.im, sp.w, sp.h, sp.maxKB);
+        const r = await c.F.addDoc(c.F.collection(c.db, 'siteMedia'), { data, at: c.F.serverTimestamp(), by: c.me().uid, name: f.name.slice(0, 80) });
+        h[k] = 'm:' + r.id; pv.src = data; pv.style.display = ''; c.dirty(); onp(`✓ اترفعت (${Math.round(data.length * .75 / 1024)} كيلو) — اضغط «حفظ ونشر»`); return;
+      }
+      let m = await vMeta(f); const land = sp.w > sp.h, okRes = Math.min(m.w, m.h) >= 480 && (m.w > m.h) === land, okSize = f.size <= sp.maxMB * 1e6, okDur = m.dur <= sp.dur[1] + .5;
+      ck.innerHTML = ok(okRes, `المقاس ${m.w}×${m.h}${(m.w > m.h) !== land ? (land ? ' (لازم عرضي)' : ' (لازم طولي)') : ''}`) + ok(okDur, `المدة ${m.dur.toFixed(1)} ث`) + ok(okSize, `الحجم ${(f.size / 1e6).toFixed(1)} ميجا`);
+      if ((m.w > m.h) !== land && !confirm(land ? 'الفيديو ده طولي، والمكان ده للفيديو العرضي. هيتقص من النص. تكمل؟' : 'الفيديو ده عرضي، والمكان ده للفيديو الطولي. هيتقص من النص. تكمل؟')) return;
+      if (!okSize || !okDur || Math.max(m.w, m.h) > Math.max(sp.w, sp.h) * 1.6) { f = await shrinkVideo(f, sp, onp); m = await vMeta(f); ck.innerHTML += ok(f.size <= sp.maxMB * 1e6 * 1.1, `بعد التصغير ${(f.size / 1e6).toFixed(1)} ميجا · ${m.w}×${m.h}`); }
+      if (f.size > 8e6) throw new Error('الفيديو لسه كبير — قصّره أو صغّره الأول');
+      const old = h[k]; h[k] = await putVideo(c, f, m, onp); await dropVideo(c, old); h.video = true; c.dirty();
+      pv.src = URL.createObjectURL(f); pv.style.display = ''; pv.play().catch(() => { }); onp('✓ اترفع — اضغط «حفظ ونشر»'); c.toast('اترفع ✓');
+    } catch (e) { onp('✗ ' + (e.message || e)); }
   });
 }
-
 /* ---------- ترتيب الصفحة الرئيسية ---------- */
 function vLayout(mp, c) {
   const D = c.D(); const all = Object.keys(SEC_NAMES); let on = (D.design.sections || c.DEFAULT.design.sections).filter(k => SEC_NAMES[k]);
@@ -133,6 +155,7 @@ function vLayout(mp, c) {
   };
   paint();
 }
+
 
 /* ---------- الإنجليزي ---------- */
 function vEn(mp, c) {

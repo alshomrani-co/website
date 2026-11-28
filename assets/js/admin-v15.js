@@ -1,5 +1,5 @@
 // لوحة التحكم v15: الخلفيات والحداد · هوية الشركة (بتأكيد باسورد المالك) · أسئلة المساعد · مركز الأرشفة · الإشعارات
-import { BGS, bgCSS } from './deco.js';
+import { BGS, bgCSS, bgURL, bgKey } from './deco.js';
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 
@@ -20,25 +20,27 @@ export function reauth(c, title = 'تأكيد هوية المالك', note = '')
 }
 
 /* ---------- الخلفيات والحداد ---------- */
-const OCCN = { national: 'اليوم الوطني', founding: 'يوم التأسيس', flag: 'يوم العلم', ramadan: 'رمضان', fitr: 'عيد الفطر', adha: 'عيد الأضحى', hijri: 'رأس السنة' };
+const OCCN = { national: 'اليوم الوطني', founding: 'يوم التأسيس', flag: 'يوم العلم', ramadan: 'رمضان', fitr: 'عيد الفطر', hajj: 'الحج ويوم عرفة', adha: 'عيد الأضحى', hijri: 'رأس السنة الهجرية' };
 export function vLook(mp, c) {
-  const D = c.D(); D.theme = D.theme || { bg: 'plain', auto: false, op: null }; D.mourn = D.mourn || { on: false, text: '', until: '' };
-  const t = D.theme, m = D.mourn, dark = document.documentElement.dataset.theme === 'dark';
-  mp.innerHTML = `<h2>الخلفيات والحداد</h2><p class="desc">الخلفية بتتطبق على الموقع والبوابة. (مش بنستخدم الشعار الرسمي للدولة في أي خلفية.)</p>
-  <section class="card" style="display:grid;gap:14px"><h3 style="font-size:17px">الخلفية</h3>
-    <div class="bg-grid">${Object.entries(BGS).map(([k, b]) => `<button type="button" class="bg-opt ${t.bg === k || (!t.bg && k === 'plain') ? 'on' : ''}" data-bg="${k}"><span class="pv" style="${bgCSS(k, dark, 1) || ''}"></span><b>${b.ic} ${c.esc(b.ar)}</b></button>`).join('')}</div>
-    <label class="switch"><input type="checkbox" id="tAuto" ${t.auto ? 'checked' : ''}><span></span> تلقائي مع المناسبات (اليوم الوطني ← برج المملكة، التأسيس ← الدرعية، العيد ← السدو…)</label>
-    <div class="fld" style="max-width:320px"><label>قوة الخلفية: <b id="opV">${Math.round((t.op != null ? t.op : .07) * 100)}%</b></label><input type="range" id="tOp" min="2" max="20" value="${Math.round((t.op != null ? t.op : .07) * 100)}"></div>
-    <small class="hint">${Object.entries(OCCN).map(([k, l]) => l).join(' · ')}</small></section>
+  const D = c.D(); D.theme = D.theme || { bg: 'plain', auto: false }; D.mourn = D.mourn || { on: false, text: '', until: '' };
+  const t = D.theme, m = D.mourn; t.bg = bgKey(t.bg || 'plain'); if (t.str == null) t.str = 60;
+  const pv = () => { const b = $('#bgPv', mp); if (!b) return; b.setAttribute('style', bgCSS(t.bg, t.str) || ''); b.classList.toggle('none', !BGS[t.bg].img); $('#bgPvN', mp).textContent = BGS[t.bg].ar; };
+  mp.innerHTML = `<h2>الخلفيات والحداد</h2><p class="desc">الخلفية بتظهر ورا صفحات الموقع والبوابة. اختار صورة، وظبط قوتها، واضغط «حفظ ونشر».</p>
+  <div class="look-grid"><section class="card" style="display:grid;gap:14px">
+    <div class="bg-grid">${Object.entries(BGS).map(([k, b]) => `<button type="button" class="bg-opt ${t.bg === k ? 'on' : ''}" data-bg="${k}"><span class="pv">${b.img ? `<img src="${bgURL(k, 't')}" alt="" loading="lazy">` : ''}</span><b>${b.ic} ${c.esc(b.ar)}</b></button>`).join('')}</div>
+    <div class="fld"><label>قوة ظهور الصورة: <b id="stV">${t.str}%</b></label><input type="range" id="tStr" min="20" max="100" step="5" value="${t.str}"><small class="hint">قليل = الصفحة أهدى والكلام أوضح · كتير = الصورة أوضح</small></div>
+    <label class="switch"><input type="checkbox" id="tAuto" ${t.auto ? 'checked' : ''}><span></span> تلقائي مع المناسبات — الخلفية بتتغير لوحدها في: ${Object.values(OCCN).join('، ')}، وبترجع للي اخترته بعدها</label>
+  </section>
+  <section class="card look-pv"><h3 style="font-size:16px;margin-bottom:10px">معاينة</h3><div class="bg-pv" id="bgPv"><div class="bg-pv-in"><span class="nav"><i></i><i></i><i></i><i></i></span><b>شركة هندسية سعودية، من فرع واحد إلى شبكة فروع</b><small>تأسست عام 2016 لتكون إحدى الشركات الرائدة في الاستشارات الهندسية.</small><span class="cards"><i></i><i></i><i></i></span></div></div><p class="desc" style="margin-top:8px">المختار: <b id="bgPvN"></b></p></section></div>
   <section class="card" style="display:grid;gap:14px;margin-top:14px;border:1.5px solid ${m.on ? '#111' : 'var(--line)'}"><h3 style="font-size:17px">🖤 وضع الحداد</h3>
-    <p class="desc">الموقع والبوابة بيبقوا رمادي، شريطة سودا في الركن، شريط تعزية فوق، والزينة والأصوات بتقف.</p>
+    <p class="desc">الموقع والبوابة بيبقوا رمادي (بما فيهم الخلفية)، شريطة سودا في الركن، شريط تعزية فوق، والزينة والأصوات بتقف.</p>
     <label class="switch"><input type="checkbox" id="mOn" ${m.on ? 'checked' : ''}><span></span> تفعيل الحداد</label>
     <div class="fld"><label>نص التعزية (اختياري)</label><textarea id="mTx" rows="2" placeholder="إنا لله وإنا إليه راجعون — تتقدم شركة سعد الشمراني بخالص العزاء…">${c.esc(m.text || '')}</textarea></div>
-    <div class="fld" style="max-width:280px"><label>ينتهي تلقائياً في (اختياري)</label><input type="datetime-local" id="mUn" value="${c.esc(m.until || '')}"></div></section>
-  <p class="desc" style="margin-top:12px">اضغط «حفظ ونشر» تحت علشان يتطبق.</p>`;
-  $$('[data-bg]', mp).forEach(b => b.onclick = () => { t.bg = b.dataset.bg; c.dirty(); vLook(mp, c); });
+    <div class="fld" style="max-width:280px"><label>ينتهي تلقائياً في (اختياري)</label><input type="datetime-local" id="mUn" value="${c.esc(m.until || '')}"></div></section>`;
+  pv(); $('#bgPv', mp).classList.toggle('mourn-pv', !!m.on);
+  $$('[data-bg]', mp).forEach(b => b.onclick = () => { t.bg = b.dataset.bg; c.dirty(); $$('[data-bg]', mp).forEach(x => x.classList.toggle('on', x === b)); pv(); });
   $('#tAuto').onchange = e => { t.auto = e.target.checked; c.dirty(); };
-  $('#tOp').oninput = e => { t.op = +e.target.value / 100; $('#opV').textContent = e.target.value + '%'; c.dirty(); };
+  $('#tStr').oninput = e => { t.str = +e.target.value; $('#stV').textContent = t.str + '%'; c.dirty(); pv(); };
   $('#mOn').onchange = e => { m.on = e.target.checked; c.dirty(); vLook(mp, c); };
   $('#mTx').oninput = e => { m.text = e.target.value.slice(0, 300); c.dirty(); };
   $('#mUn').onchange = e => { m.until = e.target.value; c.dirty(); };
@@ -46,8 +48,29 @@ export function vLook(mp, c) {
 
 /* ---------- هوية الشركة ---------- */
 const smallLogo = file => new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => { const im = new Image(); im.onload = () => { const k = Math.min(1, 320 / Math.max(im.width, im.height)), cv = document.createElement('canvas'); cv.width = Math.round(im.width * k); cv.height = Math.round(im.height * k); cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height); res(cv.toDataURL('image/png')); }; im.onerror = rej; im.src = fr.result; }; fr.onerror = rej; fr.readAsDataURL(file); });
+// v16: ألوان الهوية من اللوجو — بنعدّ الألوان ونختار أقوى لون مشبّع (رئيسي)، ولون تاني مختلف، ولون داكن
+const hex = (r, g, b) => '#' + [r, g, b].map(x => Math.round(x).toString(16).padStart(2, '0')).join('');
+const rgbOf = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+const lum = h => { const [r, g, b] = rgbOf(h).map(v => { v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); }); return .2126 * r + .7152 * g + .0722 * b; };
+const contrast = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
+const darken = (h, f) => hex(...rgbOf(h).map(v => v * f));
+const hsl = (r, g, b) => { r /= 255; g /= 255; b /= 255; const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn; let hh = 0; if (d) { hh = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; hh *= 60; if (hh < 0) hh += 360; } return [hh, d ? d / (1 - Math.abs(2 * l - 1)) : 0, l]; };
+function logoColors(src) {
+  return new Promise(res => { const im = new Image(); im.onload = () => { const cv = document.createElement('canvas'), W = 96, H = Math.max(1, Math.round(96 * im.height / im.width)); cv.width = W; cv.height = H; const g = cv.getContext('2d'); g.drawImage(im, 0, 0, W, H);
+    const d = g.getImageData(0, 0, W, H).data, bins = {};
+    for (let i = 0; i < d.length; i += 4) { if (d[i + 3] < 140) continue; const k = [d[i], d[i + 1], d[i + 2]].map(v => v >> 4).join(','); const b = bins[k] || (bins[k] = { n: 0, r: 0, g: 0, b: 0 }); b.n++; b.r += d[i]; b.g += d[i + 1]; b.b += d[i + 2]; }
+    const L = Object.values(bins).map(b => { const r = b.r / b.n, g = b.g / b.n, bb = b.b / b.n, [h, s2, l] = hsl(r, g, bb); return { n: b.n, c: hex(r, g, bb), h, s: s2, l }; }).filter(x => x.l > .08 && x.l < .93);
+    const sat = L.filter(x => x.s > .35).sort((a, b) => b.n * b.s - a.n * a.s);
+    let main = sat[0] ? sat[0].c : (L.sort((a, b) => b.n - a.n)[0] || { c: '#E1262B' }).c;
+    const mid = L.filter(x => x.l > .18 && x.l < .8 && x.c !== main), hd = x => sat[0] ? Math.min(Math.abs(x.h - sat[0].h), 360 - Math.abs(x.h - sat[0].h)) : 180;
+    const second = (mid.filter(x => x.s > .3 && hd(x) > 35).sort((a, b) => b.n - a.n)[0] || mid.filter(x => x.s <= .3).sort((a, b) => b.n - a.n)[0] || { c: '#C9A24B' }).c;
+    const dark = (L.slice().sort((a, b) => a.l - b.l)[0] || { c: '#16171A' }).c;
+    let fixed = main, k = 1; while (contrast(fixed, '#ffffff') < 3.2 && k > .4) { k -= .06; fixed = darken(main, k); }
+    res({ red: fixed, gold: second, dark: contrast(dark, '#ffffff') > 7 ? dark : '#16171A', raw: main });
+  }; im.onerror = () => res(null); im.src = src; });
+}
 export function vIdentity(mp, c) {
-  const D = c.D(), B = D.brand; const draft = { short: B.short || '', sub: B.sub || 'للاستشارات الهندسية', en: B.en || '', name: B.name || '', logo: B.logo || '' };
+  const D = c.D(), B = D.brand; D.design = D.design || {}; const draft = { short: B.short || '', sub: B.sub || 'للاستشارات الهندسية', en: B.en || '', name: B.name || '', logo: B.logo || '' }; let pal = null, usePal = false; const DEFC = { red: '#E1262B', gold: '#C9A24B' };
   const paint = () => {
     mp.innerHTML = `<h2>هوية الشركة</h2><p class="desc">الاسم واللوجو بيتغيروا في كل حتة: الموقع، البوابة، البصمة، الإشراف، المساحة والمعماري (رأس التقارير)، والشات. الحفظ محتاج تأكيد باسورد المالك.</p>
     <div class="grid2"><section class="card" style="display:grid;gap:12px">
@@ -56,15 +79,22 @@ export function vIdentity(mp, c) {
       <div class="fld"><label>الاسم بالإنجليزي</label><input id="iE" dir="ltr" value="${c.esc(draft.en)}"></div>
       <div class="fld"><label>الاسم الرسمي الكامل (للتقارير والفوتر)</label><input id="iN" value="${c.esc(draft.name)}"></div>
       <div class="fld"><label>اللوجو (PNG شفاف أفضل)</label><div style="display:flex;gap:10px;align-items:center"><span style="width:64px;height:64px;border:1px solid var(--line);border-radius:14px;display:grid;place-items:center;background:#fff">${draft.logo ? `<img src="${draft.logo}" style="max-width:56px;max-height:56px">` : '<img src="assets/img/mark.png" style="max-width:44px;opacity:.6">'}</span><label class="btn btn-ghost sm" style="cursor:pointer">رفع لوجو<input type="file" id="iL" accept="image/*" hidden></label>${draft.logo ? '<button class="btn btn-ghost sm" id="iLx" style="color:var(--red)">رجّع الأصلي</button>' : ''}</div></div>
-      <button class="btn btn-red" id="iSave">🔒 تأكيد وحفظ الهوية</button></section>
+      ${pal ? `<div class="pal"><b>🎨 ألوان من اللوجو الجديد</b><div class="sw">${[['red', 'اللون الرئيسي (الزراير والعناوين)'], ['gold', 'اللون التاني (لمسات)']].map(([k, l]) => `<label><input type="color" data-pc="${k}" value="${pal[k]}"><span>${l}</span></label>`).join('')}</div>
+        <div class="pal-pv" style="--pr:${pal.red};--sc:${pal.gold}"><span class="b1">اطلب خدمة</span><span class="b2">تعرّف على خدماتنا</span><i></i></div>
+        <label class="switch"><input type="radio" name="pk" value="1" ${usePal ? 'checked' : ''}><span></span> طبّق ألوان اللوجو على الموقع والبوابة والأقسام</label>
+        <label class="switch"><input type="radio" name="pk" value="0" ${!usePal ? 'checked' : ''}><span></span> احتفظ بالألوان الحالية</label></div>` : ''}
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-red" id="iSave">🔒 تأكيد وحفظ الهوية</button><button class="btn btn-ghost" id="iRc" title="الأحمر والدهبي الأصليين">↺ رجّع الألوان الأصلية</button></div></section>
     <section class="card"><h3 style="font-size:16px;margin-bottom:10px">معاينة</h3><div class="id-pv"><img src="${draft.logo || 'assets/img/mark.png'}" alt=""><div><b>${c.esc(draft.short)}</b><small>${c.esc(draft.sub)}</small><i dir="ltr">${c.esc(draft.en)}</i></div></div>
       <p class="desc" style="margin-top:14px">⚠ أيقونة التطبيق على الشاشة الرئيسية وصورة المشاركة (واتساب/سوشيال) ثابتين في ملفات الموقع — بيتغيروا مع إصدار جديد. الورق الرسمي المطبوع (الخلفية الجاهزة في المعماري) صورة ثابتة برضه.</p></section></div>`;
     const rd = () => { draft.short = $('#iA').value.trim(); draft.sub = $('#iS').value.trim(); draft.en = $('#iE').value.trim(); draft.name = $('#iN').value.trim(); };
     ['iA', 'iS', 'iE', 'iN'].forEach(id => $('#' + id).oninput = rd);
-    $('#iL').onchange = async e => { const f = e.target.files[0]; if (!f) return; rd(); draft.logo = await smallLogo(f); paint(); };
+    $('#iL').onchange = async e => { const f = e.target.files[0]; if (!f) return; rd(); draft.logo = await smallLogo(f); pal = await logoColors(draft.logo); usePal = !!pal; paint(); };
+    $$('[data-pc]', mp).forEach(i => i.oninput = () => { pal[i.dataset.pc] = i.value; const pv = $('.pal-pv', mp); if (pv) { pv.style.setProperty('--pr', pal.red); pv.style.setProperty('--sc', pal.gold); } });
+    $$('input[name=pk]', mp).forEach(i => i.onchange = () => { usePal = i.value === '1'; });
+    $('#iRc').onclick = async () => { if (!confirm('ترجّع الأحمر والدهبي الأصليين للموقع كله؟')) return; if (!(await reauth(c, 'تأكيد تغيير ألوان الهوية'))) return; Object.assign(D.design, DEFC); c.brandOK(); c.dirty(); await c.save(); c.toast('رجعت الألوان الأصلية ✓'); };
     const lx = $('#iLx'); if (lx) lx.onclick = () => { rd(); draft.logo = ''; paint(); };
     $('#iSave').onclick = async () => { rd(); if (!draft.short) return c.toast('اكتب الاسم', 1); if (!(await reauth(c, 'تأكيد تغيير هوية الشركة', 'تغيير الاسم أو اللوجو بيظهر في كل التقارير والصفحات.'))) return;
-      Object.assign(B, draft); c.brandOK(); c.dirty(); await c.save(); paint(); };
+      Object.assign(B, draft); if (pal && usePal) { D.design.red = pal.red; D.design.gold = pal.gold; } c.brandOK(); c.dirty(); await c.save(); pal = null; paint(); };
   };
   paint();
 }

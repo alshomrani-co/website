@@ -6,6 +6,7 @@ import { hijri, greg } from './geo.js';
 import { initAI, aiBox, wireAiBox, pdfBar, autoPrint } from './deptcommon.js';
 import * as D from './archdocs.js';
 import * as DECO from './deco.js';
+import './uizoom.js';
 try { DECO.applyLite(); } catch (e) { }
 const { auth, db } = F, { DOCS, NEEDS, LABELS, DIRS, TXT } = D;
 const $ = (s, r = document) => r.querySelector(s);

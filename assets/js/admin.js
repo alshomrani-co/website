@@ -7,6 +7,7 @@ import { EN } from './data-en.js';
 import * as X from './admin-x.js';
 import * as V15 from './admin-v15.js';
 import * as DECO from './deco.js';
+import './uizoom.js';
 try { DECO.applyLite(); } catch (e) { }
 const { auth, db, MODULES } = F;
 const $ = (s, r = document) => r.querySelector(s);
@@ -216,12 +217,14 @@ async function paintImg(f) {
 
 /* ---------- layout ---------- */
 function shell() {
-  const links = SECTIONS.map(s => s.h ? `<h6>${s.h}</h6>` : (s.own && !isOwner ? '' : `<a href="${s.href || '#' + s.id}" data-s="${s.id}" ${s.href ? '' : ''}><span style="width:20px;text-align:center">${s.ic}</span>${esc(s.t)}${s.id === 'team' ? '<span class="bdg" id="reqB" hidden></span>' : ''}</a>`)).join('');
+  const links = `<div class="side-go"><a href="portal.html" class="go-out">🏠 البوابة</a><a href="index.html" class="go-out">🌐 الموقع</a></div>` + SECTIONS.map(s => s.h ? `<h6>${s.h}</h6>` : (s.own && !isOwner ? '' : `<a href="${s.href || '#' + s.id}" data-s="${s.id}" ${s.href ? '' : ''}><span style="width:20px;text-align:center">${s.ic}</span>${esc(s.t)}${s.id === 'team' ? '<span class="bdg" id="reqB" hidden></span>' : ''}</a>`)).join('');
   root.innerHTML = `<header class="top"><div class="top-in"><button class="burger2" id="bg" aria-label="القائمة">☰</button><a class="brand" href="portal.html"><img src="assets/img/mark.png" alt="">لوحة التحكم</a><div class="who"><a class="btn btn-ghost sm" href="index.html?preview=1" target="_blank" rel="noopener" title="معاينة مباشرة للتعديلات قبل النشر">👁 معاينة</a><a class="btn btn-ghost sm" href="portal.html">البوابة</a><button class="btn btn-ghost sm" id="lo">خروج</button></div></div></header>
   <div class="adm"><nav class="side" id="side">${links}</nav><main class="main-p"><div class="adm-back" id="admBack"></div><div id="mp"></div></main></div>
   <div class="savebar" id="savebar"><span>عندك تعديلات لسه متنشرتش</span><button class="btn btn-ghost sm" id="undoBtn" style="background:transparent;color:#fff;border-color:#555">تراجع عن الكل</button><button class="btn btn-red" id="saveBtn">حفظ ونشر</button></div>`;
   $('#lo').onclick = async () => { if (JSON.stringify(D) !== saved && !confirm('في تعديلات متنشرتش. تخرج؟')) return; await F.signOut(auth); location.href = 'portal.html'; };
   $('#bg').onclick = () => $('#side').classList.toggle('on');
+  // البوابة/الموقع من أي صفحة — ولو في تعديلات متنشرتش بيسأل الأول
+  document.addEventListener('click', e => { const a = e.target.closest('.go-out'); if (!a || JSON.stringify(D) === saved) return; e.preventDefault(); const to = a.getAttribute('href'); if (confirm('عندك تعديلات لسه ما اتنشرتش. تحفظ وتنشر قبل ما تمشي؟\n\n(إلغاء = تمشي من غير حفظ)')) save().then(() => { location.href = to; }); else location.href = to; });
   $('#saveBtn').onclick = save;
   $('#undoBtn').onclick = () => { if (!confirm('ترجع لآخر نسخة منشورة؟')) return; D = JSON.parse(saved); dirty(); rerender(); };
   addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); if (JSON.stringify(D) !== saved) save(); } });
@@ -233,7 +236,7 @@ function paintBack() {
   const tp = document.querySelector('header.top'); if (tp) el.style.top = tp.offsetHeight + 'px';
   const prev = hist.length > 1 ? hist[hist.length - 2] : (cur !== 'dash' ? 'dash' : null);
   const ps = prev && SECTIONS.find(x => x.id === prev);
-  el.innerHTML = prev ? `<a class="glass-back" href="#${prev}" id="admBk">→ رجوع <small>${esc(ps ? ps.t : 'نظرة عامة')}</small></a>` : `<a class="glass-back" href="portal.html">→ البوابة</a>`;
+  el.innerHTML = `<div class="back-row">${prev ? `<a class="glass-back" href="#${prev}" id="admBk">→ رجوع <small>${esc(ps ? ps.t : 'نظرة عامة')}</small></a>` : ''}<a class="glass-back go-out" href="portal.html">🏠 البوابة</a><a class="glass-back go-out" href="index.html">🌐 الموقع</a></div>`;
   const a = $('#admBk'); if (a) a.onclick = e => { e.preventDefault(); hist.pop(); const to = hist.pop() || 'dash'; location.hash = to === 'dash' && !location.hash.slice(1) ? '#dash' : to; if (location.hash.slice(1) === cur) go(); };
 }
 function go() {
@@ -268,23 +271,45 @@ function rerender() {
 }
 
 /* ---------- dashboard ---------- */
+// v16: نظرة عامة مليانة: أرقام، آخر الطلبات والمحادثات والتقارير، زوار آخر 7 أيام، وكروت لكل الإعدادات
+const SEC_DESC = { stats: 'الزوار والصفحات والمصادر', leads: 'اللي سابوا رقمهم', team: 'الحسابات والصلاحيات', owners: 'أصحاب الصلاحية الكاملة', tickets: 'طلبات العملاء والشات', botqa: 'ردود المساعد الآلي', archive: 'نقل القديم لجوجل درايف', push: 'إشعارات التطبيق', clients: 'ملفات العملاء والتقارير', design: 'اللوجو والألوان وحجم الموقع', video: 'فيديو وصورة الواجهة', pages: 'ترتيب وأحجام الأقسام', occ: 'زينة المناسبات', sound: 'صوت الضغط', look: 'خلفية الموقع ووضع الحداد', identity: 'الاسم واللوجو وألوان الهوية', hero: 'العنوان والأرقام', offers: 'العروض ونافذة العرض', brand: 'التليفون والعناوين', social: 'حسابات السوشيال', services: 'الخدمات وتفاصيلها', works: 'الأعمال والمعرض', packages: 'باقات الإشراف', about: 'نبذة الشركة', branches: 'الفروع', faq: 'الأسئلة الشائعة', cta: 'دعوة التواصل', en: 'النسخة الإنجليزية', seo: 'جوجل ومحركات البحث', json: 'نسخة احتياطية' };
 async function viewDash(mp) {
-  mp.innerHTML = `<h2>نظرة عامة</h2><p class="desc">من هنا تتحكم في كل حاجة على الموقع والتطبيق.</p><div class="stats4" id="st">${['طلبات دعم جديدة', 'كل الطلبات', 'الموظفين', 'طلبات تسجيل', 'التقارير'].map(t => `<div class="card"><b>…</b><span>${t}</span></div>`).join('')}</div>
-  <div class="grid2"><div class="card"><h3 style="font-size:16px;margin-bottom:10px">تعديل سريع</h3><div style="display:flex;flex-wrap:wrap;gap:8px">${SECTIONS.filter(s => s.keys).map(s => `<a class="btn btn-ghost sm" href="#${s.id}">${s.ic} ${esc(s.t)}</a>`).join('')}</div></div>
-  <div class="card" style="display:grid;gap:10px"><h3 style="font-size:16px">مفاتيح سريعة</h3>
-  <label class="switch"><input type="checkbox" id="qa" ${D.announce.on ? 'checked' : ''}><span></span> شريط الإعلان</label>
-  <input id="qaT" value="${esc(D.announce.text || '')}" placeholder="اكتب نص الإعلان هنا…" style="padding:9px 12px;border-radius:12px;border:1.5px solid var(--line);margin-top:-4px">
-  <label class="switch"><input type="checkbox" id="qp" ${D.popup.on ? 'checked' : ''}><span></span> نافذة العروض</label>
-  <label class="switch"><input type="checkbox" id="qk" ${D.packages.on ? 'checked' : ''}><span></span> صفحة الباقات</label>
-  <label class="switch"><input type="checkbox" id="qs" ${D.support.on ? 'checked' : ''}><span></span> استقبال طلبات الدعم</label>
-  <p class="hint" style="color:var(--mut);font-size:12.5px">بعد أي تغيير اضغط «حفظ ونشر» تحت.</p></div></div>`;
+  const tiles = SECTIONS.filter(s => !s.h && s.id !== 'dash' && !(s.own && !isOwner));
+  mp.innerHTML = `<h2>نظرة عامة</h2><p class="desc">من هنا تتحكم في كل حاجة على الموقع والتطبيق.</p>
+  <div class="dash-stats" id="st">${['طلبات دعم جديدة', 'كل الطلبات', 'محادثات النهارده', 'زوار النهارده', 'التقارير', 'الموظفين', 'طلبات تسجيل'].map(t => `<div class="card"><b>…</b><span>${t}</span></div>`).join('')}</div>
+  <div class="dash-row">
+    <section class="card"><h3>آخر الطلبات</h3><div class="mini-list" id="dTk"><p class="empty">جارٍ التحميل…</p></div><a class="more" href="portal.html#support">كل الطلبات ←</a></section>
+    <section class="card"><h3>آخر المحادثات</h3><div class="mini-list" id="dCh"><p class="empty">جارٍ التحميل…</p></div><a class="more" href="portal.html#support">فتح الشات ←</a></section>
+    <section class="card"><h3>الزوار آخر 7 أيام</h3><div class="mini-chart" id="dVs"></div><a class="more" href="#stats">الإحصائيات ←</a></section>
+  </div>
+  <div class="dash-row two">
+    <section class="card"><h3>تعديل سريع</h3><div style="display:flex;flex-wrap:wrap;gap:8px">${SECTIONS.filter(s => s.keys).map(s => `<a class="btn btn-ghost sm" href="#${s.id}">${s.ic} ${esc(s.t)}</a>`).join('')}</div></section>
+    <section class="card" style="display:grid;gap:10px"><h3>مفاتيح سريعة</h3>
+    <label class="switch"><input type="checkbox" id="qa" ${D.announce.on ? 'checked' : ''}><span></span> شريط الإعلان</label>
+    <input id="qaT" value="${esc(D.announce.text || '')}" placeholder="اكتب نص الإعلان هنا…" style="padding:9px 12px;border-radius:12px;border:1.5px solid var(--line);margin-top:-4px">
+    <label class="switch"><input type="checkbox" id="qp" ${D.popup.on ? 'checked' : ''}><span></span> نافذة العروض</label>
+    <label class="switch"><input type="checkbox" id="qk" ${D.packages.on ? 'checked' : ''}><span></span> صفحة الباقات</label>
+    <label class="switch"><input type="checkbox" id="qs" ${D.support.on ? 'checked' : ''}><span></span> استقبال طلبات الدعم</label>
+    <p class="hint" style="color:var(--mut);font-size:12.5px">بعد أي تغيير اضغط «حفظ ونشر» تحت.</p></section>
+  </div>
+  <h3 class="dash-h">كل الإعدادات</h3>
+  <div class="dash-tiles">${tiles.map(s => `<a class="dtile" href="${s.href || '#' + s.id}"><span class="ic">${s.ic}</span><b>${esc(s.t)}</b><small>${esc(SEC_DESC[s.id] || '')}</small></a>`).join('')}</div>`;
   $('#qaT').oninput = e => { D.announce.text = e.target.value; if (e.target.value.trim()) { D.announce.on = true; $('#qa').checked = true; } dirty(); };
   [['qa', 'announce'], ['qp', 'popup'], ['qk', 'packages'], ['qs', 'support']].forEach(([i, k]) => $('#' + i).onchange = e => { D[k].on = e.target.checked; dirty(); });
   const cnt = async q => { try { return (await F.getDocs(q)).size; } catch (e) { return '—'; } };
+  const day0 = new Date(Date.now() + 3 * 3600e3); day0.setUTCHours(0, 0, 0, 0); const since = new Date(day0.getTime() - 3 * 3600e3);
+  const keyOf = k => new Date(Date.now() + 3 * 3600e3 - k * 864e5).toISOString().slice(0, 10);
+  let days = []; try { days = await Promise.all([6, 5, 4, 3, 2, 1, 0].map(k => F.getDoc(F.doc(db, 'stats', keyOf(k))).then(d => ({ k: keyOf(k), v: d.exists() ? (d.data().visits || 0) : 0 })).catch(() => ({ k: keyOf(k), v: 0 })))); } catch (e) { }
   const v = await Promise.all([
     cnt(F.query(F.collection(db, 'tickets'), F.where('status', '==', 'new'))), cnt(F.query(F.collection(db, 'tickets'), F.limit(500))),
-    isOwner ? cnt(F.collection(db, 'employees')) : '—', isOwner ? cnt(F.collection(db, 'requests')) : '—', cnt(F.query(F.collection(db, 'reports'), F.limit(500)))]);
+    cnt(F.query(F.collection(db, 'chats'), F.where('upd', '>=', F.Timestamp.fromDate(since)), F.limit(300))), days.length ? days[6].v : '—',
+    cnt(F.query(F.collection(db, 'reports'), F.limit(500))), isOwner ? cnt(F.collection(db, 'employees')) : '—', isOwner ? cnt(F.collection(db, 'requests')) : '—']);
   $$('#st b').forEach((b, i) => b.textContent = v[i]);
+  // الرسم
+  const mx = Math.max(1, ...days.map(d => d.v)); $('#dVs').innerHTML = days.length ? days.map(d => `<div class="bar" title="${d.k}: ${d.v}"><i style="height:${Math.max(4, d.v / mx * 100)}%"></i><b>${d.v}</b><small>${new Date(d.k).toLocaleDateString('ar-SA', { weekday: 'short' })}</small></div>`).join('') : '<p class="empty">مفيش بيانات</p>';
+  const ago = t => { const ms = Date.now() - (t && t.toMillis ? t.toMillis() : +t || 0); const m = Math.round(ms / 60000); return m < 60 ? `من ${m} د` : m < 1440 ? `من ${Math.round(m / 60)} س` : `من ${Math.round(m / 1440)} يوم`; };
+  try { const q = await F.getDocs(F.query(F.collection(db, 'tickets'), F.orderBy('at', 'desc'), F.limit(5))); $('#dTk').innerHTML = q.size ? q.docs.map(d => { const x = d.data(); return `<a class="mi" href="portal.html#support"><b>${esc(x.name || '—')}</b><span>${esc(x.dept || x.svc || x.type || '')}</span><small>${esc(x.code || d.id)} · ${ago(x.at)}</small>${x.status === 'new' ? '<i class="nw">جديد</i>' : ''}</a>`; }).join('') : '<p class="empty">مفيش طلبات</p>'; } catch (e) { $('#dTk').innerHTML = '<p class="empty">مش متاح لحسابك</p>'; }
+  try { const q = await F.getDocs(F.query(F.collection(db, 'chats'), F.orderBy('upd', 'desc'), F.limit(5))); $('#dCh').innerHTML = q.size ? q.docs.map(d => { const x = d.data(), m = (x.msgs || []).slice(-1)[0] || {}; return `<a class="mi" href="portal.html#support"><b>${esc(x.name || 'زائر')}</b><span>${esc((m.text || (m.file ? '📎 مرفق' : '')).slice(0, 60))}</span><small>${ago(x.upd)}</small>${x.unread ? `<i class="nw">${x.unread}</i>` : ''}</a>`; }).join('') : '<p class="empty">مفيش محادثات</p>'; } catch (e) { $('#dCh').innerHTML = '<p class="empty">مش متاح لحسابك</p>'; }
 }
 
 /* ---------- backup ---------- */

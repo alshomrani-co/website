@@ -5,6 +5,7 @@ import { xlsx } from './xlsx-lite.js';
 const { auth, db } = F;
 import * as SX from './sup-x.js';
 import * as DECO from './deco.js';
+import './uizoom.js';
 try { DECO.applyLite(); } catch (e) { }
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];

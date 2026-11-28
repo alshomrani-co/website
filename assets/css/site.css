@@ -1468,7 +1468,7 @@ html[dir=ltr] .ab-img{transform:translateX(-40px)}
 @media (max-width:700px){.ct-hero{aspect-ratio:4/3}.ct-quick{inset-inline:10px;bottom:10px;justify-content:center}.ct-quick a{padding:8px 12px;font-size:13px}}
 
 /* ===== v15: الشاشات الكبيرة تملى الصفحة (zoom) — نعوّض ارتفاعات الشاشة ===== */
-.h7-hero{min-height:min(900px,calc(100svh / var(--zf,1)))}
+.h7-hero{min-height:min(780px,calc(88svh / var(--zf,1)))}
 .bot{height:min(600px,calc(100svh / var(--zf,1) - 110px))}
 .lbx img{max-height:calc(84vh / var(--zf,1));max-width:calc(92vw / var(--zf,1))}
 /* التابلت: شكل الموبايل */
@@ -1503,3 +1503,9 @@ html.is-tablet .wrap{padding:0 18px}
 .code-done .ic{font-size:44px}
 .code-done .code,.my-wait .code{font:800 28px Inter,sans-serif;letter-spacing:2px;padding:12px 22px;border:2px dashed #E1262B;border-radius:14px;color:#E1262B}
 .code-note{font-size:14px;color:var(--mut);line-height:1.8;max-width:420px}
+
+/* v16 — الكمبيوتر: المحتوى بيوسع بدل ما يكبر */
+@media (min-width:1500px){:root{--max:1360px}}
+@media (min-width:1800px){:root{--max:1560px}}
+@media (min-width:2200px){:root{--max:1800px}}
+@media (min-width:1000px){.h7-h1{font-size:clamp(36px,4.4vw,68px);max-width:1150px}}

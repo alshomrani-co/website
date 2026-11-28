@@ -48,7 +48,7 @@ export const DEFAULT = {
     sub: 'للاستشارات الهندسية',
     logo: ''
   },
-  theme: { bg: 'plain', auto: false, op: null },
+  theme: { bg: 'plain', auto: false, str: 60 },
   mourn: { on: false, text: '', until: '' },
   botQA: [],
   contact: {
@@ -320,6 +320,10 @@ export function migrate(D, EN) {
   if ((D._mig || 0) < 13) {
     D._mig = 13; D.brand = Object.assign({ sub: 'للاستشارات الهندسية', logo: '' }, D.brand || {});
     if (!D.theme) D.theme = { bg: 'plain', auto: false, op: null }; if (!D.mourn) D.mourn = { on: false, text: '', until: '' }; if (!Array.isArray(D.botQA)) D.botQA = [];
+  }
+  if ((D._mig || 0) < 14) {
+    D._mig = 14; D.design = Object.assign({ scaleD: 100, scaleM: 100 }, D.design || {}); D.design.cursor = 'none'; D.design.cursorGlow = false;
+    if (D.theme && D.theme.str == null) D.theme.str = 60; if (D.hero && D.hero.posterMobile === undefined) D.hero.posterMobile = '';
   }
   return D;
 }

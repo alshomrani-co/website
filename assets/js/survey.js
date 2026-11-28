@@ -8,6 +8,7 @@ import * as DECO from './deco.js';
 try { DECO.applyLite(); } catch (e) { }
 const AMANAH = 'https://maps.alriyadh.gov.sa/geoportal/geomap';
 import { initAI, aiBox, wireAiBox, pdfBar, autoPrint } from './deptcommon.js';
+import './uizoom.js';
 const { auth, db } = F;
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];

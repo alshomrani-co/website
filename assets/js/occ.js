@@ -10,6 +10,8 @@ export const OCC = {
     g: () => ['رمضان كريم 🌙 وكل عام وأنتم بخير', 'Ramadan Kareem 🌙'] },
   fitr: { ar: 'عيد الفطر', en: 'Eid Al-Fitr', ic: '🎉', when: '1 شوال', red: '#0E8C8C', gold: '#E4B95B', fx: 'eid', c: ['#E4B95B', '#0E8C8C', '#ffffff', '#F28C8C'],
     g: () => ['عيد فطر مبارك 🎉 كل عام وأنتم بخير', 'Eid Mubarak 🎉'] },
+  hajj: { ar: 'الحج ويوم عرفة', en: 'Hajj & Arafah Day', ic: '🕋', when: '8–9 ذو الحجة', red: '#8A5A1F', gold: '#E9C46A', fx: 'stars', c: ['#E9C46A', '#8A5A1F', '#ffffff'],
+    g: () => ['حج مبرور وسعي مشكور — يوم عرفة 🤲', 'Hajj Mubarak — Day of Arafah 🤲'] },
   adha: { ar: 'عيد الأضحى', en: 'Eid Al-Adha', ic: '🐑', when: '10 ذو الحجة', red: '#1E7A4C', gold: '#D9B45A', fx: 'stars', c: ['#D9B45A', '#1E7A4C', '#ffffff'],
     g: () => ['عيد أضحى مبارك — تقبّل الله منا ومنكم', 'Eid Al-Adha Mubarak'] },
   hijri: { ar: 'رأس السنة الهجرية', en: 'Hijri New Year', ic: '📅', when: '1 محرم', red: '#1F3A68', gold: '#C8CED9', fx: 'stars', c: ['#C8CED9', '#ffffff', '#1F3A68'],
@@ -27,7 +29,8 @@ export function autoOcc(d = new Date()) {
     const m = +(p.find(x => x.type === 'month') || {}).value, day = +(p.find(x => x.type === 'day') || {}).value;
     if (m === 9) return 'ramadan';
     if (m === 10 && day <= 4) return 'fitr';
-    if (m === 12 && day >= 9 && day <= 13) return 'adha';
+    if (m === 12 && day >= 8 && day <= 9) return 'hajj';
+    if (m === 12 && day >= 10 && day <= 13) return 'adha';
     if (m === 1 && day <= 2) return 'hijri';
   } catch (e) { }
   return null;
